@@ -49,6 +49,7 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **Damage Up:** Increases final damage dealt.
     * **Protection:** Reduces damage taken (percentage).
     * **Power Boost:** Increases Base/Coin/Final Power for clashes/attacks.
+    * and else...
 
 ---
 
@@ -97,6 +98,7 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **Damage Up:** เพิ่มความเสียหายสุดท้าย
     * **Protection:** ลดความเสียหายที่ได้รับ (คิดเป็น %)
     * **Power Boost:** เพิ่มค่าพลังพื้นฐานและพลังเหรียญ
+    * และอื่นๆ
 
 ---
 
