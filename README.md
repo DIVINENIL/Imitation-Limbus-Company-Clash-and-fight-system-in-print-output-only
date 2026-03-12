@@ -33,7 +33,7 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **Choose Skill:** Input 1 or 2 to select a skill for the turn.
     * **Clash Phase:** Watch the dice roll. The side with higher Power wins the coin toss and destroys one of the opponent's coins.
     * **Attack Phase:** Any remaining coins after the clash will deal damage to the opponent's HP/Shield.
-    * **Turn End:** Buffs are updated, Sanity is adjusted, and Burn damage is applied.
+    * **Clash End:** Sanity is adjusted
     * **Victory/Defeat:** The battle ends when either HP drops to 0.
 
 ### Mechanics Guide
@@ -80,8 +80,8 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **เริ่มตา (Turn Start):** ตรวจสอบ HP, Sanity, โล่ และเงื่อนไขสกิลพิเศษ
     * **เลือกสกิล (Choose Skill):** พิมพ์ 1 หรือ 2 เพื่อเลือกท่าโจมตีในเทิร์นนั้น
     * **เฟสการดวล (Clash Phase):** ฝั่งที่มีพลังสูงกว่าจะทำลายเหรียญของอีกฝั่ง 1 เหรียญ
+    * **จบการดวล (Clash End):** ปรับ Sanity
     * **เฟสโจมตี (Attack Phase):** เหรียญที่เหลืออยู่จะสร้างความเสียหายใส่ HP หรือโล่
-    * **จบตา (Turn End):** อัปเดต Buffs, ปรับ Sanity และคำนวณดาเมจต่อเนื่อง (เช่น Burn)
     * **ชนะ/แพ้:** การต่อสู้จบลงเมื่อ HP ของฝั่งใดฝั่งหนึ่งเหลือ 0
 
 ### คำอธิบายกลไก (Mechanics Guide)
