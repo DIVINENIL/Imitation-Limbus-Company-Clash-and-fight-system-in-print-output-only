@@ -6438,7 +6438,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     int playerTotal = s1->BasePower + p1->BasePowerBoost;
     int enemyTotal = s2->BasePower + p2->BasePowerBoost;
 
-    double roundDelay = 0.5 - (round - 1) * 0.1;
+    double roundDelay = 0.3 - (round - 1) * 0.1;
     if (roundDelay < 0.1)
       roundDelay = 0.1;
 
