@@ -1064,8 +1064,8 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
   // Yi sang:Fell Bullet - Torn Memory
   if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
-      (atk == &attacker->skills[0] && attacker->skills[0].active ||
-       atk == &attacker->skills[1] && attacker->skills[1].active)) {
+      (atk == &attacker->skills[0] ||
+       atk == &attacker->skills[1])) {
 
     printf("\n%s deals more +15%% damage(%d%%) for every Torn Memory(%d)\n",
            attacker->name, attacker->Passive * 15, attacker->Passive);
@@ -1073,7 +1073,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
     sleep(1);
   }
   if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
-      atk == &attacker->skills[2] && attacker->skills[2].active) {
+      atk == &attacker->skills[2]) {
 
     printf("\n%s deals more +30%% damage(%d%%) for every Torn Memory(%d)\n",
            attacker->name, attacker->Passive * 30, attacker->Passive);
@@ -1498,15 +1498,15 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // Yi sang:Fell Bullet - Torn Memory
     if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
-        (atk == &attacker->skills[0] && attacker->skills[0].active ||
-         atk == &attacker->skills[1] && attacker->skills[1].active)) {
+        (atk == &attacker->skills[0] ||
+         atk == &attacker->skills[1])) {
 
         Damage += (int)(Damage * (0.15 * attacker->Passive));
     }
 
     // Yi sang:Fell Bullet - Torn Memory
     if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
-        atk == &attacker->skills[2] && attacker->skills[2].active) {
+        atk == &attacker->skills[2]) {
 
         Damage += (int)(Damage * (0.30 * attacker->Passive));
     }
@@ -3826,8 +3826,8 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // Yi sang:Fell Bullet - Torn Memory
   if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
-      (atk == &attacker->skills[0] && attacker->skills[0].active ||
-       atk == &attacker->skills[1] && attacker->skills[1].active)) {
+      (atk == &attacker->skills[0] ||
+       atk == &attacker->skills[1])) {
 
     attacker->Passive += (atk == &attacker->skills[0] ? 1 : 3);
     if (attacker->Passive >= 7) {
@@ -3844,7 +3844,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
      // Yi sang:Fell Bullet - Torn Memory S3 lost
     if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
-        atk == &attacker->skills[2] && attacker->skills[2].active) {
+        atk == &attacker->skills[2]) {
 
       updateSanity(attacker, -(attacker->Passive*2));
       if (attacker->Sanity < -45) attacker->Sanity = -45;
@@ -3857,7 +3857,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // Yi sang:Fell Bullet - Torn Memory S3 lost
   if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
-      atk == &attacker->skills[2] && attacker->skills[2].active &&
+      atk == &attacker->skills[2] &&
       attacker->Passive >= 7) {
 
     updateSanity(attacker, 20);
@@ -5451,7 +5451,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------------- Yi sang:Fell Bullet -----------------
   // Yi sang:Fell Bullet - Torn Memory
   if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
-      chosenSkill == &c->skills[0] && c->skills[0].active) {
+      chosenSkill == &c->skills[0]) {
 
     if (c->Passive < 7) {
       c->Passive += 1;
@@ -5466,7 +5466,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   // Yi sang:Fell Bullet - Torn Memory
   if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
-      chosenSkill == &c->skills[2] && c->skills[2].active) {
+      chosenSkill == &c->skills[2]) {
 
     if (c->Passive >= 2) {
 
