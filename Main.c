@@ -7634,7 +7634,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[1] =
         (SkillStats){"Punch Through", 4, 6, 2, 3, 2, 1, 1, 1, 2, 1};
     player->skills[2] =
-        (SkillStats){"Target Readjustment Fire", 4, 7, 2, 5, 2, 1, 1, 2, 1, 1};
+        (SkillStats){"Target Readjustment Fire", 4, 7, 2, 5, 2, 1, 0, 2, 1, 1};
     player->numSkills = 3; // <-- important
   } else if (pIndex == 5) {
     player->name = "Don Quixote:The Manager of La Manchaland";
