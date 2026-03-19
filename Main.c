@@ -686,8 +686,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     sleep(1);
 
   }
-
-  // Dawn Office Fixer Sinclair - Skill Buff Ego form
+    
     if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45) {
 
       attacker->CoinPowerBoost += 3;
@@ -699,12 +698,24 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
     }
 
-  // Dawn Office Fixer Sinclair - Skill Buff base form S2 45 sp
-  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && !attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[1])) {
+  // Dawn Office Fixer Sinclair - Skill Buff EGO form S2 45 sp
+  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[1])) {
 
-    attacker->AttackPowerBoost += 3;
+    attacker->AttackPowerBoost += 2;
 
     printf("\n%s at 45 Sanity, gains 2 Attack Power\n",
+           attacker->name);
+
+    sleep(1);
+
+  }
+
+    // Dawn Office Fixer Sinclair - Skill Buff ego form S3 45 sp
+  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
+
+    attacker->AttackPowerBoost += 15;
+
+    printf("\n%s at 45 Sanity, gains 15 Attack Power\n",
            attacker->name);
 
     sleep(1);
@@ -6427,7 +6438,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     int playerTotal = s1->BasePower + p1->BasePowerBoost;
     int enemyTotal = s2->BasePower + p2->BasePowerBoost;
 
-    double roundDelay = 0.5 - (round - 1) * 0.1;
+    double roundDelay = 0.3 - (round - 1) * 0.1;
     if (roundDelay < 0.1)
       roundDelay = 0.1;
 
