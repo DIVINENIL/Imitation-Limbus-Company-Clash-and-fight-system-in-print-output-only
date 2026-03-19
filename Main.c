@@ -3863,12 +3863,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     updateSanity(attacker, 20);
     if (attacker->Sanity > 45) attacker->Sanity = 45;
 
-    printf("\n%s loses all Torn Memory to gain 'Fell Bullet', All skills' Damage Multiplier +1.0 and heal 20 Sanity on self (%d)\n",
+    printf("\n%s loses all Torn Memory to gain 'Fell Bullet', All skills' Damage Multiplier +0.5 and Clash Power +1 then heal 20 Sanity on self (%d)\n",
            attacker->name, attacker->Sanity);
 
-    attacker->skills[0].DmgMutiplier += 1;
-    attacker->skills[1].DmgMutiplier += 1;
-    attacker->skills[2].DmgMutiplier += 1;
+    attacker->skills[2].active++;
+
+    attacker->skills[0].DmgMutiplier += 0.5;
+    attacker->skills[1].DmgMutiplier += 0.5;
+    attacker->skills[2].DmgMutiplier += 0.5;
     attacker->skills[2].Copies = 1;
 
     attacker->Passive = 0;
@@ -5538,7 +5540,6 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
       sleep(1);
     }
-
 
       //---------------------------------------------
 
@@ -8012,12 +8013,13 @@ int main() {
           printf("'They would point and jeer at the rags splattered with the blood of fellowship. The fools; only I can grasp the highest degree of tragedy upon this earth.'\n\n");
 
           //Description
-          printf("A low HP character with OVERKILL damage output\n\n");
+          printf("A low HP character with Insane damage output and focus on building up 'Fell Bullet' for better potential\n\n");
 
           //Passive
           printf("Passive Skills:\n");
           printf(" 1. Volatilized Memory\n When using Skills expect 'Target Readjustment Fire' gain 'Torn Memory' which use for 'Target Readjustment Fire' to buff it\n");
-          printf(" 2. Fell Bullet\n When lost 'Torn Memory' gains 'Fell Bullet'. gains 1.0 Damage Multiper for every Fell Bullet\n");
+          printf(" 2. I shall Fire\n After used 'Target Readjustment Fire', lose (Torn Memory x 2) Sanity, at 7+ 'Torn Memory' gain 'Fell Bullet'\n");
+          printf(" 3. Fell Bullet\n When lost 'Torn Memory' gains 'Fell Bullet', All skills' Damage Multiplier +0.5 and Clash Power +1 then heal 20 Sanity on self (Stackable)\n");
               } 
         else if (selected_identity - 1 == 5) {
           //Taunt
