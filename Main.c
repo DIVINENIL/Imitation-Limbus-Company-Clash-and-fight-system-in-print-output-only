@@ -5527,6 +5527,19 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       sleep(1);
     }
     }
+
+        // Yi sang:Fell Bullet - Fell Bullet Clash power buff
+    if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
+        c->skills[2].active > 0) {
+
+      c->ClashPower += c->skills[2].active;
+
+      printf("\n%s gains +1 Clash Power for every Fell Bullet (%d)\n", c->name, c->skills[2].active);
+
+      sleep(1);
+    }
+
+
       //---------------------------------------------
 
   // -------------------- Don Quixote:The Manager of La Manchaland ---------------------------
