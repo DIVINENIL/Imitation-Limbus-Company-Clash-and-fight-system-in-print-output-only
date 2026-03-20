@@ -8512,7 +8512,7 @@ int main() {
       enemy.Sanity = -45;
       enemy.SanityFreezeTurns = 1;
 
-      printf("\n%s gains 'Call of Mother', Start Phase with -45 Sanity\n", enemy.name);
+      printf("\n%s gains 'Call of Mother', Start Phase with -45 Sanity for two turns\n", enemy.name);
 
       sleep(1);
 
