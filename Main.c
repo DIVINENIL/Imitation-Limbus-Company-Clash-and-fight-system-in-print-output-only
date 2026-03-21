@@ -1466,7 +1466,43 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
     }
 
 
+   // ---------------------------------------- Meursault:The Thumb Coin Buff --------------------------------
 
+          // Meursault: The Thumb – Buff spend tigermark S1
+      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
+      && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
+      || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
+      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))) {
+
+        int AmmoLeft = attacker->Passive; // Calculate remaining ammo after this coin
+
+        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+
+          AmmoLeft--; // Consume 1 ammo for this coin
+        currentPower += 1;
+
+        }
+
+      }
+
+      // Meursault: The Thumb – Buff spend Savage tigermark S1
+      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
+      && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
+      || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
+      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))) {
+
+        int AmmoLeft = attacker->Passive; // Calculate remaining ammo after this coin
+
+        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+
+          AmmoLeft--; // Consume 1 ammo for this coin
+        currentPower += 2;
+
+        }
+
+      }
+
+    // ------------------------------------------------------------
 
     
     // Calculate offense difference modifier: (Off - Def) / (|Off - Def| + 25) × 100
@@ -1768,7 +1804,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[2].active++;
         attacker->DamageUp += 10;
 
-         printf("\n%s spends 1 Tigermark Round(%d) to deal +10%% damage", attacker->name, attacker->Passive);
+        Damage += (Damage * 0.10f);
+
+         printf("\n%s spends 1 Tigermark Round(%d) to deal +10%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       
@@ -1779,7 +1817,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[2].active++;
         attacker->DamageUp += 20;
 
-         printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +20%% damage", attacker->name, attacker->Passive);
+        Damage += (Damage * 0.30f);
+
+         printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +20%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
     }
@@ -1793,7 +1833,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[2].active++;
           attacker->DamageUp += 5;
 
-           printf("\n%s spends 1 Tigermark Round(%d) to deal +5%% damage", attacker->name, attacker->Passive);
+          Damage += (Damage * 0.10f);
+
+           printf("\n%s spends 1 Tigermark Round(%d) to deal +5%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
       } else if (i == remainingCoins - 1) {
@@ -1801,7 +1843,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[2].active++;
         attacker->DamageUp += 35;
 
-         printf("\n%s spends 1 Tigermark Round(%d) to deal +30%% damage", attacker->name, attacker->Passive);
+        Damage += (Damage * 0.10f);
+
+         printf("\n%s spends 1 Tigermark Round(%d) to deal +30%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       }
@@ -1815,7 +1859,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           attacker->skills[2].active++;
             attacker->DamageUp += 10;
 
-             printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +10%% damage", attacker->name, attacker->Passive);
+            Damage += (Damage * 0.30f);
+
+             printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +10%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
           sleep(1);
         } else if (i == remainingCoins - 1) {
@@ -1823,7 +1869,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           attacker->skills[2].active++;
           attacker->DamageUp += 70;
 
-           printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +60%% damage", attacker->name, attacker->Passive);
+          Damage += (Damage * 0.30f);
+
+           printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +60%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
         }
@@ -1840,7 +1888,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         int boost = 50; 
         attacker->DamageUp += boost;
 
-         printf("\n%s spends 1 Tigermark Round(%d) to deal +50%% damage", attacker->name, attacker->Passive);
+        Damage += (Damage * 0.10f);
+
+         printf("\n%s spends 1 Tigermark Round(%d) to deal +50%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       } else {
@@ -1849,7 +1899,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[2].active++;
           attacker->DamageUp += 10;
 
-           printf("\n%s spends 1 Tigermark Round(%d) to deal +10%% damage", attacker->name, attacker->Passive);
+          Damage += (Damage * 0.10f);
+
+           printf("\n%s spends 1 Tigermark Round(%d) to deal +10%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
         
@@ -1867,7 +1919,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         int boost = 50; 
         attacker->DamageUp += boost;
 
-         printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +50%% damage", attacker->name, attacker->Passive);
+        Damage += (Damage * 0.30f);
+
+         printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +50%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       } else if (i == remainingCoins - 3) {
@@ -1876,7 +1930,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[2].active++;
           attacker->DamageUp += 20;
 
-           printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +20%% damage", attacker->name, attacker->Passive);
+          Damage += (Damage * 0.30f);
+
+           printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +20%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
 
@@ -1886,7 +1942,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[2].active++;
           attacker->DamageUp += 20;
 
-           printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +20%% damage", attacker->name, attacker->Passive);
+          Damage += (Damage * 0.30f);
+
+           printf("\n%s spends 1 Savage Tigermark Round (%d) to deal +20%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
 
@@ -4539,10 +4597,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // Meursault: The Thumb – Clash power spend tigermark
   if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && !c->skills[3].active && c->Passive > 0) {
 
-    printf("\n%s's Skill Coins spend 'Tigermark Round' gain +1 Final Power and deal +10%% damage (activates only as long as the Coin has Rounds left to spend)\n", c->name);
-
-     c->FinalPowerBoost += 1;
-    c->DamageUp += 10;
+    printf("\n%s's Skill Coins spend 'Tigermark Round' gain +1 Power and deal +10%% damage (activates only as long as the Coin has Rounds left to spend)\n", c->name);
 
     sleep(1);
   }
@@ -4550,10 +4605,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // Meursault: The Thumb – Clash power spend Savage tigermark
   if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && c->skills[3].active && c->Passive > 0) {
 
-    printf("\n%s's Skill Coins spend 'Savage Tigermark Round' gain +2 Final Power, deal +30%% damage (activates only as long as the Coin has Rounds left to spend)\n", c->name);
-
-    c->FinalPowerBoost += 2;
-    c->DamageUp += 30;
+    printf("\n%s's Skill Coins spend 'Savage Tigermark Round' gain +2 Power, deal +30%% damage (activates only as long as the Coin has Rounds left to spend)\n", c->name);
 
     sleep(1);
   }
@@ -6443,6 +6495,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
   }
 
   while (playerCoins > 0 && enemyCoins > 0) {
+
     printf("\nRound %d:\nPlayer:\t\tEnemy:\n", round);
 
     clashCount++; // Increment clash count each round
@@ -6461,13 +6514,73 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
     // In coin toss section:
     for (int i = 0; i < maxToss; i++) {
+
+      // ------------------------------- Coins Buff Section ------------------------------------
+
+      // ------------------------------- Player ------------------------------------
+
+      int PlayerCoinBuff = 0;
+
+      // Meursault: The Thumb – Buff spend tigermark S1
+      if (strcasecmp(p1->name, "Meursault:The Thumb") == 0 && !p1->skills[3].active && p1->Passive > 0 
+      && ((s1 == &p1->skills[0] && i == playerCoins - 1) 
+      || (s1 == &p1->skills[1] && (i == playerCoins - 2 || i == playerCoins - 1))
+      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))) {
+
+        int AmmoLeft = p1->Passive; // Calculate remaining ammo after this coin
+
+        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+
+          AmmoLeft--; // Consume 1 ammo for this coin
+        PlayerCoinBuff += 1;
+
+        }
+
+      }
+
+      // Meursault: The Thumb – Buff spend Savage tigermark S1
+      if (strcasecmp(p1->name, "Meursault:The Thumb") == 0 && p1->skills[3].active && p1->Passive > 0
+      && ((s1 == &p1->skills[0] && i == playerCoins - 1) 
+      || (s1 == &p1->skills[1] && (i == playerCoins - 2 || i == playerCoins - 1))
+      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))) {
+
+        int AmmoLeft = p1->Passive; // Calculate remaining ammo after this coin
+
+        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+
+          AmmoLeft--; // Consume 1 ammo for this coin
+        PlayerCoinBuff += 2;
+
+        }
+
+      }
+
+      if (PlayerCoinBuff > 0) {
+        printf("Player Skill Coin Power: +%d\n", PlayerCoinBuff);
+      }
+
+      // -------------------------------------------------------------------
+
+      // ------------------------------- Enemy ------------------------------------
+
+      int EnemyCoinBuff = 0;
+
+      if (EnemyCoinBuff > 0) {
+        printf("Enemy Skill Coin Power: +%d\n", EnemyCoinBuff);
+      }
+
+      // -------------------------------------------------------------------
+
+      // ------------------------------------------------------------------------------------------
+
+
       if (i < playerCoins && tossCoinWithSanity(p1)) { // Pass character
         // Check paralyze
         if (p1->Paralyze > 0) { // ← Character's paralyze
           playerTotal += 0;
           p1->Paralyze--; // ← Character's paralyze
         } else {
-          playerTotal += s1->CoinPower + p1->CoinPowerBoost;
+          playerTotal += PlayerCoinBuff + s1->CoinPower + p1->CoinPowerBoost;
           if (playerTotal <= 0) playerTotal = 0;
         }
       }
@@ -6477,7 +6590,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
           enemyTotal += 0;
           p2->Paralyze--; // ← Character's paralyze
         } else {
-          enemyTotal += s2->CoinPower + p2->CoinPowerBoost;
+          enemyTotal += EnemyCoinBuff + s2->CoinPower + p2->CoinPowerBoost;
           if (enemyTotal <= 0) enemyTotal = 0;
         }
       }
@@ -7957,9 +8070,9 @@ int main() {
          printf(" 2. Chachihu [揷翅虎]\n When spent all of 'Tigermark Round', or HP at 65%% or less HP, reload 'Savage Tigermark Round' amount based on enemy (Min 8) and activate 'Unrelenting Spirit [剛氣]'\n");
           printf(" 3. Unrelenting Spirit [剛氣]\n deal +1%% damage for every Sanity different between this unit and enemy (Max 20%%), but at 8+ (sum of Tigermark Round and Savage Tigermark Round spent) activate 'Unrelenting Spirit - Shin [剛氣-心]' instead\n");
           printf(" 4. Unrelenting Spirit - Shin [剛氣-心]\n Defense +3, deal +2%% damage for every Sanity different between this unit and enemy (Max 40%%)\n");
-         printf(" 5. Tigermark Round\n Skill Coins that spend Tigermark Round gain +1 Final Power and deal +10%% damage (activates only as long as the Coin has Rounds left to spend)\n" 
+         printf(" 5. Tigermark Round\n Skill Coins that spend Tigermark Round gain +1 Power and deal +10%% damage (activates only as long as the Coin has Rounds left to spend)\n" 
             " - At 1+ Tigermark Round and 3+ Tigermark Round spent, convert all Coins of 'Tanglecleaver' into Unbreakable Coins\n");
-          printf(" 6. Savage Tigermark Round\n Skill Coins that spend Savage Tigermark Round gain +2 Final Power, deal +30%% damage(activates only as long as the Coin has Rounds left to spend)\n" 
+          printf(" 6. Savage Tigermark Round\n Skill Coins that spend Savage Tigermark Round gain +2 Power and deal +30%% damage (activates only as long as the Coin has Rounds left to spend)\n" 
            " - At 1+ Savage Tigermark Round, convert all Coins of this unit's Attack Skills to Unbreakable Coins and Replace 'Tanglecleaver [快刀亂麻]' with 'Savage Tigerslayer's Perfected Flurry of Blades [超絕猛虎殺擊亂斬]'\n" 
           " - At 0 Savage Tigermark Round, convert all Coins of this unit's Attack Skills to Unbreakable Coins and Gain 'Overheat'\n");
         printf(" 7. Overheat\n Attack Skills Lose (cumulative number of Tigermark Rounds & Savage Tigermark Rounds spent / 4) Clash Power (Max 5); however, gain the following effects(cumulative):\n"

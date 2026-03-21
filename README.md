@@ -42,7 +42,13 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **High Sanity (>0):** Increases chance of Heads (Power up).
     * **Low Sanity (<0):** Decreases chance of Heads.
     * **Panic (-45):** Character usually skips their turn (unless Immune).
-* **Special Skills:**
+* **Skill:**
+    * **BasePower:** The starting value of the Skill before any coins are tossed. Used as the foundation for Clash Power and Attack Power.
+    * **CoinPower:** The value added to (or subtracted from) the Base Power for each Heads hit during a coin toss.
+    * **Coins:** The number of chances to toss. More coins mean more potential hits and higher maximum Clash/Attack power.
+    * **Offense:** Compares with the target's Offense Level. Every 3 levels of difference grant +1 Clash Power and increase Final Damage contrast with target's Defense.
+    * **Defense:** Reduces incoming damage based on the difference with the attacker’s Offense Level.
+    * **Copies:** The rate at which Skill will appear or skill list. More Copies mean more chance.
     * **Unclashable:** This attack will land after the opponent lands their attack first.
     * **Unbreakable:** Even if these coins lose a duel, they will still attack after the opponent, but damage is reduced by 50%.
 * **Buffs:**
@@ -91,9 +97,15 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **ค่าบวก (>0):** เพิ่มโอกาสทอยได้หน้าหัว (เพิ่มพลังโจมตี)
     * **ค่าลบ (<0):** ลดโอกาสทอยได้หน้าหัว
     * **Panic (-45):** ตัวละครจะติดสถานะตื่นตระหนกและมักจะข้ามเทิร์นนั้น
-* **สกิลพิเศษ:**
+* **Skill:**
+    * **BasePower (พลังพื้นฐาน):** ค่าพลังเริ่มต้นของสกิลก่อนเริ่มทอยเหรียญ ใช้เป็นฐานหลักสำหรับการคำนวณพลังปะทะ (Clash) และพลังโจมตี
+    * **CoinPower (พลังเหรียญ):** ค่าที่จะนำไปบวกเพิ่ม (หรือลบออก) จากพลังพื้นฐาน ตามจำนวนเหรียญที่ออกหน้า "หัว" ในการทอยแต่ละครั้ง
+    * **Coins (จำนวนเหรียญ):** จำนวนครั้งที่มีโอกาสทอยเหรียญ ยิ่งเหรียญมากยิ่งมีโอกาสโจมตีต่อเนื่องได้หลายครั้งและเพิ่มเพดานพลังปะทะสูงสุดได้สูงขึ้น
+    * **Offense (ระดับการโจมตี):** ระดับการโจมตีที่ใช้เทียบกับเป้าหมาย โดยทุกๆ 3 เลเวลที่ต่างกันจะมอบโบนัสพลังปะทะ +1 และเพิ่มความเสียหายสุดท้ายเมื่อเทียบกับระดับการป้องกันของศัตรู
+    * **Defense (ระดับป้องกัน):** ระดับการป้องกันที่ช่วยลดความเสียหายที่ได้รับ โดยคำนวณจากส่วนต่างระหว่างระดับการป้องกันของเรากับระดับการโจมตีของผู้ที่บุกเข้ามา
+    * **Copies (จำนวนก๊อปปี้):** อัตราส่วนหรือจำนวนที่สกิลนั้นๆ จะปรากฏในรายการสกิล ยิ่งมีจำนวนสำเนามาก ยิ่งมีโอกาสสุ่มได้สกิลนั้นมาใช้งานสูงขึ้น
     * **Unclashable (ปะทะไม่ได้):** ข้ามการดวลและโจมตีเข้าเป้าแน่นอน หลังจากที่ศัตรูโจมตีใส่เราเสร็จแล้ว
-    * **Unbreakable (เหรียญป้องกัน):** แม้จะแพ้การดวล เหรียญจะยังคงอยู่และโจมตีสวนกลับหลังจากถูกโจมตี (ดาเมจลดลง 50%)
+    * **Unbreakable (เหรียญที่แตกไม่ได้):** แม้จะแพ้การดวล เหรียญจะยังคงอยู่และโจมตีสวนกลับหลังจากถูกโจมตี (ดาเมจลดลง 50%)
 * **Buffs (สถานะเสริม):**
     * **Damage Up:** เพิ่มความเสียหายสุดท้าย
     * **Protection:** ลดความเสียหายที่ได้รับ (คิดเป็น %)
