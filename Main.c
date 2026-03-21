@@ -4041,10 +4041,10 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // Jia Qiu - S2 and S8
   if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[2] || atk == &attacker->skills[8])) {
 
-        updateSanity(defender, -(5 + (1 * remainingCoins)));
+        updateSanity(defender, -(5 * remainingCoins));
     if (defender->Sanity < -45) defender->Sanity = -45;
 
-    printf("\n%s loses 5 Sanity and loses 1 additional for every one remaining coins of %s's Skill(%d)\n", defender->name, attacker->name, remainingCoins);
+    printf("\n%s loses 5 Sanity for every one remaining coins of %s's Skill (%d)\n", defender->name, attacker->name, remainingCoins);
 
     sleep(1);
   }
@@ -8512,7 +8512,7 @@ int main() {
       enemy.Sanity = -45;
       enemy.SanityFreezeTurns = 1;
 
-      printf("\n%s gains 'Call of Mother', Start Phase with -45 Sanity for two turns\n", enemy.name);
+      printf("\n%s gains 'Call of Mother', Start Phase with -45 Sanity for two turns \n", enemy.name);
 
       sleep(1);
 
