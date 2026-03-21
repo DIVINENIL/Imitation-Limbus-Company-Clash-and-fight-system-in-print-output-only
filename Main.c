@@ -1806,7 +1806,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         Damage += (Damage * 0.10f);
 
-         printf("\n%s spends 1 Tigermark Round(%d) to deal +10%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
+         printf("\n%s spends 1 Tigermark Round(%d) to gain +10%% damage this turn (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       
@@ -1819,7 +1819,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         Damage += (Damage * 0.30f);
 
-         printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +20%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
+         printf("\n%s spends 1 Savage Tigermark Round(%d) to gain +20%% damage this turn (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
     }
@@ -1835,7 +1835,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           Damage += (Damage * 0.10f);
 
-           printf("\n%s spends 1 Tigermark Round(%d) to deal +5%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
+           printf("\n%s spends 1 Tigermark Round(%d) to gain +5%% damage this turn (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
       } else if (i == remainingCoins - 1) {
@@ -1845,7 +1845,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         Damage += (Damage * 0.10f);
 
-         printf("\n%s spends 1 Tigermark Round(%d) to deal +30%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
+         printf("\n%s spends 1 Tigermark Round(%d) to gain +30%% damage this turn (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       }
@@ -1861,7 +1861,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
             Damage += (Damage * 0.30f);
 
-             printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +10%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
+             printf("\n%s spends 1 Savage Tigermark Round(%d) to gain +10%% damage this turn (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
           sleep(1);
         } else if (i == remainingCoins - 1) {
@@ -1871,7 +1871,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           Damage += (Damage * 0.30f);
 
-           printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +60%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
+           printf("\n%s spends 1 Savage Tigermark Round(%d) to gain +60%% damage this turn (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
         }
@@ -1890,7 +1890,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         Damage += (Damage * 0.10f);
 
-         printf("\n%s spends 1 Tigermark Round(%d) to deal +50%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
+         printf("\n%s spends 1 Tigermark Round(%d) to gain +50%% damage this turn (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       } else {
@@ -1901,7 +1901,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           Damage += (Damage * 0.10f);
 
-           printf("\n%s spends 1 Tigermark Round(%d) to deal +10%% damage (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
+           printf("\n%s spends 1 Tigermark Round(%d) to gain +10%% damage this turn (Coin that spent Tigermark Round +1 Power and deal +10%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
         
@@ -1921,7 +1921,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         Damage += (Damage * 0.30f);
 
-         printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +50%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
+         printf("\n%s spends 1 Savage Tigermark Round(%d) to gain +50%% damage this turn (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
       sleep(1);
       } else if (i == remainingCoins - 3) {
@@ -1932,7 +1932,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           Damage += (Damage * 0.30f);
 
-           printf("\n%s spends 1 Savage Tigermark Round(%d) to deal +20%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
+           printf("\n%s spends 1 Savage Tigermark Round(%d) to gain +20%% damage this turn (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
 
@@ -1944,7 +1944,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           Damage += (Damage * 0.30f);
 
-           printf("\n%s spends 1 Savage Tigermark Round (%d) to deal +20%% damage (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
+           printf("\n%s spends 1 Savage Tigermark Round (%d) to gain +20%% damage this turn (Coin that spent Savage Tigermark Round +2 Power and deal +30%% damage)", attacker->name, attacker->Passive);
 
         sleep(1);
 
@@ -4594,22 +4594,6 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     sleep(1);
   }
 
-  // Meursault: The Thumb – Clash power spend tigermark
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && !c->skills[3].active && c->Passive > 0) {
-
-    printf("\n%s's Skill Coins spend 'Tigermark Round' gain +1 Power and deal +10%% damage (activates only as long as the Coin has Rounds left to spend)\n", c->name);
-
-    sleep(1);
-  }
-
-  // Meursault: The Thumb – Clash power spend Savage tigermark
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && c->skills[3].active && c->Passive > 0) {
-
-    printf("\n%s's Skill Coins spend 'Savage Tigermark Round' gain +2 Power, deal +30%% damage (activates only as long as the Coin has Rounds left to spend)\n", c->name);
-
-    sleep(1);
-  }
-
   // Meursault: The Thumb – S3-1 Unbreakable
   if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && chosenSkill == &c->skills[2] && c->Passive >= 1 && !c->skills[3].active && c->skills[2].active >= 3) {
 
@@ -6556,7 +6540,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       }
 
       if (PlayerCoinBuff > 0) {
-        printf("Player Skill Coin Power: +%d\n", PlayerCoinBuff);
+        printf("Player: this Coin Power +%d\n", PlayerCoinBuff);
       }
 
       // -------------------------------------------------------------------
@@ -6566,7 +6550,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       int EnemyCoinBuff = 0;
 
       if (EnemyCoinBuff > 0) {
-        printf("Enemy Skill Coin Power: +%d\n", EnemyCoinBuff);
+        printf("Enemy: this Coin Power +%d\n", EnemyCoinBuff);
       }
 
       // -------------------------------------------------------------------
