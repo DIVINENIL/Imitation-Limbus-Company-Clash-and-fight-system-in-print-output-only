@@ -1368,13 +1368,55 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
   for (int i = 0; i < remainingCoins; i++) {
 
+    // --------------------------- Coin Buff Section ------------------------------------------
+
+    int CoinBuff = 0;
+
+       // ---------------------------------------- Meursault:The Thumb Coin Buff --------------------------------
+
+          // Meursault: The Thumb – Buff spend tigermark
+      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
+      && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
+      || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
+      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))
+      || (atk == &attacker->skills[3] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))) {
+
+        if (AmmoLeft > 0) { // If there's still ammo left for this coin
+
+          AmmoLeft--; // Consume 1 ammo for this coin
+        CoinBuff += 1;
+
+        }
+
+      }
+
+      // Meursault: The Thumb – Buff spend Savage tigermark
+      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
+      && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
+      || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
+      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))
+      || (atk == &attacker->skills[3] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))) {
+
+        if (AmmoLeft > 0) { // If there's still ammo left for this coin
+
+          AmmoLeft--; // Consume 1 ammo for this coin
+        CoinBuff += 2;
+
+        }
+
+      }
+
+    // ------------------------------------------------------------
+
+    // ----------------------------------------------------------------------------------------
+
     if (tossCoinWithSanity(attacker)) {
       // Check paralyze
       if (attacker->Paralyze > 0) { // ← Character's paralyze
         totalPower += 0;
         attacker->Paralyze--; // ← Character's paralyze
       } else {
-        totalPower += atk->CoinPower + attacker->CoinPowerBoost;
+        totalPower += CoinBuff + atk->CoinPower + attacker->CoinPowerBoost;
         if (totalPower <= 0) totalPower = 0;
       }
 
@@ -1466,43 +1508,6 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
         currentPower += bonus;
       if (currentPower <= 0) currentPower = 0;
     }
-
-
-   // ---------------------------------------- Meursault:The Thumb Coin Buff --------------------------------
-
-          // Meursault: The Thumb – Buff spend tigermark
-      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
-      && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
-      || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
-      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))
-      || (atk == &attacker->skills[3] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))) {
-
-        if (AmmoLeft > 0) { // If there's still ammo left for this coin
-
-          AmmoLeft--; // Consume 1 ammo for this coin
-        currentPower += 1;
-
-        }
-
-      }
-
-      // Meursault: The Thumb – Buff spend Savage tigermark
-      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
-      && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
-      || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
-      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))
-      || (atk == &attacker->skills[3] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))) {
-
-        if (AmmoLeft > 0) { // If there's still ammo left for this coin
-
-          AmmoLeft--; // Consume 1 ammo for this coin
-        currentPower += 2;
-
-        }
-
-      }
-
-    // ------------------------------------------------------------
 
     
     // Calculate offense difference modifier: (Off - Def) / (|Off - Def| + 25) × 100
