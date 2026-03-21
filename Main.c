@@ -1364,6 +1364,8 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   
   printf("%-10s %-10s %-10s", "Coin", "Power", "Damage");
 
+  int AmmoLeft = attacker->Passive; // Calculate remaining ammo for Meursault: The Thumb's buff
+
   for (int i = 0; i < remainingCoins; i++) {
 
     if (tossCoinWithSanity(attacker)) {
@@ -1468,15 +1470,14 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
    // ---------------------------------------- Meursault:The Thumb Coin Buff --------------------------------
 
-          // Meursault: The Thumb – Buff spend tigermark S1
+          // Meursault: The Thumb – Buff spend tigermark
       if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
       && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
       || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
-      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))) {
+      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))
+      || (atk == &attacker->skills[3] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))) {
 
-        int AmmoLeft = attacker->Passive; // Calculate remaining ammo after this coin
-
-        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+        if (AmmoLeft > 0) { // If there's still ammo left for this coin
 
           AmmoLeft--; // Consume 1 ammo for this coin
         currentPower += 1;
@@ -1485,15 +1486,14 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
       }
 
-      // Meursault: The Thumb – Buff spend Savage tigermark S1
+      // Meursault: The Thumb – Buff spend Savage tigermark
       if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
       && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
       || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
-      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))) {
+      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))
+      || (atk == &attacker->skills[3] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))) {
 
-        int AmmoLeft = attacker->Passive; // Calculate remaining ammo after this coin
-
-        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+        if (AmmoLeft > 0) { // If there's still ammo left for this coin
 
           AmmoLeft--; // Consume 1 ammo for this coin
         currentPower += 2;
@@ -6496,6 +6496,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     printf("%-10d %-10d\n", playerTotal, enemyTotal);
     usleep((int)(roundDelay * 500000));
 
+          int AmmoLeft = p1->Passive; // Calculate remaining ammo for Meursault:The Thumb's tigermark
+
     // In coin toss section:
     for (int i = 0; i < maxToss; i++) {
 
@@ -6505,15 +6507,14 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       int PlayerCoinBuff = 0;
 
-      // Meursault: The Thumb – Buff spend tigermark S1
+      // Meursault: The Thumb – Buff spend tigermark
       if (strcasecmp(p1->name, "Meursault:The Thumb") == 0 && !p1->skills[3].active && p1->Passive > 0 
       && ((s1 == &p1->skills[0] && i == playerCoins - 1) 
       || (s1 == &p1->skills[1] && (i == playerCoins - 2 || i == playerCoins - 1))
-      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))) {
+      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))
+    || (s1 == &p1->skills[3] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1))) {
 
-        int AmmoLeft = p1->Passive; // Calculate remaining ammo after this coin
-
-        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+        if (AmmoLeft > 0) { // If there's still ammo left for this coin
 
           AmmoLeft--; // Consume 1 ammo for this coin
         PlayerCoinBuff += 1;
@@ -6522,15 +6523,14 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       }
 
-      // Meursault: The Thumb – Buff spend Savage tigermark S1
+      // Meursault: The Thumb – Buff spend Savage tigermark
       if (strcasecmp(p1->name, "Meursault:The Thumb") == 0 && p1->skills[3].active && p1->Passive > 0
       && ((s1 == &p1->skills[0] && i == playerCoins - 1) 
       || (s1 == &p1->skills[1] && (i == playerCoins - 2 || i == playerCoins - 1))
-      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))) {
+      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))
+      || (s1 == &p1->skills[3] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1))) {
 
-        int AmmoLeft = p1->Passive; // Calculate remaining ammo after this coin
-
-        if (AmmoLeft >= 0) { // If there's still ammo left for this coin
+        if (AmmoLeft > 0) { // If there's still ammo left for this coin
 
           AmmoLeft--; // Consume 1 ammo for this coin
         PlayerCoinBuff += 2;
