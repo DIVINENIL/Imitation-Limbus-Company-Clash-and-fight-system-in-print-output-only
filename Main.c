@@ -5582,7 +5582,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
       c->ClashPower += c->skills[2].active * 2;
 
-      printf("\n%s gains +2 Clash Power for every Fell Bullet (%d)\n", c->name, c->skills[2].active);
+      printf("\n%s gains +2 Clash Power for every Fell Bullet (%d)\n", c->name, c->skills[2].active * 2);
 
       sleep(1);
     }
