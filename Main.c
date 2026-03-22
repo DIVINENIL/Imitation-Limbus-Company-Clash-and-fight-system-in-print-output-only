@@ -3926,7 +3926,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     updateSanity(attacker, 20);
     if (attacker->Sanity > 45) attacker->Sanity = 45;
 
-    printf("\n%s loses all Torn Memory to gain 'Fell Bullet', All skills' Damage Multiplier +0.5 and Clash Power +1 then heal 20 Sanity on self (%d)\n",
+    printf("\n%s loses all Torn Memory to gain 'Fell Bullet', All skills' Damage Multiplier +0.5 and Clash Power +2 then heal 20 Sanity on self (%d)\n",
            attacker->name, attacker->Sanity);
 
     attacker->skills[2].active++;
@@ -3939,6 +3939,11 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     attacker->Passive = 0;
 
     sleep(1);
+
+    printf("\n%s: Thus, you sink into a bottomless slumber.\n",
+           attacker->name);
+
+           sleep(1);
   }
 
     // -------------------------------- Don Quixote:The Manager of La Manchaland --------------------------------
@@ -5575,9 +5580,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
         c->skills[2].active > 0) {
 
-      c->ClashPower += c->skills[2].active;
+      c->ClashPower += c->skills[2].active * 2;
 
-      printf("\n%s gains +1 Clash Power for every Fell Bullet (%d)\n", c->name, c->skills[2].active);
+      printf("\n%s gains +2 Clash Power for every Fell Bullet (%d)\n", c->name, c->skills[2].active);
 
       sleep(1);
     }
@@ -8121,7 +8126,7 @@ int main() {
           printf("Passive Skills:\n");
           printf(" 1. Volatilized Memory\n When using Skills expect 'Target Readjustment Fire' gain 'Torn Memory' which use for 'Target Readjustment Fire' to buff it\n");
           printf(" 2. I shall Fire\n After used 'Target Readjustment Fire', lose (Torn Memory x 2) Sanity, at 7+ 'Torn Memory' gain 'Fell Bullet'\n");
-          printf(" 3. Fell Bullet\n When lost 'Torn Memory' gains 'Fell Bullet', All skills' Damage Multiplier +0.5 and Clash Power +1 then heal 20 Sanity on self (Stackable)\n");
+          printf(" 3. Fell Bullet\n When lost 'Torn Memory' gains 'Fell Bullet', All skills' Damage Multiplier +0.5 and Clash Power +2 then heal 20 Sanity on self (Stackable)\n");
               } 
         else if (selected_identity - 1 == 5) {
           //Taunt
