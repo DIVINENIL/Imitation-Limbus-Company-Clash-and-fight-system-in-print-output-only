@@ -6521,8 +6521,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       if (strcasecmp(p1->name, "Meursault:The Thumb") == 0 && !p1->skills[3].active && p1->Passive > 0 
       && ((s1 == &p1->skills[0] && i == playerCoins - 1) 
       || (s1 == &p1->skills[1] && (i == playerCoins - 2 || i == playerCoins - 1))
-      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))
-    || (s1 == &p1->skills[3] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1))) {
+      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))) {
 
         if (AmmoLeft > 0) { // If there's still ammo left for this coin
 
