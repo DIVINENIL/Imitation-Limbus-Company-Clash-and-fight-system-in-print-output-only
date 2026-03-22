@@ -1378,8 +1378,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
       if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
       && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
       || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
-      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))
-      || (atk == &attacker->skills[3] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))) {
+      || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))) {
 
         if (AmmoLeft > 0) { // If there's still ammo left for this coin
 
