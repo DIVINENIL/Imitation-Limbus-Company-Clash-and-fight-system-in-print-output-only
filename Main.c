@@ -8389,7 +8389,7 @@ int main() {
            printf("Passive Skills:\n");
           printf(" 1. Agony\n At 50%% or less HP, Gain 10 Offense and lose 5 Defense \n");
           printf(" 2. Black Heart\n If this unit is Panicked still can act, when lose clash heal Sanity instead, when win clash lose Sanity instead\n");
-           printf(" 3. Vengeance For Nothing\n Every end of Turn 3rd, at 0+ Sanity, loses (Further from 0 Sanity/2) Sanity (Rounded down) and gain (3 + (1 for every 10 Sanity)) Black Silence, at less than 0 Sanity, loses 5 Sanity and gain +2%% damage for every Black Silence next ture\n");
+           printf(" 3. Vengeance For Nothing\n Every end of Turn 3rd, at 0+ Sanity, loses (Further from 0 Sanity/2) Sanity (Rounded down) and gain (3 + (1 for every 10%% missing HP)) Black Silence, at less than 0 Sanity, loses 5 Sanity and gain +2%% damage for every Black Silence next ture\n");
           printf(" 4. Black Silence\n When win clash with Skills gain 5 Black Silence and gain 1 when lose clash, use for certain Skills (Max 60)\n");
           printf(" 5. Furioso\n After all Skills except 'Furioso' had been used, use 'Furioso' next turn\n");
             } 
@@ -9849,7 +9849,9 @@ int main() {
 
       sleep(1);
 
-      int gainvalue = 3 + (enemy.Sanity/10);
+     float missingHPPercent = ((float)(enemy.MAX_HP - enemy.HP) / enemy.MAX_HP) * 100.0f;
+
+      int gainvalue = 3 + (missingHPPercent/10);
 
       enemy.Passive += gainvalue;
 
