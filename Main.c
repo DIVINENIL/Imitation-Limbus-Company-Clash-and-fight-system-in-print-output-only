@@ -9081,6 +9081,13 @@ int main() {
 
       // -------------------------------------------------------------
 
+      // Roland - Skill 9 Unbreakable coins reset
+    if (strcasecmp(enemy.name, "Fixer grade 9?") == 0 && enemy.skills[8].Unbreakable > 0) {
+
+      enemy.skills[8].Unbreakable = 0;
+
+    }
+
       //Roland Furioso
       if (strcasecmp(enemy.name, "Fixer grade 9?") == 0) {
 
