@@ -4123,7 +4123,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   
         attacker->DamageUpNextTurn += boost;
   
-    printf("\n%s deal +5%% damage for every Sanity enemy further from 0 next turn (%d%%)\n", attacker->name, boost);
+    printf("\n%s deal +5%% damage for every Sanity enemy further from 0 next turn (%d)\n", attacker->name, defender->Sanity);
   
     sleep(1);
   }
