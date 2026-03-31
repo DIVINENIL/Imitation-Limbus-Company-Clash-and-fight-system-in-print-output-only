@@ -4,10 +4,16 @@
 #include <time.h>
 #include <unistd.h>
 
-#define MAX_SKILLS 20
+int isId(const char *fullName, const char *targetId) {
+    if (fullName == NULL || targetId == NULL) return 1; // 1 คือไม่เจอ (สไตล์ strcasecmp)
 
-int OLD_SANITYP1;
-int OLD_SANITYP2;
+    if (strstr(fullName, targetId) != NULL) {
+        return 0; // เจอแล้ว! ส่งค่า 0 กลับไป (เพื่อให้ == 0 ของเดิมทำงานได้)
+    }
+    return 1; // ไม่เจอ ส่ง 1
+}
+
+#define MAX_SKILLS 20
 
 int TurnCount = 1;
 
@@ -42,6 +48,7 @@ typedef struct {
   int immuneToPanicSkip; // Add this: 1 = still acts when panicked, 0 = normal
                          // panic
  int SanityFreezeTurns; // 0 = no lock, >0 = locked for this many turns, -1 Can't Snap out of Panic
+  int Stagger; // 0 = no Stagger, >0 = Staggered for this many turns
 
   // Buff
   int CoinPowerBoost;
@@ -89,6 +96,11 @@ int enemyUnbreakableLost;
   int enemyTempDefense;
   int ClashCount;
 } ClashResult;
+
+// --- เพิ่มบรรทัดเหล่านี้ไว้ด้านบน เพื่อให้คอมไพเลอร์รู้จักฟังก์ชันล่วงหน้า for clash / clashable counter ---
+ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense, int playerTempDefense, Character *p2, SkillStats *s2, int enemyTempOffense, int enemyTempDefense, Character *fullPlayer, int PContinueUnbreakCoin, int EContinueUnbreakCoin);
+
+ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffense, int playerTempDefense, int playerCoins, Character *p2, SkillStats *s2, int enemyTempOffense, int enemyTempDefense, int enemyCoins, Character *fullPlayer, int PContinueUnbreakCoin, int EContinueUnbreakCoin);
 
 //---------------------Buff system-----------------
 void initializeCharacterBuffs(Character *c) {
@@ -172,6 +184,17 @@ void clearTurnSkillBuffs(Character *c) {
   c->DefenseBoost = 0;
 }
 
+
+// ------------------------ Stagger functions ---------------------
+int isStaggered(Character *c) {
+    if (c->Stagger > 0) {
+        printf("\n%s is STAGGERED and cannot act!\n", c->name);
+        return 1;
+    }
+    return 0;
+}
+
+
 //--------------------------Sanity functions----------------------------
 
 // Helper to handle Sanity changes, locking, and clamping
@@ -179,12 +202,10 @@ void updateSanity(Character *c, int delta) {
   if (!c->hasSanity) return;
 
   // 1. Handle Healing Lock
-  if (delta > 0) {
-    if (c->SanityFreezeTurns > 0) {
-      // Optional: Print message or just ignore silently
-      return; // Block the heal
-    }
-  }
+  if (delta > 0 && c->SanityFreezeTurns > 0) return; 
+
+  // เก็บค่า SP เดิมไว้ก่อนคำนวณ
+  int oldSP = c->Sanity;
 
   // 2. Apply Change
   c->Sanity += delta;
@@ -192,9 +213,12 @@ void updateSanity(Character *c, int delta) {
   // 3. Clamp Sanity (-45 to 45)
   if (c->Sanity > 45) c->Sanity = 45;
   if (c->Sanity < -45) c->Sanity = -45;
-  // 4. Trigger Lock if Sanity dropped to -45 (and wasn't already locked)
-  if (c->Sanity <= -45 && c->SanityFreezeTurns == 0) {
-    c->SanityFreezeTurns = 2; // Locks for the rest of this turn + the next turn
+
+  // 4. แก้ไขจุดนี้: ติด Lock เฉพาะตอนที่ตกลงมาจากค่าที่สูงกว่า -45 เท่านั้น
+  if (c->Sanity <= -45 && oldSP > -45) {
+    if (c->SanityFreezeTurns == 0) {
+        c->SanityFreezeTurns = 2; 
+    }
   }
 }
 
@@ -213,12 +237,12 @@ int isPanicked(Character *c) {
 // Get Sanity status message
 const char *getSanityStatus(Character *c) {
   if (c->Sanity <= -45) {
-    if (strcasecmp(c->name, "Lei heng") == 0) return "Beastly Instinct"; 
-  if (strcasecmp(c->name, "Erlking Heathcliff") == 0) return "Revenge"; 
-     if (strcasecmp(c->name, "Sukuna:King of Curse") == 0) return "King"; 
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) return "Reawakening Joy Of Carnage"; 
-   if (strcasecmp(c->name, "Fixer grade 9?") == 0) return "Black Heart"; 
-    if (strcasecmp(c->name, "Jia Qiu") == 0) return "Jia Qiu"; 
+    if (isId(c->name, "Lei heng") == 0) return "Beastly Instinct"; 
+  if (isId(c->name, "Erlking Heathcliff") == 0) return "Revenge"; 
+     if (isId(c->name, "Sukuna:King of Curse") == 0) return "King"; 
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) return "Reawakening Joy Of Carnage"; 
+   if (isId(c->name, "Fixer grade 9?") == 0) return "Black Heart"; 
+    if (isId(c->name, "Jia Qiu") == 0) return "Jia Qiu"; 
 
     return "PANIC";
   }
@@ -232,15 +256,15 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
 
   // NORMAL ((-30)+ Sanity) - Reset to base values
   if (c->Sanity > -30) {
-    if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+    if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
       c->sanityGainBase = 6;
 
-    } else if (strcasecmp(c->name, "Erlking Heathcliff") == 0) {
+    } else if (isId(c->name, "Erlking Heathcliff") == 0) {
 
       updateSanity(c, 15);
       printf("\n%s heals 15 Sanity (%d)\n", c->name, c->Sanity);
       sleep(1);
-    } else if (strcasecmp(c->name, "Fixer grade 9?") == 0) {
+    } else if (isId(c->name, "Fixer grade 9?") == 0) {
       c->sanityLossBase = -7;
       
     }
@@ -249,7 +273,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
   
   // LOW MORALE (-30 to -44 Sanity)
   if (c->Sanity <= -30 && c->Sanity > -45) {
-    if (strcasecmp(c->name, "Lei heng") == 0) {
+    if (isId(c->name, "Lei heng") == 0) {
 
       c->DamageUp += 10;
       c->FinalPowerBoost += 1;
@@ -260,7 +284,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
              c->name);
       sleep(1);
 
-    } else if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+    } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
       *offense += 2;
       c->sanityGainBase = 10;
 
@@ -269,7 +293,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
           c->name);
       sleep(1);
 
-    } else if (strcasecmp(c->name, "Erlking Heathcliff") == 0) {
+    } else if (isId(c->name, "Erlking Heathcliff") == 0) {
       c->DamageUp += 30;
       *defense -= 3;
       updateSanity(c, 15);
@@ -281,7 +305,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Low Morale', %s gains 30%% more damange, Defense -3.\n",
              c->name);
       sleep(1);
-    } else if (strcasecmp(c->name, "Fixer grade 9?") == 0) {
+    } else if (isId(c->name, "Fixer grade 9?") == 0) {
       c->ClashPower += 2;
       *defense -= 3;
       c->sanityGainBase = -12; // Negative gain = loss on win
@@ -289,7 +313,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Low Morale', %s gains 2 Clash Power Up, Defense -3, Sanity Loss Efficiency +6.\n",
              c->name);
       sleep(1);
-    } else if (strcasecmp(c->name, "Jia Qiu") == 0) {
+    } else if (isId(c->name, "Jia Qiu") == 0) {
       
       c->DamageUp += 10;
 
@@ -298,7 +322,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
           c->name);
       sleep(1);
 
-    } else if (strcasecmp(c->name, "Sukuna:King of Curse") == 0) {
+    } else if (isId(c->name, "Sukuna:King of Curse") == 0) {
 
       c->DamageUp += 30;
 
@@ -313,7 +337,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
 
   // PANIC (-45 Sanity)
   if (c->Sanity <= -45) {
-    if (strcasecmp(c->name, "Lei heng") == 0) {
+    if (isId(c->name, "Lei heng") == 0) {
 
       c->DamageUp += 20;
       c->CoinPowerBoost += 2;
@@ -325,7 +349,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
 
       sleep(1);
 
-    } else if (strcasecmp(c->name,
+    } else if (isId(c->name,
                           "Sancho:The Second Kindred of Don Quixote") == 0) {
       *offense += 3;
       *defense += 6;
@@ -333,7 +357,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Reawakening Joy Of Carnage', %s gains Offense +3 and Defense +6.\n", c->name);
       sleep(1);
 
-    } else if (strcasecmp(c->name, "Erlking Heathcliff") == 0) {
+    } else if (isId(c->name, "Erlking Heathcliff") == 0) {
 
       c->DamageUp += 50;
       *defense -= 6;
@@ -341,7 +365,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Revenge', %s gains 50%% more damage and Defense -6.\n",
              c->name);
       sleep(1);
-    } else if (strcasecmp(c->name, "Fixer grade 9?") == 0) {
+    } else if (isId(c->name, "Fixer grade 9?") == 0) {
 
       c->DamageUp += 30;
       *defense -= 5;
@@ -350,14 +374,14 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Black Heart', %s gains 30%% more damange, 3 Attack Power Up, Defense -5.\n",
              c->name);
       sleep(1);
-    } else if (strcasecmp(c->name, "Jia Qiu") == 0) {
+    } else if (isId(c->name, "Jia Qiu") == 0) {
 
       c->DamageUp += 20;
 
       printf("\nWhile 'Jia Qiu', %s deals 20%% more damage.\n",
              c->name);
       sleep(1);
-    } else if (strcasecmp(c->name, "Sukuna:King of Curse") == 0) {
+    } else if (isId(c->name, "Sukuna:King of Curse") == 0) {
 
       c->DamageUp += 100;
       c->Protection -= 100;
@@ -489,7 +513,7 @@ void getSkills(Character *c, int *s1, int *s2, int *s3, int lastUnused,
 // Modified when gained new pattern
 void GainNewPattern(Character *c, Character *c2) {
 
-  if (strcasecmp(c->name, "Lei heng") == 0) {
+  if (isId(c->name, "Lei heng") == 0) {
     
   c2->Protection -= 50;
 
@@ -516,6 +540,367 @@ void GainNewPattern(Character *c, Character *c2) {
   }
  
 }
+
+
+
+
+
+
+
+
+// ----------------------------------------------------------------
+// Combat Event structs
+// ----------------------------------------------------------------
+
+#define MAX_EVENT_OPTIONS 8
+
+typedef struct {
+    const char *label;        // ชื่อตัวเลือก
+    const char *description;  // คำอธิบาย (NULL = ไม่แสดง)
+} EventOption;
+
+typedef struct {
+    const char *intro;        // ข้อความเปิด        (NULL = ข้าม)
+    const char *midText;      // ข้อความกลาง event  (NULL = ข้าม)
+    const char *outro;        // ข้อความหลัง pass    (NULL = ข้าม)
+    const char *failText;     // ข้อความหลัง fail    (NULL = ข้าม)
+
+    EventOption options[MAX_EVENT_OPTIONS];
+    int numOptions;
+
+    int requirePowerCheck;
+    int requiredPower;
+
+    void (*onSelect)(Character *player, Character *enemy, int idx);
+    void (*onFail)  (Character *player, Character *enemy, int idx);
+} CombatEvent;
+
+// ----------------------------------------------------------------
+  // Power check — raw toss เท่านั้น ไม่รับบัฟใดๆ
+  // ----------------------------------------------------------------
+static int doPowerCheckRaw(Character *player, int *pSkill1, int *pSkill2, int *pSkill3) {
+
+  printf("\n%s's Sanity: %d (%s)\n", player->name, player->Sanity, getSanityStatus(player));
+
+printf("\nYour skills:\n");
+
+// สร้าง array เก็บ Index ของสกิลที่จะแสดง (มักจะมี 2 สกิล)
+int skillsToShow[2] = {*pSkill1, *pSkill2};
+
+int s_index;
+for (int i = 0; i < 2; i++) {
+    s_index = skillsToShow[i];
+    SkillStats *s = &player->skills[s_index];
+
+    // แก้ s->Name -> s->name
+    if (s->Unbreakable > 0)
+        printf("%d. %s (BasePower %d CoinPower %d Coins %d "
+               "Offense %d Defense %d Unbreakable %d)\n",
+               i + 1, s->name, s->BasePower, s->CoinPower,
+               s->Coins, s->Offense, s->Defense, s->Unbreakable);
+    else
+        printf("%d. %s (BasePower %d CoinPower %d Coins %d "
+               "Offense %d Defense %d Breakable)\n",
+               i + 1, s->name, s->BasePower, s->CoinPower,
+               s->Coins, s->Offense, s->Defense);
+
+}
+
+// แก้ให้ใช้ pSkill3 แทนการเขียน [2] ตรง
+SkillStats *nextSkill = &player->skills[*pSkill3];
+
+if (nextSkill->Unbreakable > 0)
+  printf("Next Skill: %s (BasePower %d CoinPower %d Coins %d "
+         "Offense %d Defense %d Unbreakable %d)\n",
+         nextSkill->name, nextSkill->BasePower, nextSkill->CoinPower,
+         nextSkill->Coins, nextSkill->Offense, nextSkill->Defense, nextSkill->Unbreakable);
+else
+  printf("Next Skill: %s (BasePower %d CoinPower %d Coins %d "
+         "Offense %d Defense %d Breakable)\n",
+        nextSkill->name, nextSkill->BasePower, nextSkill->CoinPower,
+       nextSkill->Coins, nextSkill->Offense, nextSkill->Defense);
+
+int sc;
+printf("Choose skill (1-2): ");
+while (1) {
+    // รับ input แล้วแปลงให้ถูกต้อง
+    if (scanf("%d", &sc) == 1 && sc >= 1 && sc <= 2) break;
+    while (getchar() != '\n');
+    printf("Invalid. Choose 1-2: ");
+}
+
+// แปลงการเลือก Input (1-based) เป็น Index (0-based) ใน array
+int chosenIndex = skillsToShow[sc - 1];
+SkillStats *chosen = &player->skills[chosenIndex];
+
+    // Toss raw — BasePower + CoinPower เท่านั้น ไม่มีบัฟใดๆ
+    printf("\nTossing Coins :\nPlayer:\n");
+    int total = chosen->BasePower;
+    printf("%-10d\n", total);
+    usleep(500000);
+
+    for (int i = 0; i < chosen->Coins; i++) {
+        if (tossCoinWithSanity(player)) {
+            total += chosen->CoinPower;
+        }
+        printf("%-10d\n", total);
+        usleep(500000);
+    }
+
+    return total;
+}
+
+// ----------------------------------------------------------------
+// Core runner — ใช้ได้กับทุก boss
+// ----------------------------------------------------------------
+// return: index ที่เลือก (0-based), -1 = fail power check
+int runCombatEvent(Character *player, Character *enemy, CombatEvent *ev, int *pSkill1, int *pSkill2, int *pSkill3) {
+    printf("\n\n--------------- Combat Event ---------------\n\n");
+
+    if (ev->intro)   { printf("%s\n\n", ev->intro);   sleep(1); }
+
+    for (int i = 0; i < ev->numOptions; i++) {
+        printf("%d. %s\n", i+1, ev->options[i].label);
+        if (ev->options[i].description)
+            printf("Select to %s\n", ev->options[i].description);
+    }
+
+    if (ev->midText) { printf("\n%s\n\n", ev->midText); sleep(1); }
+
+    int choice;
+    printf("(Select Number 1-%d) : ", ev->numOptions);
+    while (1) {
+        if (scanf("%d", &choice) == 1 &&
+            choice >= 1 && choice <= ev->numOptions) break;
+        while (getchar() != '\n');
+        printf("Invalid. Choose 1-%d: ", ev->numOptions);
+    }
+    int idx = choice - 1;
+    printf("\nYou selected '%s'\n", ev->options[idx].label);
+    sleep(1);
+
+    if (ev->requirePowerCheck) {
+        printf("\nRequired ≥ %d Power\n", ev->requiredPower);
+        int total = doPowerCheckRaw(player, pSkill1, pSkill2, pSkill3);
+
+        if (total >= ev->requiredPower) {
+            printf("Check Passed!\n");
+           sleep(1);
+            if (ev->outro)    { printf("\n%s\n", ev->outro);    sleep(1); }
+            if (ev->onSelect)   ev->onSelect(player, enemy, idx);
+        } else {
+            printf("Check Failed!\n");
+          sleep(1);
+            if (ev->failText) { printf("\n%s\n", ev->failText); sleep(1); }
+            if (ev->onFail)     ev->onFail(player, enemy, idx);
+            return -1;
+        }
+    } else {
+        if (ev->outro)    { printf("\n%s\n", ev->outro);    sleep(1); }
+        if (ev->onSelect)   ev->onSelect(player, enemy, idx);
+    }
+
+    return idx;
+}
+
+// ================================================================
+// King in Binds — event callbacks
+// ================================================================
+
+static float KingDmgBonus = 0.0f;  // สะสม Damage Multiplier bonus
+static int KingClashBonus = 0;  // สะสม Clash Power bonus
+
+static void kingFirstEffect(Character *player, Character *enemy, int idx) {
+    switch (idx) {
+        case 0: { // joy — gain shield HP + Sanity
+
+          static const char* TextChoice = 
+          "You place the 'mask of joy' over your face.\n\n"
+          "Confidence fills you, and nothing seems out of the realm of possibilities.\n\n"
+          "The Sinners march into the banquet hall, their feet unbound by uncertainty.\n\n"
+          "To the throne that could never be a respite.\n\n"
+          "Let this battle bring a fleeting moment of joy for the lone-king who shall reign eternal, reign unaccompanied.\n\n"
+          "Thus, the Sinners, wearing expressions of boundless joy, open the prelude to this grand banquet.";
+          
+          if (TextChoice) { printf("\n%s\n", TextChoice); sleep(3); }
+
+          updateSanity(player, 20);
+
+          int sh = (int)(player->MAX_HP * 0.4f);
+          player->Shield += sh;
+          printf("\n%s gains %d Shield HP (40%% of Max HP) (Shield %.2f)\n",
+                 player->name, sh, player->Shield);
+          
+          printf("\n%s heals 20 Sanity (%d)\n",
+                 player->name, player->Sanity);
+
+           sleep(1);
+          
+            break;
+        }
+        case 1: { // sorrow — Clash Power + Sanity
+
+          static const char* TextChoice = 
+          "You place the 'mask of sorrow' over your face.\n\n"
+            "Confidence fills you, and nothing seems out of the realm of possibilities.\n\n"
+            "The Sinners march into the banquet hall, their feet unbound by uncertainty.\n\n"
+            "To the throne that could never be a respite.\n\n"
+            "Let this battle bring a fleeting moment of joy for the lone-king who shall reign eternal, reign unaccompanied.\n\n"
+            "Thus, the Sinners, wearing expressions of boundless joy, open the prelude to this grand banquet.";
+
+          if (TextChoice) { printf("\n%s\n", TextChoice); sleep(3); }
+          
+          KingClashBonus += 1;
+              updateSanity(player, 20);
+              printf("\n%s gains Clash Power +1 for this Encounter", player->name);
+            printf("\n%s heals 20 Sanity (%d)\n", player->name, player->Sanity);
+
+           sleep(1);
+          
+              break;
+          }
+        case 2: { // wrath — Damage Multiplier + Sanity
+
+          static const char* TextChoice = 
+          "You place the 'mask of wrath' over your face.\n\n"
+            "Confidence fills you, and nothing seems out of the realm of possibilities.\n\n"
+            "The Sinners march into the banquet hall, their feet unbound by uncertainty.\n\n"
+            "To the throne that could never be a respite.\n\n"
+            "Let this battle bring a fleeting moment of joy for the lone-king who shall reign eternal, reign unaccompanied.\n\n"
+            "Thus, the Sinners, wearing expressions of boundless joy, open the prelude to this grand banquet.";
+
+          if (TextChoice) { printf("\n%s\n", TextChoice); sleep(3); }
+          
+            KingDmgBonus += 0.1f;
+            updateSanity(player, 20);
+            printf("\n%s all skills gains +0.1 Damage Multiplier for this Encounter\n", player->name);
+            printf("\n%s heals 20 Sanity (%d)\n", player->name, player->Sanity);
+
+           sleep(1);
+
+          
+            break;
+        }
+    }
+}
+
+static void kingMidEffect(Character *player, Character *enemy, int idx) {
+    switch (idx) {
+        case 0: { // joy — heal Sanity
+
+          static const char* TextChoice = 
+          "You wear the 'mask of joy' over your face.\n\n"
+            "Your thoughts become refreshingly clear.";
+
+          if (TextChoice) { printf("\n%s\n", TextChoice); sleep(2); }
+          
+            updateSanity(player, 15);
+            printf("\n'heal 15 Sanitys'\n");
+
+           sleep(1);
+          
+            break;
+        }
+        case 1: { // sorrow — Heal HP
+
+          static const char* TextChoice = 
+          "You wear the 'mask of sorrow' over your face.\n\n"
+            "The Sinners' hearts absorb its strength and determination like sponges.";
+
+          if (TextChoice) { printf("\n%s\n", TextChoice); sleep(2); }
+
+          int heal = (int)(player->MAX_HP * 0.3f);
+          player->HP += heal;
+          if (player->HP > player->MAX_HP) player->HP = player->MAX_HP;
+              printf("\n%s heal 30%% of Max HP (%d) (HP %.2f)", player->name, heal, player->HP);
+
+           sleep(1);
+
+          
+              break;
+          }
+        case 2: { // wrath — Damage Up
+
+          static const char* TextChoice = 
+          "You wear the 'mask of wrath' over your face.\n\n"
+            "Passion compels the Sinners' hands to fiercely grasp their weapons.";
+
+          if (TextChoice) { printf("\n%s\n", TextChoice); sleep(2); }
+          
+            KingDmgBonus += 0.1f;
+          printf("\n%s all skills gains +0.1 Damage Multiplier for this Encounter\n", player->name);
+
+           sleep(1);
+          
+            break;
+        }
+    }
+}
+
+static void kingMidFail(Character *player, Character *enemy, int idx) {
+    printf("\n'Nothing happened'\n");
+
+  sleep(1);
+}
+
+// ----------------------------------------------------------------
+// King in Binds event definitions
+// ----------------------------------------------------------------
+static CombatEvent kingFirstEvent = {
+    .intro =
+        "An empty banquet hall, wreathed in ambient crimson light.\n\n"
+        "The solitary king, bound to his throne, raises his arm in an unhurried motion.\n\n"
+        "Your feet grow drenched in the cold mist of a vague tune.\n\n"
+        "The lone king gently points to a platform near you with an inviting cadence.\n\n"
+        "On it are masks, each depicting different spectrum of emotions.\n\n"
+        "There is a mask of joy. A mask of sorrow. A mask of wrath.\n\n"
+        "What face shall be worn in this audience with the king?",
+    .midText  = NULL,
+    .outro    = NULL,
+    .failText = NULL,
+    .options  = {
+        {"Wear the mask of joy.",
+         "gain Sheild HP, Sanity heal for this Encounter."},
+        {"Wear the mask of sorrow.",
+         "gain increased Clash Power, Sanity heal for this Encounter."},
+        {"Wear the mask of wrath.",
+         "deal more damage, gain Sanity heal for this Encounter."},
+    },
+    .numOptions        = 3,
+    .requirePowerCheck = 0,
+    .onSelect          = kingFirstEffect,
+    .onFail            = NULL,
+};
+
+static CombatEvent kingMidEvent = {
+    .intro =
+        "Passion grows hotter as the banquet slowly reaches a crescendo.\n\n"
+        "The King in Binds motions for the battle to pause.\n\n"
+        "This gives us enough time to leave our broken masks and don new ones for ourselves.\n\n"
+        "What new face shall we wear in audience with the king?",
+    .midText =
+        "Donning the mask once again summons the ardent emotions that slowly simmer into your heart.\n\n"
+        "The sorrow rises through the fog of heated battle; its dense weight pierces deep, deep into your emotions.",
+    .outro =
+        "The sorrowful pressure slowly relents.\n\n"
+        "The banquet is far from over.\n\n"
+        "The Sinners each rise and shake off the gloom; the void in their hearts filled with determination.",
+    .failText =
+        "The deluge of sorrow sweeps the Sinners off their feet into an even deeper chasm.\n\n"
+        "Yet, the banquet continues still.\n\n"
+        "The Sinners repress their sorrows and step forward.",
+    .options = {
+        {"Wear the mask of joy.",    "heal Sanity."},
+        {"Wear the mask of sorrow.", "heal HP."},
+        {"Wear the mask of wrath.",  "deal more damage for this Encounter."},
+    },
+    .numOptions        = 3,
+    .requirePowerCheck = 1,
+    .requiredPower     = 12,
+    .onSelect          = kingMidEffect,
+    .onFail            = kingMidFail,
+};
+
 
 
 
@@ -556,14 +941,14 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   //---------------------------Before Attack Buff----------------------------
 
     // Sukuna:King of Curse Chanting
-    if (strcasecmp(attacker->name, "Sukuna:King of Curse") == 0 && atk == &attacker->skills[4]) {
+    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && atk == &attacker->skills[4]) {
 
       attacker->skills[4].active++; // Chant Count
 
     }
 
     // Sukuna:King of Curse - Taunt Skill 6
-    if (strcasecmp(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[6])) {
+    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[6])) {
 
       printf("\n%s: Domain Expansion.......... Malevolent Shrine\n", attacker->name);
 
@@ -573,7 +958,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     // ------------- Don Quixote:The Manager of La Manchaland -------------------
     
     // Don Quixote:The Manager of La Manchaland - Tanut
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[3] )) {
 
@@ -584,7 +969,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // Don Quixote:The Manager of La Manchaland - Tanut
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[4] )) {
 
@@ -595,7 +980,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // Don Quixote:The Manager of La Manchaland - Tanut
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[7] )) {
 
@@ -606,7 +991,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // Don Quixote:The Manager of La Manchaland - Tanut
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[5] )) {
 
@@ -619,7 +1004,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     // --------------------------------------------------------------
 
   // Heishou Pack - You Branch Adept Heathcliff - Battleblood Instinct buff
-  if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->Passive > 0) {
+  if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->Passive > 0) {
 
     float gain = attacker->Passive * 0.75f;
 
@@ -631,7 +1016,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Taunt Skill 3
-  if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2])) {
+  if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2])) {
 
     printf("\n%s: Bloodtalons... conflagrate!\n", attacker->name);
 
@@ -639,7 +1024,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Taunt Skill 4
-  else if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
+  else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
 
     printf("\n%s: Bloodtalons... conflagrate!\n", attacker->name);
 
@@ -651,7 +1036,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Binah lost
-  if (strcasecmp(defender->name, "Binah") == 0 && ClashLostAttack && defender->Passive) {
+  if (isId(defender->name, "Binah") == 0 && ClashLostAttack && defender->Passive) {
     
       defender->Protection += 80;
 
@@ -662,21 +1047,22 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
     printf("\n%s getting attack by Full Clash Lost Coins, take -80%% damage and gain (50 + Missing HP/3) (%d - Max 100) Shield HP (%.2f)\n", defender->name, shieldGain, defender->Shield);
   }
-    else if (strcasecmp(defender->name, "Binah") == 0 && defender->Passive && defender->Sanity >= 0) {
+    else if (isId(defender->name, "Binah") == 0 && defender->Passive && defender->Sanity >= 0) {
 
     updateSanity(defender, -10);
 
     int shieldGain = 100 + ((defender->MAX_HP - defender->HP)/2);
+      if (shieldGain > 300) shieldGain = 300;
     
       defender->Shield += shieldGain;
 
-    printf("\n%s at 0+ Sanity, consumes 10 Sanity(%d) to gain (100 + Missing HP/2) (%d) Shield HP (%.2f)\n", defender->name, defender->Sanity, shieldGain, defender->Shield);
+    printf("\n%s at 0+ Sanity, consumes 10 Sanity(%d) to gain (100 + Missing HP/2) (%d - Max 300) Shield HP (%.2f)\n", defender->name, defender->Sanity, shieldGain, defender->Shield);
   }
 
     // ---------------------------------- Dawn Office Fixer Sinclair ----------------------------------------
 
   // Dawn Office Fixer Sinclair - Skill Buff base form
-  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && !attacker->skills[3].active && attacker->Sanity >= 45) {
+  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && !attacker->skills[3].active && attacker->Sanity >= 45) {
 
     attacker->FinalPowerBoost += 3;
 
@@ -687,7 +1073,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
   }
     
-    if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45) {
+    if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45) {
 
       attacker->CoinPowerBoost += 3;
 
@@ -699,7 +1085,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S2 45 sp
-  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[1])) {
+  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[1])) {
 
     attacker->AttackPowerBoost += 2;
 
@@ -711,7 +1097,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
     // Dawn Office Fixer Sinclair - Skill Buff ego form S3 45 sp
-  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
+  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
 
     attacker->AttackPowerBoost += 15;
 
@@ -723,7 +1109,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S4
-  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[2]) && attacker->skills[3].active) {
+  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[2]) && attacker->skills[3].active) {
 
       int boost = (abs(attacker->Sanity)) * 5;
 
@@ -737,7 +1123,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
     // Dawn Office Fixer Sinclair - Tanut
-    if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") ==
+    if (isId(attacker->name, "Dawn Office Fixer Sinclair") ==
                    0 &&
                (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && !attacker->skills[3].active) {
 
@@ -748,7 +1134,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // Dawn Office Fixer Sinclair - Tanut
-    if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") ==
+    if (isId(attacker->name, "Dawn Office Fixer Sinclair") ==
                    0 &&
                (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && attacker->skills[3].active) {
 
@@ -761,7 +1147,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     // ------------------------------------------------------------------------
 
   // Meursault:The Thumb Unbreakable BUff
-  if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active && (Unbreakable == atk->Coins)) {
+  if (isId(attacker->name, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active && (Unbreakable == atk->Coins)) {
 
     float missing = (attacker->MAX_HP - attacker->HP) / attacker->MAX_HP; // fraction of HP missing (0.0 - 1.0)
     int SkillUp = ((int)(missing * 100.0f)) + 75;  // 75% + missing
@@ -776,7 +1162,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
     // Meursault:The Thumb 20+ BUff
-    if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active) {
+    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active) {
     float TargetHP = (defender->HP / defender->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
       float UnitHP = (attacker->HP / attacker->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
 
@@ -798,7 +1184,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
   // Jia Qiu - S3 and S6 S10
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[10] || atk == &attacker->skills[3] || atk == &attacker->skills[6])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[10] || atk == &attacker->skills[3] || atk == &attacker->skills[6])) {
 
     int boost = rand() % 30 + 1;
     
@@ -810,7 +1196,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Jia Qiu - Taunt S4
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[11])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[11])) {
 
     printf("\n%s: Cut them Down, Mao.\n", attacker->name);
 
@@ -818,7 +1204,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Jia Qiu - Taunt S12
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[12])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[12])) {
 
     printf("\n%s: Heed me, Zilu.\n", attacker->name);
 
@@ -826,7 +1212,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Jia Qiu - Taunt S15
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[15])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[15])) {
 
     printf("\n%s: Is it your companions who hold your tongue? Then... perhaps they must be shaken afore you are to speak your truth.\n", attacker->name);
 
@@ -834,7 +1220,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Heathcliff:Wild Hunt – buff coffin
-  if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
      (atk == &attacker->skills[2])) {
 
     int gain = 12 * attacker->Passive;
@@ -848,7 +1234,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Heathcliff:Wild Hunt – buff coffin
-  if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
      (atk == &attacker->skills[3])) {
 
     int gain = 10 * attacker->Passive;
@@ -862,7 +1248,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
     // Heathcliff:Wild Hunt – buff Dullahan
-    if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
        (atk == &attacker->skills[3])) {
 
       int gain = 20 * attacker->skills[0].active;
@@ -876,7 +1262,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
   // FireFist – Attack buff s1
-  if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skills[0]) {
+  if (isId(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skills[0]) {
 
     int consumed = 15;
 
@@ -905,7 +1291,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
 // FireFist – Attack buff s2
-if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skills[1]) {
+if (isId(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skills[1]) {
 
   int consumed = 20;
 
@@ -936,7 +1322,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skil
 }
 
 // FireFist – Attack buff s3
-if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2])) {
+if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2])) {
 
     int prevPassive = attacker->Passive;  // store before change
     int consumed = ((attacker->Passive - 25) > 0) ? 25 : attacker->Passive ;
@@ -985,7 +1371,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 }
 
   // Heathcliff:Wild Hunt – skill 3
-  if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
       (atk == &attacker->skills[3])) {
 
     int missingSanity = 45 - attacker->Sanity;
@@ -1005,7 +1391,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
    //----------------------- Lei heng ---------------------
   // Lei heng – skill 4
-  if (strcasecmp(attacker->name, "Lei heng") == 0 &&
+  if (isId(attacker->name, "Lei heng") == 0 &&
       (atk == &attacker->skills[3])) {
 
     printf("\n%s: Eyes up here, boys! Don'tcha go losin' yer heads now!\n",
@@ -1015,7 +1401,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
 
   // Lei heng – skill 6
-  if (strcasecmp(attacker->name, "Lei heng") == 0 &&
+  if (isId(attacker->name, "Lei heng") == 0 &&
       (atk == &attacker->skills[5])) {
 
     printf("\n%s: Y'all don't go on huntin' tigers without preparin' yerselves "
@@ -1028,7 +1414,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   //-----------------------------------------
 
   // Meursault:Blade Lineage Mentor - Yield my flesh
-  if (strcasecmp(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
       (atk == &attacker->skills[2])) {
 
       int DamageBuff = 2 * (abs(attacker->Sanity)) > 75 ? 75 : 5 * (abs(attacker->Sanity));
@@ -1042,7 +1428,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
 
   // Meursault:Blade Lineage Mentor - To claim thier bones
-  if (strcasecmp(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
       (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
 
     float missingHPPercent = ((float)(attacker->MAX_HP - attacker->HP) / attacker->MAX_HP) * 100.0f;
@@ -1063,7 +1449,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
 
   // Yi sang:Fell Bullet - Torn Memory
-  if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
       (atk == &attacker->skills[0] ||
        atk == &attacker->skills[1])) {
 
@@ -1072,7 +1458,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
     sleep(1);
   }
-  if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
       atk == &attacker->skills[2]) {
 
     printf("\n%s deals more +30%% damage(%d%%) for every Torn Memory(%d)\n",
@@ -1082,7 +1468,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
 
     // Hong lu:The Lord of Hongyuan - Skill 3 deal more damage on HP
-    if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[3])) {
+    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[3])) {
 
       float missingSelf  = (float)(attacker->MAX_HP  - attacker->HP)  / attacker->MAX_HP * 100.0f;
       float missingEnemy = (float)(defender->MAX_HP - defender->HP) / defender->MAX_HP * 100.0f;
@@ -1098,7 +1484,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
     }
 
   // Hong lu:The Lord of Hongyuan - S3 Buff
-  if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
       (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
 
     int buff = 10;
@@ -1115,7 +1501,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
 
     // Hong lu:The Lord of Hongyuan - Skill 3-1/3-2 deal more damage on HP
-    if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
+    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
 
       float missingSelf  = (float)(attacker->MAX_HP  - attacker->HP)  / attacker->MAX_HP * 100.0f;
       float missingEnemy = (float)(defender->MAX_HP - defender->HP) / defender->MAX_HP * 100.0f;
@@ -1135,14 +1521,14 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
     }
 
     // Sancho:The Second Kindred of Don Quixote - Heal mechnics
-   if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && Unbreakable <= 0) {
+   if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && Unbreakable <= 0) {
 
     int healvalue = 40;
 
      int missingHP = (int)(((attacker->MAX_HP - attacker->HP) / attacker->MAX_HP) * 100);
       if (missingHP > 20) missingHP = 20;
 
-     if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+     if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
       healvalue += 100;
@@ -1155,7 +1541,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
      sleep(1);
      
    }  // Sancho:The Second Kindred of Don Quixote - certain heal skill
-     else if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+     else if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
              0 &&
          (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
 
@@ -1165,7 +1551,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
      }
 
   // Don Quixote:The Manager of La Manchaland and Sancho - Heal mechnics
-  if ((strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+  if ((isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
            0 &&
        (atk == &attacker->skills[0] || atk == &attacker->skills[1] ||
         atk == &attacker->skills[4]))) {
@@ -1174,14 +1560,14 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
            "10)\n");
 
     sleep(1);
-  } else if ((strcasecmp(attacker->name,
+  } else if ((isId(attacker->name,
                          "Don Quixote:The Manager of La Manchaland") == 0 &&
               (atk == &attacker->skills[2]))) {
 
     printf("\nOn Hit with this Skill: heal 50%% of the HP damage dealt (Max 10)\n");
 
     sleep(1);
-  } else if (strcasecmp(attacker->name,
+  } else if (isId(attacker->name,
                         "Don Quixote:The Manager of La Manchaland") == 0 &&
              (atk == &attacker->skills[3] || atk == &attacker->skills[5])) {
 
@@ -1192,7 +1578,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
 
   // Sancho:The Second Kindred of Don Quixote - Ult skill 12
-  if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       atk == &attacker->skills[12]) {
 
@@ -1203,7 +1589,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
     
   // Sancho:The Second Kindred of Don Quixote - Ultimate
-  if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       atk == &attacker->skills[13]) {
 
@@ -1214,7 +1600,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
     sleep(1);
 
-    if (strcasecmp(defender->name, "Don Quixote:The Manager of La Manchaland") == 0) { 
+    if (isId(defender->name, "Don Quixote:The Manager of La Manchaland") == 0) { 
       printf("\n%s: No matter what... No matter how many times... I'll still go for our dream!!!\n", attacker->name); 
     } else { 
       printf("\n%s: You dream too! Will end...\n", attacker->name); 
@@ -1226,7 +1612,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   
   // Hong lu:The Lord of Hongyuan - Lordsguard
   const char *HeshinPacks = NULL;
-  if (strcasecmp(defender->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(defender->name, "Hong lu:The Lord of Hongyuan") == 0 &&
       defender->skills[5].active == 0 &&
       (defender->skills[5].BasePower == 1 ||
        defender->skills[5].CoinPower == 1 || defender->skills[5].Coins == 1 ||
@@ -1271,7 +1657,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
   }
 
     // Roland – Mang (心)
-    if (strcasecmp(attacker->name, "Fixer grade 9?") == 0 && strcasecmp(defender->name, "Binah") == 0 && attacker->Sanity >= 0 && defender->Passive == 1) {
+    if (isId(attacker->name, "Fixer grade 9?") == 0 && isId(defender->name, "Binah") == 0 && attacker->Sanity >= 0 && defender->Passive == 1) {
 
       int Mang = rand() % 5 + 1;
 
@@ -1293,7 +1679,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
     }
 
   // Roland - Ultimate
-  if (strcasecmp(attacker->name, "Fixer grade 9?") ==
+  if (isId(attacker->name, "Fixer grade 9?") ==
           0 &&
       atk == &attacker->skills[9]) {
 
@@ -1375,7 +1761,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
        // ---------------------------------------- Meursault:The Thumb Coin Buff --------------------------------
 
           // Meursault: The Thumb – Buff spend tigermark
-      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
+      if (isId(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
       && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
       || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
       || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))) {
@@ -1390,7 +1776,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
       }
 
       // Meursault: The Thumb – Buff spend Savage tigermark
-      if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
+      if (isId(attacker->name, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
       && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
       || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
       || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))
@@ -1423,7 +1809,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
 
       
       // Heishou Pack - You Branch Adept Heathcliff Skill 3 burn
-      if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && attacker->HP >= attacker->MAX_HP*0.5) {
+      if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && attacker->HP >= attacker->MAX_HP*0.5) {
 
         if (defender->Shield > 0) {
           defender->Shield -= attacker->skills[0].active;
@@ -1444,7 +1830,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
       }
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-1
-      if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
@@ -1455,7 +1841,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
       }
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-2
-      if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
         
@@ -1472,7 +1858,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
        // ------------------ On Tail Hit ------------------------
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-1
-      if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
@@ -1483,7 +1869,7 @@ if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->ski
       }
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-2
-      if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
@@ -1537,7 +1923,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
 
     // Yi sang:Fell Bullet - Torn Memory
-    if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
         (atk == &attacker->skills[0] ||
          atk == &attacker->skills[1])) {
 
@@ -1545,7 +1931,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Yi sang:Fell Bullet - Torn Memory
-    if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
         atk == &attacker->skills[2]) {
 
         Damage += (int)(Damage * (0.30 * attacker->Passive));
@@ -1556,7 +1942,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------------ Don Quixote:The Manager of La Manchaland --------------
 
     // Don Quixote:The Manager of La Manchaland - Tanut Skill 2
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
 
@@ -1566,7 +1952,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Tanut Skill 3
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[2]) && i == 0) {
 
@@ -1576,7 +1962,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Skill 2 in both Buff dmg
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[1] || atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
@@ -1599,7 +1985,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Tanut Skill 3-2
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[5]) && i == remainingCoins - 1) {
 
@@ -1611,7 +1997,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // --------------------------------------------------------------------------
 
     // Don Quixote:The Manager of La Manchaland - Skill 2-2 dmg
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == remainingCoins - 1 && attacker->Passive >= 2) {
 
@@ -1626,7 +2012,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Skill 2-2 dmg
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[4]) && i == remainingCoins - 1 && attacker->Passive >= 2) {
 
@@ -1642,7 +2028,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     
       // FireFist – Attack buff s3
-      if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
+      if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
         printf("\n\n%s: RAAHHHHHHH!!! You vermin-like bastards!\n", attacker->name);
 
@@ -1681,7 +2067,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Jia Qiu – buff s5 and s13 S15
-      if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[5] || atk == &attacker->skills[13] || atk == &attacker->skills[15]) && i == remainingCoins - 1) {
+      if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[5] || atk == &attacker->skills[13] || atk == &attacker->skills[15]) && i == remainingCoins - 1) {
 
           int boost = abs((int)(5 * attacker->Sanity));  // 4% per missing fuel
           if (boost > 200) boost = 200;                    // cap at 100%
@@ -1693,7 +2079,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Jia Qiu - S11
-    if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[11] && i == remainingCoins - 1)) {
+    if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[11] && i == remainingCoins - 1)) {
 
       int boost = abs(defender->Sanity);
       if (boost > 10) boost = 10;
@@ -1706,7 +2092,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sukuna:King of Curse - Tanut Skill 5
-    if (strcasecmp(attacker->name, "Sukuna:King of Curse") ==
+    if (isId(attacker->name, "Sukuna:King of Curse") ==
                    0 &&
                (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
@@ -1724,7 +2110,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------- Heathcliff:Wild Hunt ---------------------
 
     // Heathcliff:Wild Hunt - Tanut Skill 2
-    if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") ==
+    if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == 2) {
 
@@ -1744,7 +2130,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------------------------------------------------------
 
     // Hong lu:The Lord of Hongyuan - Tanut Skill 2
-    if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") ==
+    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == 0) {
 
@@ -1756,7 +2142,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------------------------------------------------------
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Tanut Skill 3
-    if (strcasecmp(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
                    0 &&
                (atk == &attacker->skills[2]) && i == 0) {
 
@@ -1766,7 +2152,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Yi sang:Fell Bullet - Tanut Skill 3
-    if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") ==
+    if (isId(attacker->name, "Yi sang:Fell Bullet") ==
                    0 &&
                (atk == &attacker->skills[2]) && i == 0) {
 
@@ -1778,7 +2164,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------------------------- Meursault:The Thumb --------------------------------
 
     // Meursault:The Thumb - Tanut Skill 3-2
-    if (strcasecmp(attacker->name, "Meursault:The Thumb") ==
+    if (isId(attacker->name, "Meursault:The Thumb") ==
                    0 &&
                (atk == &attacker->skills[3]) && i == 0) {
 
@@ -1788,7 +2174,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
      // Meursault:The Thumb - Tanut Skill 3
-      if (strcasecmp(attacker->name, "Meursault:The Thumb") ==
+      if (isId(attacker->name, "Meursault:The Thumb") ==
                      0 &&
                  (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
@@ -1802,7 +2188,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Meursault:The Thumb S1-1
-    if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && !attacker->skills[3].active) {
+    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && !attacker->skills[3].active) {
 
         attacker->Passive--;
         attacker->skills[2].active++;
@@ -1815,7 +2201,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       sleep(1);
       
     } // Meursault:The Thumb S1-2
-    else if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && attacker->skills[3].active) {
+    else if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && attacker->skills[3].active) {
 
         attacker->Passive--;
         attacker->skills[2].active++;
@@ -1829,7 +2215,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Meursault:The Thumb S2-1
-    if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && !attacker->skills[3].active) {
+    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && !attacker->skills[3].active) {
 
       if (i == remainingCoins - 2) {
 
@@ -1855,7 +2241,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
       
     } // Meursault:The Thumb S2-2
-    else if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && attacker->skills[3].active) {
+    else if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && attacker->skills[3].active) {
 
         if (i == remainingCoins - 2) {
 
@@ -1883,7 +2269,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
     
     // Meursault:The Thumb S3-1
-    if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[2]) && !attacker->skills[3].active && attacker->Passive > 0) {
+    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[2]) && !attacker->skills[3].active && attacker->Passive > 0) {
 
       if (i == remainingCoins - 1) {
         
@@ -1914,7 +2300,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Meursault:The Thumb S3-2
-    if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[3]) && attacker->skills[3].active && attacker->Passive > 0) {
+    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[3]) && attacker->skills[3].active && attacker->Passive > 0) {
 
       if (i == remainingCoins - 1) {
 
@@ -1958,8 +2344,18 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // ------------------------------------------------------------
 
+    // Meursault:Blade Lineage Mentor - Skill 3
+    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") ==
+                   0 &&
+               (atk == &attacker->skills[2]) && i == 0) {
+
+      printf("\n\n%s: Yield My Flesh!\n", attacker->name);
+
+      sleep(1);
+    }
+
     // Hong lu:The Lord of Hongyuan S2 Last coins
-    if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
+    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
       printf("\n\n%s: Clear the path.\n", attacker->name);
 
@@ -1967,7 +2363,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Hong lu:The Lord of Hongyuan S2 Last coins
-    if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[1] || atk == &attacker->skills[4]) && i == remainingCoins - 1) {
+    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[1] || atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
         attacker->DamageUp += 50;
 
@@ -1978,7 +2374,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // Meursault:Blade Lineage Mentor S2 Last coins
-    if (strcasecmp(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 2) {
+    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 2) {
 
         attacker->DamageUp += 60;
 
@@ -1988,7 +2384,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Fixer grade 9? S8 Last coins
-    if (strcasecmp(attacker->name, "Fixer grade 9?") == 0 && (atk == &attacker->skills[7]) && i == remainingCoins - 1) {
+    if (isId(attacker->name, "Fixer grade 9?") == 0 && (atk == &attacker->skills[7]) && i == remainingCoins - 1) {
 
         attacker->DamageUp += 50;
 
@@ -1996,6 +2392,11 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       sleep(1);
     }
+
+
+
+
+    
 
     
     
@@ -2030,7 +2431,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 // --------------- Meursault:Blade Lineage Mentor -----------------
 
     // Meursault:Blade Lineage Mentor - Gain on attack
-    if (strcasecmp(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[0])) {
+    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[0])) {
 
       int gain = 5;
 
@@ -2042,7 +2443,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Meursault:Blade Lineage Mentor - Gain on attack
-    if (strcasecmp(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 0) {
+    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 0) {
 
       int gain = 15;
 
@@ -2058,7 +2459,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -------------------------------- Heishou Pack - You Branch Adept Heathcliff --------------------------------
 
     // Heishou Pack - You Branch Adept Heathcliff - Gain on attack
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
 
       int gain = 1;
       if (attacker->HP < attacker->MAX_HP * 0.5) gain += 1;
@@ -2071,7 +2472,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff - Bloodflame buff
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->skills[2].active > 0 && i < 3) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->skills[2].active > 0 && i < 3) {
 
       int gain = 3;
       
@@ -2092,7 +2493,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 3 coins
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1) {
 
         attacker->skills[0].active += 2;
       if (attacker->skills[0].active > 99) attacker->skills[0].active = 99;
@@ -2103,7 +2504,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
     
     // Heishou Pack - You Branch Adept Heathcliff Skill 2 Last coins
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
 
         attacker->skills[0].active += 3;
       if (attacker->skills[0].active > 99) attacker->skills[0].active = 99;
@@ -2140,7 +2541,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 3 Last coins
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
       float damageboost = (attacker->skills[0].active + attacker->skills[1].active) * 2.0f;
       if (damageboost > 20) damageboost = 20;
@@ -2168,7 +2569,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 4 Last coins
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
       float damageboost = 20.0f;
       int damage = finalDamage * (damageboost / 100);
@@ -2195,7 +2596,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       float healvalue = finalDamage + damage;
 
-      if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins > attacker->skills[3].Coins && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5)) {
+      if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins > attacker->skills[3].Coins && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5)) {
         
         attacker->HP += healvalue;
 
@@ -2205,7 +2606,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         sleep(1);
         
-      } else if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins <= attacker->skills[3].Coins && attacker->skills[0].active < 20 && attacker->HP > attacker->MAX_HP * 0.5) {
+      } else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins <= attacker->skills[3].Coins && attacker->skills[0].active < 20 && attacker->HP > attacker->MAX_HP * 0.5) {
         
         attacker->HP += healvalue;
 
@@ -2223,7 +2624,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -------------------------------- Gregor:Firefist --------------------------------
     
     // Gregor:Firefist - S1 Burn
-    if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 &&
+    if (isId(attacker->name, "Gregor:Firefist") == 0 &&
         atk == &attacker->skills[0]) {
 
       int Stack = 0;
@@ -2250,7 +2651,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Gregor:Firefist - S2 Burn
-    if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 &&
+    if (isId(attacker->name, "Gregor:Firefist") == 0 &&
         atk == &attacker->skills[1]) {
 
       int Stack = 0;
@@ -2286,7 +2687,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Gregor:Firefist - S3 Burn
-      if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 &&
+      if (isId(attacker->name, "Gregor:Firefist") == 0 &&
           atk == &attacker->skills[2]) {
 
         int Stack = 0;
@@ -2318,7 +2719,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Gregor:Firefist - S4 Burn
-    if (strcasecmp(attacker->name, "Gregor:Firefist") == 0 &&
+    if (isId(attacker->name, "Gregor:Firefist") == 0 &&
         atk == &attacker->skills[3]) {
 
       int Stack = 0;
@@ -2350,7 +2751,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------------------------ Binah -----------------------------------
     
     // Binah - Fairy Skill 1
-    if (strcasecmp(attacker->name, "Binah") == 0 && (atk == &attacker->skills[0])) {
+    if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[0])) {
 
       int inflictvalue = 1;
 
@@ -2364,7 +2765,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Binah - Fairy Skill 3
-    if (strcasecmp(attacker->name, "Binah") == 0 && (atk == &attacker->skills[2]) && i == 0) {
+    if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[2]) && i == 0) {
 
       int inflictvalue = 3;
 
@@ -2377,7 +2778,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Binah - Fairy
-    if (strcasecmp(attacker->name, "Binah") == 0 && attacker->skills[0].active > 0) {
+    if (isId(attacker->name, "Binah") == 0 && attacker->skills[0].active > 0) {
 
       if (!attacker->Passive) {
         if (defender->Shield > 0) {
@@ -2425,7 +2826,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly s1
-    if (strcasecmp(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (attacker->Passive > 0) && (atk == &attacker->skills[0])) {
 
       int inflictvalue = 1;
@@ -2437,7 +2838,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       printf(" Butterfly +%d on enemy(%d)", inflictvalue, attacker->skills[0].active);
 
     } // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly s2
-    else if (strcasecmp(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    else if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (attacker->Passive > 0) && (atk == &attacker->skills[1])) {
 
        int inflictvalue;
@@ -2456,7 +2857,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       printf(" Butterfly +%d on enemy(%d)", inflictvalue, attacker->skills[0].active);
 
     } // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly s3
-    else if (strcasecmp(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    else if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (attacker->Passive >= 0) && (atk == &attacker->skills[2])) {
 
        int inflictvalue;
@@ -2503,7 +2904,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly heal lose at 0-
-    if (strcasecmp(attacker->name,
+    if (isId(attacker->name,
                    "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
         (attacker->skills[0].active > 0) && attacker->Sanity < 0) {
 
@@ -2563,7 +2964,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     } // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly heal lose at 0+
-      else if (strcasecmp(attacker->name,
+      else if (isId(attacker->name,
                      "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
           (attacker->skills[0].active > 0) && attacker->Sanity >= 0) {
 
@@ -2700,7 +3101,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     //Lobotomy E.G.O::Solemn Lament Yi Sang while attack Reload
-    if (strcasecmp(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
       0 && attacker->Passive <= 0 && i != remainingCoins - 1) {
 
       if (atk != &attacker->skills[2]) {
@@ -2755,8 +3156,321 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
     // -----------------------------------------------------
 
+
+    // ------------------------- King in Binds ------------------------------
+
+    // King in Binds - Sinking
+    if (isId(attacker->name,
+                   "King in Binds") == 0 &&
+        (attacker->skills[1].active > 0 || attacker->skills[2].active > 0)) {
+
+      if (attacker->skills[1].active <= 0 && attacker->skills[2].active > 0) attacker->skills[1].active++;
+
+        if (defender->hasSanity == 1) { // Normal
+        int deal = attacker->skills[1].active;
+
+          updateSanity(defender, -(deal));
+
+          attacker->skills[2].active -= 1;
+
+          if (attacker->skills[2].active <= 0) attacker->skills[2].active = 0;
+
+        printf(" \tSanity -%d on enemy (%d) (Count %d)", deal, defender->Sanity, attacker->skills[2].active);
+
+          if (attacker->skills[2].active <= 0) attacker->skills[1].active = 0;
+
+        } else { // No Sanity enemy
+
+          int deal = attacker->skills[1].active;
+
+          attacker->skills[2].active -= 1;
+
+           if (attacker->skills[2].active <= 0) attacker->skills[2].active = 0;
+
+            printf(" \tDeal %d more damage on enemy (Count %d)", deal, attacker->skills[2].active);
+
+          if (attacker->skills[2].active <= 0) attacker->skills[1].active = 0;
+
+          if (defender->Shield > 0) {
+            defender->Shield -= deal;
+              if (defender->Shield < 0) {
+                  // คำนวณส่วนที่ทะลุเกราะ
+                  defender->HP += defender->Shield; // เพราะ Shield เป็นค่าลบ
+                  defender->Shield = 0;             // เกราะหมดแล้ว
+              }
+          } else {
+              defender->HP -= deal;
+          }
+
+            totalDamage += deal;
+
+        }
+      }
+
+
+    // King in Binds skill 1, 3 Debuff
+    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[0] || atk == &attacker->skills[2])) {
+
+        attacker->skills[1].active += 2;
+      if (attacker->skills[1].active > 99) attacker->skills[1].active = 99;
+
+        printf(" \tSinking Stack +2 on target (%d)", attacker->skills[1].active);
+
+    }
+
+    // King in Binds skill 2 Debuff
+    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[1])) {
+
+      if (i == remainingCoins - 3) {
+
+        attacker->skills[2].active += 2;
+        if (attacker->skills[2].active > 99) attacker->skills[2].active = 99;
+
+        printf(" \tSinking Count +2 on target (%d)", attacker->skills[2].active);
+
+      } else {
+
+          attacker->skills[1].active += 3;
+        if (attacker->skills[1].active > 99) attacker->skills[1].active = 99;
+
+          printf(" \tSinking Stack +3 on target (%d)", attacker->skills[1].active);
+
+        }
+
+    }
+
+    // King in Binds skill 4 Debuff
+    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[3])) {
+
+      if (i == remainingCoins - 2) {
+
+        attacker->skills[4].active += 3;
+      if (attacker->skills[4].active > 99) attacker->skills[4].active = 99;
+
+        printf(" \tTremor Count +3 on target (%d)", attacker->skills[4].active);
+
+      } else if (i == remainingCoins - 1) {
+
+        if (attacker->skills[3].active <= 0 && attacker->skills[4].active > 0) attacker->skills[3].active++;
+        if (attacker->skills[4].active <= 0 && attacker->skills[3].active > 0) attacker->skills[4].active++;
+        
+        int deal = attacker->skills[3].active;
+
+          attacker->skills[6].BasePower += deal; // Tremor Burst damage store
+
+        if (defender->Shield > 0) {
+          defender->Shield -= deal;
+            if (defender->Shield < 0) {
+                // คำนวณส่วนที่ทะลุเกราะ
+                defender->HP += defender->Shield; // เพราะ Shield เป็นค่าลบ
+                defender->Shield = 0;             // เกราะหมดแล้ว
+            }
+        } else {
+            defender->HP -= deal;
+        }
+
+          totalDamage += deal;
+
+        attacker->skills[4].active -= 1;
+        if (attacker->skills[4].active <= 0) attacker->skills[4].active = 0;
+
+            printf(" \tTrigger 'Tremor Burst' on target (Stack %d Count %d)", attacker->skills[3].active, attacker->skills[4].active);
+
+        if (attacker->skills[4].active <= 0) attacker->skills[3].active = 0;
+
+        if (attacker->skills[6].active > defender->MAX_HP/2 && defender->Stagger <= 0) {
+
+          defender->Stagger += 1;
+
+          printf(" \tTarget 'Stagger' for one turn");
+
+          attacker->skills[6].active = 0;
+          
+        }
+        
+      }
+
+    }
+
+    // King in Binds skill 6 Debuff
+    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[5])) {
+
+        attacker->skills[3].active += attacker->skills[1].active;
+      if (attacker->skills[3].active > 99) attacker->skills[3].active = 99;
+
+        printf(" \tInflict Tremor Stack equal to Sinking Stack on target (%d)", attacker->skills[1].active);
+
+        int deal = attacker->skills[3].active;
+
+          attacker->skills[6].BasePower += deal; // Tremor Burst damage store
+
+        if (defender->Shield > 0) {
+          defender->Shield -= deal;
+            if (defender->Shield < 0) {
+                // คำนวณส่วนที่ทะลุเกราะ
+                defender->HP += defender->Shield; // เพราะ Shield เป็นค่าลบ
+                defender->Shield = 0;             // เกราะหมดแล้ว
+            }
+        } else {
+            defender->HP -= deal;
+        }
+
+          totalDamage += deal;
+
+      if (attacker->skills[3].active <= 0 && attacker->skills[4].active > 0) attacker->skills[3].active++;
+      if (attacker->skills[4].active <= 0 && attacker->skills[3].active > 0) attacker->skills[4].active++;
+
+        attacker->skills[4].active -= 1;
+        if (attacker->skills[4].active <= 0) attacker->skills[4].active = 0;
+
+            printf(" \tTrigger 'Tremor Burst' on target (Stack %d Count %d)", attacker->skills[3].active, attacker->skills[4].active);
+
+        if (attacker->skills[4].active <= 0) attacker->skills[3].active = 0;
+
+        if (attacker->skills[6].active > defender->MAX_HP/2 && defender->Stagger <= 0) {
+
+          defender->Stagger += 1;
+
+          printf(" \tTarget 'Stagger' for one turn");
+
+          attacker->skills[6].active = 0;
+
+        }
+
+    }
+
+    // King in Binds Moment of Audience
+    if (isId(attacker->name, "King in Binds") == 0 && attacker->skills[6].active > 0) {
+
+      // For make it work 'next turn'
+      if (attacker->skills[6].active == 1) {
+
+        attacker->skills[6].active = 2;
+        
+      } else if (attacker->skills[6].active >= 2) {
+        
+      attacker->skills[6].active = 0;
+
+        int deal = attacker->skills[3].active;
+
+          attacker->skills[6].BasePower += deal; // Tremor Burst damage store
+
+        if (defender->Shield > 0) {
+          defender->Shield -= deal;
+            if (defender->Shield < 0) {
+                // คำนวณส่วนที่ทะลุเกราะ
+                defender->HP += defender->Shield; // เพราะ Shield เป็นค่าลบ
+                defender->Shield = 0;             // เกราะหมดแล้ว
+            }
+        } else {
+            defender->HP -= deal;
+        }
+
+          totalDamage += deal;
+
+        attacker->skills[4].active -= 1;
+        if (attacker->skills[4].active <= 0) attacker->skills[4].active = 0;
+
+            printf(" \tTrigger 'Tremor Burst' on target (Stack %d Count %d)", attacker->skills[3].active, attacker->skills[4].active);
+
+        if (attacker->skills[4].active <= 0) attacker->skills[3].active = 0;
+
+        if (attacker->skills[6].active > defender->MAX_HP/2 && defender->Stagger <= 0) {
+
+          defender->Stagger += 1;
+
+          printf(" \tTarget 'Stagger' for one turn");
+
+          attacker->skills[6].active = 0;
+
+        }
+
+      attacker->skills[3].active += 2;
+      if (attacker->skills[3].active > 99) attacker->skills[3].active = 99;
+      
+      attacker->skills[4].active += 1;
+      if (attacker->skills[4].active > 99) attacker->skills[4].active = 99;
+
+        printf(" \tTremor Stack +2 (%d) and Tremor Count +1 (%d) on target", attacker->skills[3].active, attacker->skills[4].active);
+
+      defender->ProtectionNextTurn -= 10;
+
+      printf("\n\n%s take +10%% damage next turn\n", defender->name);
+
+    }
+
+    // King in Binds skill 5 Debuff
+    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[4])) {
+
+      if (defender->hasSanity == 1) { // Normal
+        int deal = attacker->skills[1].active + attacker->skills[2].active;
+
+        if (defender->Sanity - deal <= -45) {
+
+          int finalSP = defender->Sanity - deal;
+          int excessdamage = (-45 - finalSP); // เช่น -45 - (-50) = 5
+
+          updateSanity(defender, -(deal));
+
+          if (defender->Shield > 0) {
+            defender->Shield -= excessdamage;
+              if (defender->Shield < 0) {
+                  // คำนวณส่วนที่ทะลุเกราะ
+                  defender->HP += defender->Shield; // เพราะ Shield เป็นค่าลบ
+                  defender->Shield = 0;             // เกราะหมดแล้ว
+              }
+          } else {
+              defender->HP -= excessdamage;
+          }
+
+            totalDamage += excessdamage;
+
+           printf("\nCause 'Sinking Deluge', target loses (Sinking Stack + Count) Sanity (%d) (Sanity %d). Target at -45 Sanity, deal damage equal to excess that cause from 'Sinking Deluge' (%d)", deal, defender->Sanity, excessdamage);
+          
+        } else {
+
+          updateSanity(defender, -(deal));
+
+         printf("\nCause 'Sinking Deluge', target loses (Sinking Stack + Count) Sanity (%d) (Sanity %d); then lose all Sinking", deal, defender->Sanity);
+
+          attacker->skills[2].active = 0;
+          attacker->skills[1].active = 0;
+
+        }
+
+        } else { // No Sanity enemy
+
+        int deal = attacker->skills[1].active + attacker->skills[2].active;
+
+          if (defender->Shield > 0) {
+            defender->Shield -= deal;
+              if (defender->Shield < 0) {
+                  // คำนวณส่วนที่ทะลุเกราะ
+                  defender->HP += defender->Shield; // เพราะ Shield เป็นค่าลบ
+                  defender->Shield = 0;             // เกราะหมดแล้ว
+              }
+          } else {
+              defender->HP -= deal;
+          }
+
+            totalDamage += deal;
+
+        printf("\nCause 'Sinking Deluge', target takes (Sinking Stack + Count) damage (%d); then lose all Sinking", defender->Sanity);
+
+        attacker->skills[2].active = 0;
+        attacker->skills[1].active = 0;
+
+        }
+
+
+    }
+    }
+
+
+    // ----------------------------------------------------------
+
     //Dawn Office Fixer Sinclair S1 EGO FORM REUSE
-    if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") ==
+    if (isId(attacker->name, "Dawn Office Fixer Sinclair") ==
       0 && attacker->skills[3].active && i == 0 && atk == &attacker->skills[0]) {
 
         remainingCoins++;
@@ -2768,7 +3482,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Fixer grade 9? S6 Reuse
-    if (strcasecmp(attacker->name, "Fixer grade 9?") ==
+    if (isId(attacker->name, "Fixer grade 9?") ==
       0 && attacker->Passive >= 10 && i == 0 && atk == &attacker->skills[5] && !ClashLostAttack) {
 
         remainingCoins++;
@@ -2783,7 +3497,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Fixer grade 9? S3 Reuse
-    if (strcasecmp(attacker->name, "Fixer grade 9?") == 0 && attacker->Passive >= 15 && atk == &attacker->skills[2] && i == remainingCoins - 1 && remainingCoins <= atk->Coins && !ClashLostAttack) {
+    if (isId(attacker->name, "Fixer grade 9?") == 0 && attacker->Passive >= 15 && atk == &attacker->skills[2] && i == remainingCoins - 1 && remainingCoins <= atk->Coins && !ClashLostAttack) {
 
       attacker->skills[2].Coins = remainingCoins;
 
@@ -2796,14 +3510,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           sleep(1);
 
-    } else if (strcasecmp(attacker->name, "Fixer grade 9?") == 0 && atk == &attacker->skills[3]) {
+    } else if (isId(attacker->name, "Fixer grade 9?") == 0 && atk == &attacker->skills[3]) {
       attacker->skills[2].Coins = 2;
     }
 
     // -------------------- Heishou Pack - You Branch Adept Heathcliff ---------------------
     
     // Heishou Pack - You Branch Adept Heathcliff - Skill 2 reuse
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[2].active > 0 || attacker->HP < attacker->MAX_HP * 0.5) && atk == &attacker->skills[1] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[1].Coins) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[2].active > 0 || attacker->HP < attacker->MAX_HP * 0.5) && atk == &attacker->skills[1] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[1].Coins) {
 
       attacker->skills[1].Coins = remainingCoins;
 
@@ -2813,12 +3527,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           sleep(1);
 
-    } else if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[1]) {
+    } else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[1]) {
       attacker->skills[1].Coins = 3;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff - Skill 3-2 reuse
-    if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5) && atk == &attacker->skills[3] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[3].Coins) {
+    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5) && atk == &attacker->skills[3] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[3].Coins) {
 
       attacker->skills[3].Coins = remainingCoins;
 
@@ -2828,14 +3542,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           sleep(1);
 
-    } else if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[3]) {
+    } else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[3]) {
       attacker->skills[3].Coins = 4;
     }
 
     // -------------------------------------------------------------
 
     // Heathcliff:Wild Hunt – Skill 4 addition damage
-    if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
        (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
       int damage = abs(attacker->Sanity - defender->Sanity);
@@ -2862,7 +3576,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
     
     // Sancho:The Second Kindred of Don Quixote - Heal mechnics
-     if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0) {
+     if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0) {
 
       int healvalue = 40;
 
@@ -2871,7 +3585,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
        healvalue += missingHP;
 
-    if (strcasecmp(attacker->name,
+    if (isId(attacker->name,
                    "Sancho:The Second Kindred of Don Quixote") == 0 &&
         (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
 
@@ -2890,7 +3604,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                           : finalheal;
 
      } // Sancho:The Second Kindred of Don Quixote - Heal mechnics for certain skil when clash lost
-        else if (strcasecmp(attacker->name,"Sancho:The Second Kindred of Don Quixote") == 0 &&
+        else if (isId(attacker->name,"Sancho:The Second Kindred of Don Quixote") == 0 &&
            (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13]) && ClashLostAttack == 1) {
 
          printf(" HP +%d", (int)(attacker->HP + finalDamage) > attacker->MAX_HP
@@ -2904,7 +3618,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         }
 
     // Don Quixote:The Manager of La Manchaland - Heal mechnics
-    if ((strcasecmp(attacker->name,
+    if ((isId(attacker->name,
                     "Don Quixote:The Manager of La Manchaland") == 0 &&
          (atk == &attacker->skills[0] || atk == &attacker->skills[1] ||
           atk == &attacker->skills[4]))) {
@@ -2921,7 +3635,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
               ? (int)(attacker->MAX_HP - attacker->HP)
               : (int)(finalDamage * 0.3 > 10 ? 10 : finalDamage * 0.3);
 
-    } else if ((strcasecmp(attacker->name,
+    } else if ((isId(attacker->name,
                            "Don Quixote:The Manager of La Manchaland") == 0 &&
                 (atk == &attacker->skills[2]))) {
       // Max 10 with heal 50% of the HP damage dealt
@@ -2937,7 +3651,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
               ? (int)(attacker->MAX_HP - attacker->HP)
               : (int)(finalDamage * 0.5 > 10 ? 10 : finalDamage * 0.5);
 
-    } else if (strcasecmp(attacker->name,
+    } else if (isId(attacker->name,
                           "Don Quixote:The Manager of La Manchaland") == 0 &&
                (atk == &attacker->skills[5] || atk == &attacker->skills[3])) {
       // Max 20 with heal 50% of the HP damage dealt
@@ -2956,9 +3670,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // Jia Qiu enemy heal
-    if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (attacker->skills[15].active > 0) && defender->HP <= 0) {
+    if (isId(attacker->name, "Jia Qiu") == 0 && (attacker->skills[15].active > 0) && defender->HP <= 0) {
 
-      if (strcasecmp(defender->name, "Hong lu:The Lord of Hongyuan") == 0) {
+      if (isId(defender->name, "Hong lu:The Lord of Hongyuan") == 0) {
 
         attacker->skills[15].active -= 1;
 
@@ -3000,7 +3714,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   //---------------- After Attack Buff ----------------------------
 
     // Erlking Heathcliff Faded promise for wild hunt
-    if (strcasecmp(attacker->name, "Erlking Heathcliff") == 0 && strcasecmp(defender->name, "Heathcliff:Wild Hunt") == 0 && (attacker->skills[7].active == 1) && defender->HP <= 0)  {
+    if (isId(attacker->name, "Erlking Heathcliff") == 0 && isId(defender->name, "Heathcliff:Wild Hunt") == 0 && (attacker->skills[7].active == 1) && defender->HP <= 0)  {
 
         attacker->skills[7].active -= 1;
 
@@ -3021,7 +3735,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
 
     // Don Quixote:The Manager of La Manchaland - S3-1 Buff S3-2
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
         atk == &attacker->skills[5]) {
 
       int Hardblood = (int)(attacker->Passive/10) * 10;
@@ -3046,7 +3760,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Empower Skill
-    if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
         (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
 
       int Hardblood = 10;
@@ -3061,7 +3775,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 3 after attack
-  if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2])) {
+  if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2])) {
 
       attacker->skills[1].active += 2;
 
@@ -3072,7 +3786,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 4 after attack consumes
-  if (strcasecmp(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
+  if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
 
       attacker->Passive = 0;
 
@@ -3104,7 +3818,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // --------------------------------------- Binah  -----------------------------------------
 
   // Binah - phase 2
-  if (strcasecmp(defender->name, "Binah") == 0 && !defender->Passive && defender->HP <= defender->MAX_HP*0.5) {
+  if (isId(defender->name, "Binah") == 0 && !defender->Passive && defender->HP <= defender->MAX_HP*0.5) {
 
     defender->Passive = 1;
     
@@ -3145,7 +3859,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     sleep(1);
 
-    if (strcasecmp(attacker->name, "Fixer grade 9?") == 0) {
+    if (isId(attacker->name, "Fixer grade 9?") == 0) {
     printf("\n%s gains 'Shin (心) - The Black Silence', Defense +50, Offense +15, +1 Base Power and +10%% damage for every 10 different Sanity, All Skills become Unbreakable Coins\n",
        attacker->name);
 
@@ -3153,7 +3867,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
   
   // Binah - Skill 2 debuff
-  if (strcasecmp(attacker->name, "Binah") == 0 && (atk == &attacker->skills[1])) {
+  if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[1])) {
 
     int inflictvalue = 1;
 
@@ -3165,7 +3879,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Binah - Skill 4 debuff
-  if (strcasecmp(attacker->name, "Binah") == 0 && (atk == &attacker->skills[3])) {
+  if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[3])) {
 
     int inflictvalue = 50;
 
@@ -3178,7 +3892,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Binah - Skill 5 debuff serious
-  if (strcasecmp(attacker->name, "Binah") == 0 && (atk == &attacker->skills[4])) {
+  if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[4])) {
 
     int inflictvalue = 1;
     
@@ -3194,7 +3908,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Binah - Skill 3 4 debuff serious
-  if (strcasecmp(attacker->name, "Binah") == 0 && attacker->Passive && (atk == &attacker->skills[2] || atk == &attacker->skills[3])) {
+  if (isId(attacker->name, "Binah") == 0 && attacker->Passive && (atk == &attacker->skills[2] || atk == &attacker->skills[3])) {
 
     int inflictvalue = 5;
     
@@ -3222,7 +3936,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // -----------------------------------------------------------------------------------------
 
    // Hong lu:The Lord of Hongyuan S3-1 Debuff
-    if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[2]) && attacker->Passive > 0) {
+    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[2]) && attacker->Passive > 0) {
 
         defTempDefense -= attacker->Passive;
         defTempOffense -= attacker->Passive;
@@ -3234,7 +3948,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // -------------------------------- Roland ------------------------------
     // Fixer grade 9? S8 Heal
-    if (strcasecmp(attacker->name, "Fixer grade 9?") == 0 && (atk == &attacker->skills[8]) && attacker->Passive >= 20) {
+    if (isId(attacker->name, "Fixer grade 9?") == 0 && (atk == &attacker->skills[8]) && attacker->Passive >= 20) {
 
       int totalheal = totalDamage;
 
@@ -3249,7 +3963,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Roland – Mang (心)
-    if (strcasecmp(attacker->name, "Fixer grade 9?") == 0 && strcasecmp(defender->name, "Binah") == 0 && attacker->skills[6].active > 0) {
+    if (isId(attacker->name, "Fixer grade 9?") == 0 && isId(defender->name, "Binah") == 0 && attacker->skills[6].active > 0) {
 
       int Mang = attacker->skills[6].active * 5;
 
@@ -3266,7 +3980,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ----------------------------------------------------------------
 
   // Dawn Office Fixer Sinclair - Skill EGO form S4 lose sanity
-  if (strcasecmp(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
+  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
 
       updateSanity(attacker, -(15));
       if (attacker->Sanity < -45) attacker->Sanity = -45;
@@ -3279,13 +3993,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Meursault:The Thumb Shin buffs (temporary, print once)
-  if (strcasecmp(attacker->name, "Meursault:The Thumb") == 0 &&
+  if (isId(attacker->name, "Meursault:The Thumb") == 0 &&
        attacker->Passive <= 0 && !attacker->skills[3].active) {
 
     int amount = ((int)(8 * defender->MAX_HP)) / 847;
     if (amount < 8) amount = 8;
 
-    if (strcasecmp(defender->name, "Sancho:The Second Kindred of Don Quixote") == 0 || strcasecmp(defender->name, "Don Quixote") == 0) amount += 2; // pity for boss
+    if (isId(defender->name, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(defender->name, "Don Quixote") == 0) amount += 2; // pity for boss
 
     attacker->skills[3].active = 1;
 
@@ -3301,7 +4015,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Meursault:The Thumb Shin buffs (temporary, print once)
-  if (strcasecmp(defender->name, "Meursault:The Thumb") == 0 &&
+  if (isId(defender->name, "Meursault:The Thumb") == 0 &&
     defender->HP <= defender->MAX_HP*0.65 && !defender->skills[3].active) {
 
     int amount = ((int)(8 * attacker->MAX_HP)) / 847;
@@ -3321,7 +4035,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Roland – Buff
-  if (strcasecmp(attacker->name, "Fixer grade 9?") == 0 && atk == &attacker->skills[9]) {
+  if (isId(attacker->name, "Fixer grade 9?") == 0 && atk == &attacker->skills[9]) {
 
     int Losetotal = totalDamage;
     
@@ -3338,7 +4052,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   //--------------------------------Lei heng---------------------
 
   // Lei heng – skill 3 or 6
-  if (strcasecmp(attacker->name, "Lei heng") == 0 &&
+  if (isId(attacker->name, "Lei heng") == 0 &&
       (atk == &attacker->skills[2] || atk == &attacker->skills[5])) {
 
     int clashpowerdebuff = attacker->skills[1].active * 1;
@@ -3354,7 +4068,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
   
   // Lei heng – inner strength gain
-  if (strcasecmp(attacker->name, "Lei heng") == 0 &&
+  if (isId(attacker->name, "Lei heng") == 0 &&
     attacker->skills[0].active == 2) {
 
     attacker->Passive += remainingCoins * 2;
@@ -3364,7 +4078,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     printf("\n%s gains +%d Inner Strength [底力](%d - Max 25)\n",
            attacker->name, remainingCoins * 2, attacker->Passive);
 
-  } else if (strcasecmp(attacker->name, "Lei heng") == 0 &&
+  } else if (isId(attacker->name, "Lei heng") == 0 &&
     attacker->skills[0].active == 3) {
 
     attacker->Passive += remainingCoins * 3;
@@ -3376,7 +4090,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Sukuna - Black Flash
-  if (strcasecmp(attacker->name, "Sukuna:King of Curse") == 0 &&
+  if (isId(attacker->name, "Sukuna:King of Curse") == 0 &&
       atk == &attacker->skills[5] && ClashLostAttack == 0) {
 
     attacker->HP += (attacker->HP + 25 > attacker->MAX_HP)
@@ -3393,7 +4107,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // --------------------- Heathcliff:Wild Hunt -----------------------
   // Heathcliff:Wild Hunt – skill 3 heal sanity
-  if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
       atk == &attacker->skills[3]) {
 
     if (attacker->Sanity < 0) {
@@ -3420,7 +4134,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Heathcliff:Wild Hunt – gain coffin
-  if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
      ( atk == &attacker->skills[2] || atk == &attacker->skills[3])) {
 
     int gain;
@@ -3440,7 +4154,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
     // Heathcliff:Wild Hunt – Skill 4 heal sanity
-    if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
        (atk == &attacker->skills[3])) {
 
       updateSanity(attacker, 10);
@@ -3453,7 +4167,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
      // Heathcliff:Wild Hunt – Skill 2 loses sanity
-      if (strcasecmp(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+      if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
          (atk == &attacker->skills[1]) && attacker->skills[0].active > 0) {
 
         updateSanity(attacker, -(10));
@@ -3467,7 +4181,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // --------------------------- Hong lu:The Lord of Hongyuan -------------------------- 
   // Hong lu:The Lord of Hongyuan - S3-1 to S3-2
-  if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
       atk == &attacker->skills[2] &&
       (attacker->skills[5].BasePower == 1 ||
        attacker->skills[5].CoinPower == 1 || attacker->skills[5].Coins == 1 ||
@@ -3502,7 +4216,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       *fields[randIndex] = 0;
     }
 
-    if (strcasecmp(HeshinPacks, "Mao") == 0) {
+    if (isId(HeshinPacks, "Mao") == 0) {
 
       printf("\n%s: Send the Hare.\n", attacker->name);
 
@@ -3551,7 +4265,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
              "Mao (Offense +3)\n",
              attacker->name, attacker->Passive);
 
-    } else if (strcasecmp(HeshinPacks, "Si") == 0) {
+    } else if (isId(HeshinPacks, "Si") == 0) {
 
       printf("\n%s: Pierce with the Serpent.\n", attacker->name);
 
@@ -3598,7 +4312,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
              "Si (Base Power +1)\n",
              attacker->name, attacker->Passive);
 
-    } else if (strcasecmp(HeshinPacks, "Wu") == 0) {
+    } else if (isId(HeshinPacks, "Wu") == 0) {
 
       printf("\n%s: Intercept with the Horse.\n", attacker->name);
 
@@ -3647,7 +4361,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
              "Wu (Defense +5)\n",
              attacker->name, attacker->Passive);
 
-    } else if (strcasecmp(HeshinPacks, "You") == 0) {
+    } else if (isId(HeshinPacks, "You") == 0) {
 
       printf("\n%s: Charge forth, Rooster.\n", attacker->name);
 
@@ -3707,7 +4421,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     sleep(1);
 
-  } else if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  } else if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
              atk == &attacker->skills[2]) {
 
      clearTurnSkillBuffs(attacker);
@@ -3722,7 +4436,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
  
   // Hong lu:The Lord of Hongyuan - S3-1 to S3-2
-  if (strcasecmp(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
       atk == &attacker->skills[3]) {
 
     printf("\n%s: How Daguanyuan has been purged.\n", attacker->name);
@@ -3731,7 +4445,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Hong lu:The Lord of Hongyuan - Lordsguard
-  if (strcasecmp(defender->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(defender->name, "Hong lu:The Lord of Hongyuan") == 0 &&
       defender->skills[5].active == 0 && (HeshinPacks != NULL)) {
 
     if (defender->HP <= 0) {
@@ -3776,7 +4490,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
 
   } // Hong lu:The Lord of Hongyuan - Passive
-  else if ((strcasecmp(defender->name, "Hong lu:The Lord of Hongyuan")) == 0 &&
+  else if ((isId(defender->name, "Hong lu:The Lord of Hongyuan")) == 0 &&
            defender->HP <= 0 && defender->skills[5].active == 1) {
 
     defender->skills[5].active = 0;
@@ -3796,7 +4510,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Hong lu:The Lord of Hongyuan - Mao
-  if (strcasecmp(attacker->name, "Heshin Packs - Mao") == 0 &&
+  if (isId(attacker->name, "Heshin Packs - Mao") == 0 &&
       atk == &attacker->skills[6]) {
 
     defender->ClashPowerNextTurn -= 1;
@@ -3806,7 +4520,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
 
   } // Hong lu:The Lord of Hongyuan - Si
-  else if (strcasecmp(attacker->name, "Heshin Packs - Si") == 0 &&
+  else if (isId(attacker->name, "Heshin Packs - Si") == 0 &&
       atk == &attacker->skills[7]) {
 
     int randomlost = rand() % 2 + 1;
@@ -3828,7 +4542,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
 
   } // Hong lu:The Lord of Hongyuan - Wu
-  else if (strcasecmp(attacker->name, "Heshin Packs - Wu") == 0 &&
+  else if (isId(attacker->name, "Heshin Packs - Wu") == 0 &&
       atk == &attacker->skills[8]) {
 
     defender->ProtectionNextTurn -= 20;
@@ -3842,7 +4556,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // --------------------------------------------------------------
 
   // Heishou Pack - You Branch Adept Heathcliff - Anti death Passive
-  if ((strcasecmp(defender->name, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
+  if ((isId(defender->name, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
       defender->HP <= 0 && defender->skills[3].active == 0) {
 
     defender->skills[3].active = 1;
@@ -3861,7 +4575,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Meursault:Blade Lineage Mentor - Passive
-  if (strcasecmp(defender->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if (isId(defender->name, "Meursault:Blade Lineage Mentor") == 0 &&
       defender->HP <= 0 && defender->Passive != 1) {
 
     defender->Passive = 1;
@@ -3876,7 +4590,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
     // Meursault:Blade Lineage Mentor - Passive
-    if (strcasecmp(defender->name, "Meursault:Blade Lineage Mentor") == 0) {
+    if (isId(defender->name, "Meursault:Blade Lineage Mentor") == 0) {
 
       defender->FinalPowerBoostNextTurn += 1;
 
@@ -3887,7 +4601,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Yi sang:Fell Bullet - Torn Memory
-  if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
       (atk == &attacker->skills[0] ||
        atk == &attacker->skills[1])) {
 
@@ -3905,7 +4619,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
      // Yi sang:Fell Bullet - Torn Memory S3 lost
-    if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
         atk == &attacker->skills[2]) {
 
       updateSanity(attacker, -(attacker->Passive*2));
@@ -3918,7 +4632,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Yi sang:Fell Bullet - Torn Memory S3 lost
-  if (strcasecmp(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
       atk == &attacker->skills[2] &&
       attacker->Passive >= 7) {
 
@@ -3949,7 +4663,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // Don Quixote:The Manager of La Manchaland - Hardblood gains 5 for counter
   // won
-  if (strcasecmp(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       (atk == &attacker->skills[6])) {
 
@@ -3964,7 +4678,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   //------------------------------------Sancho:The Second Kindred of Don Quixote-------------------
     
   // Sancho - Ultimate After attack
-  if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       (atk == &attacker->skills[12]) && attacker->Passive >= 1) {
 
@@ -3979,7 +4693,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
     // Sancho - Skill 11
-    if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         (atk == &attacker->skills[10])) {
 
@@ -4004,7 +4718,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho - Skill 12
-    if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         (atk == &attacker->skills[11])) {
 
@@ -4028,7 +4742,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Gain Hardblood on Hit without Clash Lose
-     if (strcasecmp(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0) {
+     if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0) {
 
         attacker->Passive += 3;
        if (attacker->Passive > 30) attacker->Passive = 30;
@@ -4042,7 +4756,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // -------------------- Erlking Heathcliff ----------------------------
     // Erlking Heathcliff Skill 2 buff
-    if (strcasecmp(attacker->name, "Erlking Heathcliff") == 0 && atk == &attacker->skills[2]) {
+    if (isId(attacker->name, "Erlking Heathcliff") == 0 && atk == &attacker->skills[2]) {
 
        attacker->AttackPowerBoostNextTurn += 3;
        attacker->DamageUpNextTurn += 30;
@@ -4053,7 +4767,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Erlking Heathcliff Skill 3 debuff
-    if (strcasecmp(attacker->name, "Erlking Heathcliff") == 0 && (atk == &attacker->skills[3])) {
+    if (isId(attacker->name, "Erlking Heathcliff") == 0 && (atk == &attacker->skills[3])) {
 
          defender->ParalyzeNextTurn += 3;
 
@@ -4067,7 +4781,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 //------------------------------------------------------------------
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly
-  if (strcasecmp(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
+  if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
 
       printf("\n%s consumed %d The Living & The Departed(%d)\n", attacker->name, attacker->skills[0].active, attacker->Passive); 
 
@@ -4075,7 +4789,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - SKill 2 gain
-  if (strcasecmp(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && atk == &attacker->skills[1]) {
+  if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && atk == &attacker->skills[1]) {
 
     if (attacker->Passive >= 1 && attacker->Passive < 20) {
     
@@ -4096,7 +4810,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // ------------------------- Jia Qiu -------------------------------
 
   // Jia Qiu - S4 and S9
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[9])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[9])) {
     
       defender->ClashPowerNextTurn -= 1;
 
@@ -4106,7 +4820,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Jia Qiu - S2 and S8
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[2] || atk == &attacker->skills[8])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[2] || atk == &attacker->skills[8])) {
 
         updateSanity(defender, -(5 * remainingCoins));
     if (defender->Sanity < -45) defender->Sanity = -45;
@@ -4117,19 +4831,19 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Jia Qiu - S12
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[12])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[12])) {
   
     int boost = 5*(abs(defender->Sanity));
   
         attacker->DamageUpNextTurn += boost;
   
-    printf("\n%s deal +5%% damage for every Sanity enemy further from 0 next turn (%d)\n", attacker->name, defender->Sanity);
+    printf("\n%s deal +5%% damage for every Sanity enemy further from 0 next turn (%d%%)\n", attacker->name, defender->Sanity);
   
     sleep(1);
   }
 
   // Jia Qiu - Passive
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0) {
+  if (isId(attacker->name, "Jia Qiu") == 0) {
       updateSanity(attacker, 5);
     if (attacker->Sanity > 45) attacker->Sanity = 45;
 
@@ -4137,7 +4851,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
   
   // Jia Qiu Phase 1.5
-  if (strcasecmp(defender->name, "Jia Qiu") == 0 && defender->HP <= defender->MAX_HP * 0.85 &&
+  if (isId(defender->name, "Jia Qiu") == 0 && defender->HP <= defender->MAX_HP * 0.85 &&
       defender->Passive == 1) {
 
     printf("\n%s: I am not yet to hear 'your' answer.\n", defender->name);
@@ -4171,7 +4885,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Jia Qiu LAST Ult
-  if (strcasecmp(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[16])) {
+  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[16])) {
 
     defender->HP = 1;
 
@@ -4209,13 +4923,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 SkillStats *getEffectiveSkill(Character *c, Character *c2,
                               SkillStats *chosenSkill, int *tempOffense,
                               int *tempDefense) {
-  *tempOffense = chosenSkill->Offense;
-  *tempDefense = chosenSkill->Defense;
+  *tempOffense += chosenSkill->Offense;
+  *tempDefense += chosenSkill->Defense;
 
   // ---------------------------- Binah -----------------------------
 
   // Binah - Arbiter
-  if (strcasecmp(c->name, "Binah") == 0 && !c->Passive) {
+  if (isId(c->name, "Binah") == 0 && !c->Passive) {
 
     c->DamageUp -= 20;
     c->FinalPowerBoost -= 1;
@@ -4223,7 +4937,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     printf("\n%s's 'Incomplete Arbiter' activated, deals -20%% damage, Final Power -1\n", c->name);
 
     sleep(1);
-  } else if (strcasecmp(c->name, "Binah") == 0 && c->Passive) {
+  } else if (isId(c->name, "Binah") == 0 && c->Passive) {
 
       c->DamageUp += 50;
       c->FinalPowerBoost += 2;
@@ -4234,7 +4948,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Binah - heal Sanity
-  if (strcasecmp(c->name, "Binah") == 0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[3])) {
+  if (isId(c->name, "Binah") == 0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[3])) {
 
     updateSanity(c, 10);
     
@@ -4245,7 +4959,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Binah - Skill 5 buff
-  if (strcasecmp(c->name, "Binah") == 0 && (chosenSkill == &c->skills[4])) {
+  if (isId(c->name, "Binah") == 0 && (chosenSkill == &c->skills[4])) {
 
     c->Protection += 30;
     c->ProtectionNextTurn += 30;
@@ -4256,7 +4970,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Binah - Fairy buff
-  if (strcasecmp(c->name, "Binah") == 0 && c->skills[0].active > 0 && c->Passive) {
+  if (isId(c->name, "Binah") == 0 && c->skills[0].active > 0 && c->Passive) {
 
     int boost = c->skills[0].active * 20;
 
@@ -4273,7 +4987,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // -------------------------- Jia Qiu -----------------------------
   
  // Jia Qiu - heal Sanity on mao or zilu
-  if (strcasecmp(c->name, "Jia Qiu") == 0 &&
+  if (isId(c->name, "Jia Qiu") == 0 &&
       (chosenSkill == &c->skills[12] || chosenSkill == &c->skills[4] || chosenSkill == &c->skills[11])) {
 
     updateSanity(c, 10);
@@ -4285,10 +4999,10 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Jia Qiu S15 Nerf
-  if (strcasecmp(c->name, "Jia Qiu") == 0 &&
+  if (isId(c->name, "Jia Qiu") == 0 &&
       (chosenSkill == &c->skills[15])) {
 
-    if (strcasecmp(c2->name, "Hong lu:The Lord of Hongyuan") == 0) {
+    if (isId(c2->name, "Hong lu:The Lord of Hongyuan") == 0) {
       
     printf("\n%s lost 2 Clash Power(%d) for every Uncompromising Imposition on target(%d)\n", c->name, 2 * c->skills[15].active, c->skills[15].active);
     } else {
@@ -4304,7 +5018,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   // ----------------------- Wild hunt ------------------------------
   // Heathcliff: Wild Hunt – skill 3 -> skill 4 if HP ≤ half
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
       chosenSkill == &c->skills[2] && c->skills[0].active > 0) {
     
     printf("\nWhen activated 'Dullahan', %s switching '%s' to Skill '%s'\n", c->name,
@@ -4316,7 +5030,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Wild hunt – Buff
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 && c->skills[0].active > 0) {
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 && c->skills[0].active > 0) {
 
     *tempOffense += 3;
     *tempDefense -= 3;
@@ -4333,7 +5047,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – skill 4 lose sanity
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
       (chosenSkill == &c->skills[3])) {
 
       updateSanity(c, -(15));
@@ -4347,7 +5061,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   
 
   // Heathcliff:Wild Hunt – gain coffin
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
       (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
 
     int gain;
@@ -4368,7 +5082,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – Damage coffin
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 3) {
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 3) {
 
     int gain;
 
@@ -4382,7 +5096,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – Clash power coffin
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 5) {
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 5) {
 
     int gain;
 
@@ -4396,7 +5110,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff coffin
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[1]) && c->Passive >= 4) {
 
     int gain = c->Passive/4;
@@ -4410,7 +5124,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 1
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[0]) && abs(c->Sanity - c2->Sanity) >= 10) {
 
     int gain = abs(c->Sanity - c2->Sanity)/10;
@@ -4425,7 +5139,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 1
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[0]) && c->Passive >= 3) {
 
     c->ClashPower += 1;
@@ -4437,7 +5151,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 1/2
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1]) && abs(c->Sanity - c2->Sanity) >= 10) {
 
     c->ClashPower += 1;
@@ -4449,7 +5163,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 3
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[2]) && abs(c->Sanity - c2->Sanity) >= 15) {
 
     int gain = abs(c->Sanity - c2->Sanity)/15;
@@ -4464,7 +5178,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 4
-  if (strcasecmp(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[3]) && abs(45 - c->Sanity) >= 20) {
 
     int gain = abs(45 - c->Sanity)/20;
@@ -4483,7 +5197,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 // ---------------------- Meursault:Blade Lineage Mentor ---------------------
   
   //        Meursault:Blade Lineage Mentor - Remembrance
-  if ((strcasecmp(c->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if ((isId(c->name, "Meursault:Blade Lineage Mentor") == 0 &&
        c->HP <= c->MAX_HP * 0.6)) {
 
       printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0\n",c->name);
@@ -4547,7 +5261,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   //        Meursault:Blade Lineage Mentor - Skill 1 buff
-  if ((strcasecmp(c->name, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[0])) {
+  if ((isId(c->name, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[0])) {
 
     float P_HPDifferent = (c->MAX_HP - c->HP) / c->MAX_HP; // 0.0 - 1.0
      float E_HPDifferent = (c2->MAX_HP - c2->HP) / c2->MAX_HP; // 0.0 - 1.0
@@ -4567,7 +5281,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   //        Meursault:Blade Lineage Mentor - Skill 2 buff
-  if ((strcasecmp(c->name, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[1])) {
+  if ((isId(c->name, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[1])) {
 
     float P_HPDifferent = (c->MAX_HP - c->HP) / c->MAX_HP; // 0.0 - 1.0
      float E_HPDifferent = (c2->MAX_HP - c2->HP) / c2->MAX_HP; // 0.0 - 1.0
@@ -4592,7 +5306,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ----------------------- Meursault:The Thumb ---------------------
   
   // Meursault: The Thumb – skill 3 -> skill 4 if HP ≤ 65
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 &&
+  if (isId(c->name, "Meursault:The Thumb") == 0 &&
       chosenSkill == &c->skills[2] && c->skills[3].active && c->Passive > 0) {
     
     printf("\n%s at 1+ Savage Tigermark Round, switching '%s' to Skill '%s'\n", c->name,
@@ -4604,7 +5318,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault: The Thumb – S3-1 Unbreakable
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && chosenSkill == &c->skills[2] && c->Passive >= 1 && !c->skills[3].active && c->skills[2].active >= 3) {
+  if (isId(c->name, "Meursault:The Thumb") == 0 && chosenSkill == &c->skills[2] && c->Passive >= 1 && !c->skills[3].active && c->skills[2].active >= 3) {
 
     printf("\n%s at 1+ Tigermark Round and 3+ Tigermark Round spent, convert all Coins of 'Tanglecleaver' into Unbreakable Coins\n", c->name);
 
@@ -4614,7 +5328,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault: The Thumb – all Unbreakable
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && c->Passive >= 1 && c->skills[3].active) {
+  if (isId(c->name, "Meursault:The Thumb") == 0 && c->Passive >= 1 && c->skills[3].active) {
 
     printf("\n%s at 1+ Savage Tigermark Round, convert all Coins of this unit's Attack Skills to Unbreakable Coins\n", c->name);
 
@@ -4624,7 +5338,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault: The Thumb – Overheat
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && c->Passive <= 0 && c->skills[3].active) {
+  if (isId(c->name, "Meursault:The Thumb") == 0 && c->Passive <= 0 && c->skills[3].active) {
 
     printf("\n%s at 0 Savage Tigermark Round, convert all Coins of this unit's Attack Skills to Unbreakable Coins and Gain 'Overheat'\n", c->name);
 
@@ -4671,7 +5385,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault:The Thumb - Skill 1 and 2 Final Power
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
+  if (isId(c->name, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
     int Buff = abs(c->Sanity);
     int FinalPowerbuff = Buff/10;
@@ -4689,7 +5403,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault:The Thumb - Skill 3 and 4 coin power
-  if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 20 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->name, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 20 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
     int Buff = abs(c->Sanity);
     int CoinPowerbuff = Buff/20;
@@ -4705,18 +5419,18 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------------------------------
   
   // Shin buffs (temporary, print once per skill selection)
-  if ((strcasecmp(c->name, "Meursault:The Thumb") == 0 &&
+  if ((isId(c->name, "Meursault:The Thumb") == 0 &&
        c->skills[3].active) ||
-      (strcasecmp(c->name, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active != 3)) {
+      (isId(c->name, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active != 3)) {
 
-    if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && c->skills[2].active < 8) {
+    if (isId(c->name, "Meursault:The Thumb") == 0 && c->skills[2].active < 8) {
 
       int DamageBuff = (abs(c2->Sanity - c->Sanity)) > 20 ? 20 : (abs(c2->Sanity - c->Sanity));
       c->DamageUp += DamageBuff;
       
       printf("\n%s 'Unrelenting Spirit [剛氣]' activated! \n deal +1%% damage for every different Sanity between enemy and this unit (%d%% - Max 20%%)\n", c->name, DamageBuff);
 
-    } else if (strcasecmp(c->name, "Meursault:The Thumb") == 0 && c->skills[2].active >= 8) {
+    } else if (isId(c->name, "Meursault:The Thumb") == 0 && c->skills[2].active >= 8) {
 
       int DamageBuff = (2*((int)(abs(c2->Sanity - c->Sanity)))) > 40 ? 40 : (2*(int)(abs(c2->Sanity - c->Sanity)));
       c->DamageUp += DamageBuff;
@@ -4762,7 +5476,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   
  // ---------------------------- Lei heng -----------------------------
-  if (strcasecmp(c->name, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active == 3) {
+  if (isId(c->name, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active == 3) {
     
     float missing = (c->MAX_HP - c->HP) / (c->MAX_HP * 0.15); // fraction of HP missing (0.0 - 1.0)
     int SkillDamageUp = (int)(missing) * 10;  // 10% for every 15%
@@ -4794,7 +5508,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – heal Sanity Passive and Buff dmg Passive
-  if (strcasecmp(c->name, "Lei heng") == 0 && c->Sanity > -45) {
+  if (isId(c->name, "Lei heng") == 0 && c->Sanity > -45) {
 
       // 1. Calculate the success threshold
       // If sanity is 10, threshold becomes 40.
@@ -4842,7 +5556,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – skill 3 -> skill 6 if HP ≤ 40%
-  if (strcasecmp(c->name, "Lei heng") == 0 && c->HP < c->MAX_HP * 0.4 &&
+  if (isId(c->name, "Lei heng") == 0 && c->HP < c->MAX_HP * 0.4 &&
       (chosenSkill == &c->skills[2])) {
 
     chosenSkill = &c->skills[5];
@@ -4852,7 +5566,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – skill 5 buff
-  if (strcasecmp(c->name, "Lei heng") == 0 && (chosenSkill == &c->skills[4])) {
+  if (isId(c->name, "Lei heng") == 0 && (chosenSkill == &c->skills[4])) {
 
     c->DamageUpNextTurn += 10;
 
@@ -4862,7 +5576,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – inner strength skill buff no blast skill 1
-  if (strcasecmp(c->name, "Lei heng") == 0 &&
+  if (isId(c->name, "Lei heng") == 0 &&
     (chosenSkill == &c->skills[0]) && (strstr(c->skills[0].name, "Blast") == NULL)) {
 
     if (c->skills[0].active == 2) {
@@ -4884,7 +5598,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   }  // Lei heng – inner strength skill buff blast skill 1
-  else if (strcasecmp(c->name, "Lei heng") == 0 &&
+  else if (isId(c->name, "Lei heng") == 0 &&
      (chosenSkill == &c->skills[0]) && (strstr(c->skills[0].name, "Blast") != NULL)) {
 
   if (c->skills[0].active == 2) {
@@ -4908,7 +5622,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
     // Lei heng – inner strength skill buff no blast skill 2
-    if (strcasecmp(c->name, "Lei heng") == 0 &&
+    if (isId(c->name, "Lei heng") == 0 &&
       (chosenSkill == &c->skills[1]) && (strstr(c->skills[1].name, "Blast") == NULL)) {
 
       if (c->skills[0].active == 2) {
@@ -4930,7 +5644,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       }
 
     }  // Lei heng – inner strength skill buff blast skill 2
-    else if (strcasecmp(c->name, "Lei heng") == 0 &&
+    else if (isId(c->name, "Lei heng") == 0 &&
        (chosenSkill == &c->skills[1]) && (strstr(c->skills[1].name, "Blast") != NULL)) {
 
     if (c->skills[0].active == 2) {
@@ -4954,7 +5668,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
       // Lei heng – inner strength skill buff skill 4
-      if (strcasecmp(c->name, "Lei heng") == 0 &&
+      if (isId(c->name, "Lei heng") == 0 &&
         (chosenSkill == &c->skills[3])) {
 
         if (c->skills[0].active == 2) {
@@ -4978,7 +5692,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       }
 
   // Lei heng – Consumes inner strength
-  if (strcasecmp(c->name, "Lei heng") == 0 &&
+  if (isId(c->name, "Lei heng") == 0 &&
     (chosenSkill == &c->skills[2])) {
 
     printf("\n%s consumes all Inner Strength [底力] Stack on self (%d)\n",
@@ -5003,7 +5717,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     c->Passive = 0;
     
   }  // Lei heng – Consumes Extreme strength
-  else if (strcasecmp(c->name, "Lei heng") == 0 &&
+  else if (isId(c->name, "Lei heng") == 0 &&
       (chosenSkill == &c->skills[5])) {
 
       printf("\n%s consumes all Extreme Strength [底力] Stack on self (%d)\n",
@@ -5046,7 +5760,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------- Erlking Heathcliff ------------------------------
 
   // Erlking Heathcliff – Passive Buff
-  if (strcasecmp(c->name, "Erlking Heathcliff") == 0) {
+  if (isId(c->name, "Erlking Heathcliff") == 0) {
 
     float enemyHP = (c2->HP / c2->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
     float myHP = (c->HP / c->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
@@ -5063,7 +5777,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Erlking Heathcliff – skill 5
-  if (strcasecmp(c->name, "Erlking Heathcliff") == 0 && chosenSkill == &c->skills[5] && abs(c2->Sanity - c->Sanity) > 0) {
+  if (isId(c->name, "Erlking Heathcliff") == 0 && chosenSkill == &c->skills[5] && abs(c2->Sanity - c->Sanity) > 0) {
 
     int buff = abs(c2->Sanity - c->Sanity);
     if (buff > 2) buff = 2;
@@ -5079,7 +5793,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   
 // ------------------------------ Gregor:Firefist ------------------------------
     // Gregor:Firefist – Reset passive
-  if (strcasecmp(c->name, "Gregor:Firefist") == 0 && c->Passive <= 0) {
+  if (isId(c->name, "Gregor:Firefist") == 0 && c->Passive <= 0) {
     
     printf("\n%s runs out of fuel, use '%s' instead!\n", c->name, c->skills[3].name);
 
@@ -5098,7 +5812,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Gregor:Firefist – Buff Passive
-  if (strcasecmp(c->name, "Gregor:Firefist") == 0) {
+  if (isId(c->name, "Gregor:Firefist") == 0) {
 
     if (c2->HP <= (c2->MAX_HP *0.75) || c->HP <= (c->MAX_HP *0.75)) {
 
@@ -5132,7 +5846,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Gregor:Firefist - S1 Coin power buff
-  if (strcasecmp(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->name, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[0]) {
 
     int gain = c->skills[0].active / 3;
@@ -5151,7 +5865,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Gregor:Firefist - S2 Coin power buff
-  if (strcasecmp(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->name, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[1]) {
 
     int gain = c->skills[0].active / 6;
@@ -5170,7 +5884,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Gregor:Firefist - S3 Base power buff
-  if (strcasecmp(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->name, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[2]) {
 
     int gain = c->skills[0].active / 6;
@@ -5189,7 +5903,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Gregor:Firefist - S3 Coin power buff
-  if (strcasecmp(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->name, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[2]) {
 
     int gain = c->skills[1].active / 3;
@@ -5211,7 +5925,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------- Roland --------------------------
 
   // Roland – Shin (心) - The Black Silence
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && strcasecmp(c2->name, "Binah") == 0 && c2->Passive == 1) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && isId(c2->name, "Binah") == 0 && c2->Passive == 1) {
 
     int BaseBuff = ((abs(c2->Sanity - c->Sanity))/10);
      int DmgBuff = 10*((abs(c2->Sanity - c->Sanity))/10);
@@ -5230,7 +5944,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && c->HP <= c->MAX_HP * 0.5) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && c->HP <= c->MAX_HP * 0.5) {
     printf("\n%s: That's that, this is this.... , Offense +10, Defense -5\n",
            c->name);
 
@@ -5241,7 +5955,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   //Roland Furioso
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && chosenSkill->Copies != 0 && chosenSkill != &c->skills[9]) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && chosenSkill->Copies != 0 && chosenSkill != &c->skills[9]) {
 
     chosenSkill->Copies = 0;
 
@@ -5258,7 +5972,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 1 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[0]) && c->Passive >= 4) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[0]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 8) Boost = 8;
@@ -5272,7 +5986,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 2 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[1]) && c->Passive >= 4) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[1]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 5) Boost = 5;
@@ -5286,7 +6000,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 3 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[2]) && c->Passive >= 4) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[2]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 5) Boost = 5;
@@ -5300,7 +6014,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 4 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[3]) && c->Passive >= 3) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[3]) && c->Passive >= 3) {
 
     int Boost = c->Passive/3;
     if (Boost > 4) Boost = 4;
@@ -5314,7 +6028,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 5 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[4]) && c->Passive >= 4) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[4]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 4) Boost = 4;
@@ -5328,7 +6042,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 6 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[5]) && c->Passive >= 4) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[5]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 10) Boost = 10;
@@ -5357,7 +6071,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 7 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[6]) && c->Passive >= 5) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[6]) && c->Passive >= 5) {
 
     int Boost = c->Passive/5;
     if (Boost > 3) Boost = 3;
@@ -5372,7 +6086,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 8 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[7]) && c->Passive >= 5) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[7]) && c->Passive >= 5) {
 
     int Boost = c->Passive/5;
     if (Boost > 3) Boost = 3;
@@ -5387,7 +6101,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 9 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[8]) && c->Passive >= 10) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[8]) && c->Passive >= 10) {
 
     int Boost = c->Passive/10;
     if (Boost > 2) Boost = 2;
@@ -5404,7 +6118,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 10 buff
-  if (strcasecmp(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[9]) && c->Passive >= 5) {
+  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[9]) && c->Passive >= 5) {
 
     int buff = c->Passive/5;
     if (buff > 5) buff = 5;
@@ -5418,7 +6132,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 10 buff for shin (心)
-    if (strcasecmp(c->name, "Fixer grade 9?") == 0 && strcasecmp(c2->name, "Binah") == 0 && c2->Passive == 1 && (chosenSkill == &c->skills[9])) {
+    if (isId(c->name, "Fixer grade 9?") == 0 && isId(c2->name, "Binah") == 0 && c2->Passive == 1 && (chosenSkill == &c->skills[9])) {
 
       int buff = c->Passive;
       if (buff > 20) buff = 20;
@@ -5434,7 +6148,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ---------------------------------------------------------------------
 
   // Hong lu:The Lord of Hongyuan - Skill 1 deal more damage on HP
-  if (strcasecmp(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[0])) {
+  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[0])) {
 
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
     float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
@@ -5454,7 +6168,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Hong lu:The Lord of Hongyuan - Skill 2 deal more damage on HP
-  if (strcasecmp(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[1])) {
+  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[1])) {
 
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
     float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
@@ -5474,7 +6188,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Hong lu:The Lord of Hongyuan - Skill 3 deal more damage on HP
-  if (strcasecmp(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[2])) {
+  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[2])) {
 
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
     float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
@@ -5495,7 +6209,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   // --------------------------- Yi sang:Fell Bullet -----------------
   // Yi sang:Fell Bullet - Torn Memory
-  if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[0]) {
 
     if (c->Passive < 7) {
@@ -5510,7 +6224,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Yi sang:Fell Bullet - Torn Memory
-  if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[2]) {
 
     if (c->Passive >= 2) {
@@ -5536,7 +6250,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Yi sang:Fell Bullet - Torn Memory Buff s1
-  if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[0]) {
 
     if (c->Passive >= 3) {
@@ -5561,7 +6275,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
     // Yi sang:Fell Bullet - Torn Memory Buff s2
-    if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
         chosenSkill == &c->skills[1]) {
 
       if (c->Passive >= 3) {
@@ -5576,7 +6290,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
         // Yi sang:Fell Bullet - Fell Bullet Clash power buff
-    if (strcasecmp(c->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
         c->skills[2].active > 0) {
 
       c->ClashPower += c->skills[2].active * 2;
@@ -5591,7 +6305,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // -------------------- Don Quixote:The Manager of La Manchaland ---------------------------
 
   // Don Quixote:The Manager of La Manchaland - S3-1 Buff S3-2
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
       chosenSkill == &c->skills[2] && c->Passive >= 15) {
 
     chosenSkill = &c->skills[5];
@@ -5605,7 +6319,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Empower Skill
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
       chosenSkill == &c->skills[0] && c->Passive >= 15) {
 
     int Hardblood = 10;
@@ -5618,7 +6332,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     sleep(1);
 
-  } else if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  } else if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              chosenSkill == &c->skills[1] && c->Passive >= 15) {
 
@@ -5635,7 +6349,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Don Quixote:The Manager of La Manchaland - Hardblood gains 1-5
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] ||
     chosenSkill == &c->skills[2])) {
@@ -5655,7 +6369,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Hardblood heal for counter-2 won
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       (chosenSkill == &c->skills[7])) {
 
@@ -5667,7 +6381,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland if HP ≤ 30 gains buff
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
       c->HP <= c->MAX_HP*0.3) {
 
     c->Passive += 3;
@@ -5684,7 +6398,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Skill 1/2 in both Buff Coin
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[0] ||  chosenSkill == &c->skills[1] || chosenSkill == &c->skills[3] ||  chosenSkill == &c->skills[4])) {
 
@@ -5707,7 +6421,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Skill 3 in both Buff Coin
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[2] ||  chosenSkill == &c->skills[5])) {
 
@@ -5730,7 +6444,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Skill 1-2 Buff dmg
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[3])) {
 
@@ -5746,7 +6460,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Don Quixote:The Manager of La Manchaland - Skill 3 both Buff dmg
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[5])) {
 
@@ -5791,7 +6505,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Don Quixote:The Manager of La Manchaland - Skill 3-2 Buff base
-  if (strcasecmp(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[5])) {
 
@@ -5812,7 +6526,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   //-----------------------Sancho:The Second Kindred of Don Quixote ---------------------
   
   // Sancho:The Second Kindred of Don Quixote - Hardblood gains 1
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] ||
        chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3] ||
        chosenSkill == &c->skills[4] || chosenSkill == &c->skills[6] || 
@@ -5829,7 +6543,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
       sleep(1);
 
-    } else if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && (chosenSkill == &c->skills[5]) && c->HP > 1) {
+    } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && (chosenSkill == &c->skills[5]) && c->HP > 1) {
 
     int Hardblood = 2;
 
@@ -5848,7 +6562,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Hardblood gains 2 at start combat
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
 
     int Hardblood = 1;
 
@@ -5861,7 +6575,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Sancho:The Second Kindred of Don Quixote - Hardblood gains 5 with skill 9
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (chosenSkill == &c->skills[9])) {
 
     int Hardblood = 5;
@@ -5876,7 +6590,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Hardblood Buff
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 10 && c->Passive < 20) {
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 10 && c->Passive < 20) {
 
     int boost = (int)(c->Passive / 6);
 
@@ -5886,7 +6600,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     printf("\n%s has 10+ Hardblood, gains +1 Offense and Defense(%d) for every 6 stacks(%d)\n", c->name, boost, c->Passive);
 
     sleep(1);
-  } else if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 20) {
+  } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 20) {
 
     int boost = 2 * (int)(c->Passive / 6);
     
@@ -5899,7 +6613,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 4/5 Buff Coin
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
                  0 &&
              (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[4])) {
 
@@ -5933,7 +6647,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 8 Buff Coin
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
                  0 &&
              (chosenSkill == &c->skills[7])) {
 
@@ -5957,7 +6671,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 9 Buff Base
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
                  0 &&
              (chosenSkill == &c->skills[7])) {
 
@@ -5981,7 +6695,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - skill 11
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[10] && c->HP > 1) {
 
@@ -6006,7 +6720,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - skill 12
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
     chosenSkill == &c->skills[11] && c->HP > 1) {
 
   int boost = 0;
@@ -6030,7 +6744,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Ultimate skill 13
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[12] && c->HP > 1) {
 
@@ -6040,7 +6754,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     printf("\n%s consumes 5 Hardblood(%d) to gain Clash Power +5\n",
            c->name, c->Passive);
-    } else if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+    } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[12] && c->HP > 1) {
       
@@ -6056,7 +6770,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     sleep(1);
   }
   // Sancho:The Second Kindred of Don Quixote - Ultimate
-  if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[13]) {
 
@@ -6083,7 +6797,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
     // Sancho:The Second Kindred of Don Quixote - consumes Hardblood with s5
-    if (strcasecmp(c->name, "Sancho:The Second Kindred of Don Quixote") ==  0 &&
+    if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==  0 &&
         (chosenSkill == &c->skills[5]) && c->Passive >= 4) {
 
       c->Passive -= 4;
@@ -6101,7 +6815,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - Clash power
-  if (strcasecmp(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+  if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
           0 && (chosenSkill != &c->skills[2])) {
 
     if (c->Passive >= 10) {
@@ -6127,7 +6841,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
     
   }  // Lobotomy E.G.O::Solemn Lament Yi Sang - Clash power
-  else if (strcasecmp(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+  else if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (chosenSkill == &c->skills[2])) {
 
     if (c->Passive >= 5) {
@@ -6157,7 +6871,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ------------------------ Dawn Office Fixer Sinclair ----------------------------
   
   // Dawn Office Fixer Sinclair - Skill Buff S2
-  if (strcasecmp(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20 && (chosenSkill == &c->skills[1])) {
+  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20 && (chosenSkill == &c->skills[1])) {
 
     c->ClashPower += 1;
 
@@ -6169,7 +6883,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff base form S1
-  if (strcasecmp(c->name, "Dawn Office Fixer Sinclair") == 0 && c->Sanity >= 10 && (chosenSkill == &c->skills[0])) {
+  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->Sanity >= 10 && (chosenSkill == &c->skills[0])) {
 
     int boost = c->Sanity/10;
     if (boost > 2) boost = 2;
@@ -6184,7 +6898,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff base form S3
-  if (strcasecmp(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 10 && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
+  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 10 && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
 
     int boost = c->Sanity/10;
     if (boost > 2) boost = 2;
@@ -6199,7 +6913,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S2
-  if (strcasecmp(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[1])) {
+  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[1])) {
 
     updateSanity(c, -(5));
     
@@ -6213,7 +6927,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S4
-  if (strcasecmp(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
+  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
 
     if (c->Sanity >= 20) {
     int boost = 2*(c->Sanity/20);
@@ -6230,7 +6944,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
     
   // Dawn Office Fixer Sinclair - Skill Buff base form
- if (strcasecmp(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20) {
+ if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20) {
 
       c->ClashPower += c->Sanity/20;
 
@@ -6242,7 +6956,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Dawn Office Fixer Sinclair - Skill Buff Ego form
- if (strcasecmp(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && c->Sanity >= 20) {
+ if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && c->Sanity >= 20) {
 
       c->CoinPowerBoost += c->Sanity/20;
 
@@ -6258,7 +6972,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------------- Heishou Pack - You Branch Adept Heathcliff -----------------------
   
   // Heishou Pack - You Branch Adept Heathcliff - Bloody Storm of Blades
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8) {
 
     int gain = ((c->MAX_HP - c->HP)/c->MAX_HP) / 0.2;
     if (gain > 3) gain = 3;
@@ -6272,7 +6986,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 4
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->Passive >= 20 && chosenSkill == &c->skills[2]) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->Passive >= 20 && chosenSkill == &c->skills[2]) {
 
     chosenSkill = &c->skills[3];
 
@@ -6282,7 +6996,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 1 and 2 Clash power
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->skills[0].active >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->skills[0].active >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
     int clashpower = c->skills[0].active/10;
      if (clashpower > 2) clashpower = 2;
@@ -6295,7 +7009,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 1 and 2 coin power
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
      c->CoinPowerBoost += 1;
 
@@ -6305,7 +7019,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 coin power
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
     int Buff = (c->skills[0].active + c->skills[1].active)/6;
      if (Buff > 2) Buff = 2;
@@ -6318,7 +7032,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 Clash power
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
     int clashpower = (c->MAX_HP - c->HP)/c->MAX_HP / 0.2;
      if (clashpower > 3) clashpower = 3;
@@ -6331,7 +7045,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 deal more damage on burn
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && c->skills[0].active > 0) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && c->skills[0].active > 0) {
 
     float damageboost = c->skills[0].active * 1.5f;
     if (damageboost > 30.0f) damageboost = 30.0f;
@@ -6343,7 +7057,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on burn
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3]) && c->skills[0].active > 0) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3]) && c->skills[0].active > 0) {
 
     int damageboost = c->skills[0].active * 3;
     if (damageboost > 30) damageboost = 30;
@@ -6355,7 +7069,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on HP
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3])) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3])) {
 
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
     float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
@@ -6371,7 +7085,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 coins
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && (c->skills[2].active > 0 || c->HP < c->MAX_HP*0.5)) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && (c->skills[2].active > 0 || c->HP < c->MAX_HP*0.5)) {
 
     c->skills[2].Unbreakable = c->skills[2].Coins;
 
@@ -6382,7 +7096,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 Gain 3 Bloodflame [血炎] 
-  if (strcasecmp(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
     c->skills[2].active += 3;
     if (c->skills[2].active > 3) c->skills[2].active = 3;
@@ -6393,6 +7107,84 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // ---------------------------------------------------------
+
+
+  
+// ------------------- King in Binds -------------------
+
+  // King in Binds - Skill 1 Coin buff
+  if (isId(c->name, "King in Binds") == 0 && c->skills[1].active >= 6 && (chosenSkill == &c->skills[0])) {
+
+    c->CoinPowerBoost += 1;
+
+      printf("\nIf target has 6+ Sinking Stack, Coin Power +1\n");
+
+    sleep(1);
+  }
+
+  // King in Binds - Skill 2 or 4 Coin buff
+  if (isId(c->name, "King in Binds") == 0 && c->skills[1].active >= 6 && (chosenSkill == &c->skills[1] || chosenSkill == &c->skills[3])) {
+
+    int gain = c->skills[1].active/6;
+    if (gain > 2) gain = 2;
+
+    c->CoinPowerBoost += gain;
+
+      printf("\n%s gains +1 Coin Power (%d - Max 2) for every 6 Sinking Stack on target (%d)\n", c->name, gain, c->skills[1].active);
+
+    sleep(1);
+  }
+
+  // King in Binds - Skill 3 Clash Power buff
+  if (isId(c->name, "King in Binds") == 0 && c->skills[3].active >= 1 && (chosenSkill == &c->skills[2])) {
+
+    c->ClashPower += 1;
+
+    printf("\nIf target has 1+ Tremor Stack, Clash Power +1\n");
+
+    sleep(1);
+  }
+
+  // King in Binds - Skill 5 Clash Power buff
+  if (isId(c->name, "King in Binds") == 0 && c->skills[3].active >= 3 && (chosenSkill == &c->skills[4])) {
+
+    int gain = c->skills[1].active/3;
+    if (gain > 3) gain = 3;
+
+    c->ClashPower += gain;
+
+    printf("\n%s gains +1 Clash Power (%d - Max 3) for every 3 Tremor Stack on target (%d)\n", c->name, gain, c->skills[3].active);
+
+    sleep(1);
+  }
+
+  // King in Binds - Skill 6 buff
+  if (isId(c->name, "King in Binds") == 0 && (chosenSkill == &c->skills[5])) {
+
+    c->DefenseBoostNextTurn -= 5;
+
+    c->AttackPowerBoostNextTurn += 2;
+
+    if (c->skills[6].active == 0) {
+    c->skills[6].active++;
+    }
+
+    printf("\n%s gains 5 Defense Down, 2 Attack Power Up, Moment of Audience (On Hit with skill: Trigger 'Tremor Burst', target gain +2 Tremor Stack, +1 Tremor Count and take 10%% more damage next turn; then this effect expire) next turn\n", c->name);
+
+    sleep(1);
+
+    if (c->Passive > 0) {
+
+    c2->Shield += 50.0f;
+
+    printf("\nTarget with 'Bandages of the King in Binds', gains 50 Shield HP (%.2f)\n", c2->Shield);
+
+    }
+  }
+
+  // ---------------------------------------------------------
+
+  
   
   applySanityDebuff(tempOffense, tempDefense, c);
 
@@ -6407,41 +7199,962 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
 
 
-//-----------------------Clashing phase-------------------------------
-ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
-                       int playerTempDefense, Character *p2, SkillStats *s2,
-                       int enemyTempOffense, int enemyTempDefense,
-                       Character *fullPlayer, int PContinueUnbreakCoin, int EContinueUnbreakCoin) {
-  
-  printf("\n--- Clash Phase ---");
 
+
+
+
+
+
+
+
+void applyClashStartPassives(Character *p1, SkillStats *s1, Character *p2, SkillStats *s2) {
   // --------------------- Clash Phase ----------------------
 
   // Heishou Pack - You Branch Adept Heathcliff passive gain on clash
-  if (strcasecmp(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
-    
+  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+
     p1->Passive += 3;
     if (p1->Passive > 20) p1->Passive = 20;
-    
-    printf("\n\n%s gains 3 Battleblood Instinct (%d)\n", p1->name, p1->Passive);
+
+    printf("\n%s gains 3 Battleblood Instinct (%d)\n", p1->name, p1->Passive);
 
     sleep(1);
   }
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 1 and 2 gain on clash
-  if (strcasecmp(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1])) {
+  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1])) {
 
     p1->skills[0].active++;
     if (p1->skills[0].active > 99) p1->skills[0].active = 99;
     p1->skills[1].active++;
     if (p1->skills[1].active > 99) p1->skills[1].active = 99;
-    
+
     printf("\n%s applies +1 Burn Stack(%d) and +1 Burn Count(%d) on self\n", p1->name, p1->skills[0].active, p1->skills[1].active);
 
     sleep(1);
   }
 
   // --------------------------------------------------------
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// p1 = winner p2 = loser
+ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffense,
+   int playerTempDefense, int WinnerCoin, Character *p2, SkillStats *s2,
+   int enemyTempOffense, int enemyTempDefense, int LoserCoin,
+   Character *fullPlayer, int PContinueUnbreakCoin, int EContinueUnbreakCoin) {
+
+
+  int playerUnbreakableLost = 0;
+  int enemyUnbreakableLost = 0;
+
+  // ContinueUnbreakCoin
+  if (PContinueUnbreakCoin > 0) {
+    playerUnbreakableLost = PContinueUnbreakCoin;
+  }
+  if (EContinueUnbreakCoin > 0) {
+      enemyUnbreakableLost = EContinueUnbreakCoin;
+  }
+
+  // ตรวจสอบว่าฝั่งไหน Coins หมด (คือผู้แพ้ที่ต้องการจะ Counter)
+  Character *counterUnit = p2; 
+  Character *AttackUnit  = p1; 
+
+   // เช็คว่าคนที่แพ้คือฝั่ง Player หรือไม่
+   int isCounterUnitPlayerSide = (counterUnit == fullPlayer); 
+
+  // ------------------------- Counter -----------------------------------------
+  // Don Quixote:The Manager of La Manchaland - Counterattack
+  if (isId(counterUnit->name, "Don Quixote:The Manager of La Manchaland") ==
+          0 &&
+      counterUnit->Passive >= 5 &&
+      (s2 != &counterUnit->skills[6] && s2 != &counterUnit->skills[7])) {
+
+       clearTurnSkillBuffs(counterUnit);
+
+    // Get Don Quixote's Skill 6 and recalculate its effective values
+    SkillStats *chosenSkill = getEffectiveSkill(
+        counterUnit, AttackUnit, &counterUnit->skills[6], &playerTempOffense, &playerTempDefense);
+
+    counterUnit->Passive -= 5;
+    if (counterUnit->Passive < 1) counterUnit->Passive = 1;
+    printf("\n%s consumes 5 Hardblood(%d left) to continue clashing with %s (Once per Turn)\n",
+        counterUnit->name, counterUnit->Passive, chosenSkill->name);
+
+    sleep(1);
+
+    counterUnit->HP -= (int)(counterUnit->MAX_HP * 0.03);
+    if (counterUnit->HP < 1) counterUnit->HP = 1;
+
+    int Hardblood = rand() % 3 + 1;
+
+    counterUnit->Passive += Hardblood;
+    if (counterUnit->Passive > 30) counterUnit->Passive = 30;
+
+    printf("\n%s consumes 3%% of Max HP(%d) to gain %d Hardblood (%d) (this damage does not lower the unit's HP below 1)\n", counterUnit->name, (int)(counterUnit->MAX_HP * 0.03), Hardblood,
+           counterUnit->Passive);
+
+    sleep(1);
+
+    if (isId(counterUnit->name, "Don Quixote:The Manager of La Manchaland") ==
+            0 &&
+        counterUnit->Passive >= 10) {
+
+      clearTurnSkillBuffs(counterUnit);
+
+      printf("\n%s has 10+ Hardblood(%d), The Princess of La Manchaland "
+         "Rodion: Empower Defense Skill\n",
+         counterUnit->name, counterUnit->Passive);
+
+      counterUnit->Passive -= (counterUnit->Passive) / 2;
+
+      sleep(1);
+
+      printf(
+      "\n%s consumes half of Hardblood(%d left) on self to use %s\n",
+      counterUnit->name, counterUnit->Passive, counterUnit->skills[7].name);
+
+      int cOff = 0, cDef = 0;
+      chosenSkill = getEffectiveSkill(counterUnit, AttackUnit, &counterUnit->skills[7], &cOff, &cDef);
+
+      int savedEnemyCoins = s1->Coins;
+      s1->Coins = WinnerCoin;
+
+      if (isCounterUnitPlayerSide) {
+          // --- [กรณีที่ 1] เรา (Player) เป็นคนสวนกลับ ---
+          // counterUnit (เรา) อยู่ซ้าย ใช้ chosenSkill (ท่าสวน)
+          // AttackUnit (บอส) อยู่ขวา ใช้ s1 (ท่าเดิมที่เขาชนะเรามา)
+          ClashResult newClash = clashPhase(counterUnit, chosenSkill, cOff, cDef, 
+                                           AttackUnit, s1, playerTempOffense, playerTempDefense, 
+                                           fullPlayer, PContinueUnbreakCoin, EContinueUnbreakCoin);
+          s1->Coins = savedEnemyCoins;
+
+        sleep(1); 
+        
+          return newClash;
+
+      } else {
+          // --- [กรณีที่ 2] บอส (Enemy) เป็นคนสวนกลับ ---
+          // AttackUnit (เรา) อยู่ซ้าย ใช้ s1 (ท่าเดิมที่เราชนะเขามา)
+          // counterUnit (บอส) อยู่ขวา ใช้ chosenSkill (ท่าสวนของเขา)
+          ClashResult newClash = clashPhase(AttackUnit, s1, playerTempOffense, playerTempDefense, 
+                                           counterUnit, chosenSkill, cOff, cDef, 
+                                           fullPlayer, PContinueUnbreakCoin, EContinueUnbreakCoin);
+          s1->Coins = savedEnemyCoins;
+
+        sleep(1); 
+        
+          return newClash;
+      }
+
+    } else {
+      int cOff = 0, cDef = 0;
+      int savedEnemyCoins = s1->Coins;
+      s1->Coins = WinnerCoin;
+
+      if (isCounterUnitPlayerSide) {
+          // --- [กรณีที่ 1] เรา (Player) เป็นคนสวนกลับ ---
+          // counterUnit (เรา) อยู่ซ้าย ใช้ chosenSkill (ท่าสวน)
+          // AttackUnit (บอส) อยู่ขวา ใช้ s1 (ท่าเดิมที่เขาชนะเรามา)
+          ClashResult newClash = clashPhase(counterUnit, chosenSkill, cOff, cDef, 
+                                           AttackUnit, s1, playerTempOffense, playerTempDefense, 
+                                           fullPlayer, PContinueUnbreakCoin, EContinueUnbreakCoin);
+          s1->Coins = savedEnemyCoins;
+
+        sleep(1); 
+        
+          return newClash;
+
+      } else {
+          // --- [กรณีที่ 2] บอส (Enemy) เป็นคนสวนกลับ ---
+          // AttackUnit (เรา) อยู่ซ้าย ใช้ s1 (ท่าเดิมที่เราชนะเขามา)
+          // counterUnit (บอส) อยู่ขวา ใช้ chosenSkill (ท่าสวนของเขา)
+          ClashResult newClash = clashPhase(AttackUnit, s1, playerTempOffense, playerTempDefense, 
+                                           counterUnit, chosenSkill, cOff, cDef, 
+                                           fullPlayer, PContinueUnbreakCoin, EContinueUnbreakCoin);
+          s1->Coins = savedEnemyCoins;
+
+        sleep(1); 
+        
+          return newClash;
+      }
+      
+    }
+  }
+
+
+
+  // Counter Wild hunt
+    if (isId(counterUnit->name, "Heathcliff:Wild Hunt") == 0 && counterUnit->Passive >= 5 && counterUnit->Sanity >= 15 && counterUnit->skills[0].active > 0 && !counterUnit->skills[2].active) {
+
+       clearTurnSkillBuffs(counterUnit);
+
+      counterUnit->skills[2].active = 1;
+
+      printf("\n%s mounted 'Dullahan', at 5+ Coffin(%d) and 15+ Sanity(%d), use '%s' to continue the Clash (Once per Turn)\n",
+         counterUnit->name, counterUnit->Passive, counterUnit->Sanity, counterUnit->skills[3].name);
+
+      sleep(1);
+
+      SkillStats *chosenSkill = getEffectiveSkill(
+          counterUnit, AttackUnit, &counterUnit->skills[3], &playerTempOffense, &playerTempDefense);
+
+      int cOff = 0, cDef = 0;
+      int savedEnemyCoins = s1->Coins;
+      s1->Coins = WinnerCoin;
+
+      if (isCounterUnitPlayerSide) {
+          // --- [กรณีที่ 1] เรา (Player) เป็นคนสวนกลับ ---
+          // counterUnit (เรา) อยู่ซ้าย ใช้ chosenSkill (ท่าสวน)
+          // AttackUnit (บอส) อยู่ขวา ใช้ s1 (ท่าเดิมที่เขาชนะเรามา)
+          ClashResult newClash = clashPhase(counterUnit, chosenSkill, cOff, cDef, 
+                                           AttackUnit, s1, playerTempOffense, playerTempDefense, 
+                                           fullPlayer, PContinueUnbreakCoin, EContinueUnbreakCoin);
+          s1->Coins = savedEnemyCoins;
+
+        sleep(1); 
+        
+          return newClash;
+
+      } else {
+          // --- [กรณีที่ 2] บอส (Enemy) เป็นคนสวนกลับ ---
+          // AttackUnit (เรา) อยู่ซ้าย ใช้ s1 (ท่าเดิมที่เราชนะเขามา)
+          // counterUnit (บอส) อยู่ขวา ใช้ chosenSkill (ท่าสวนของเขา)
+          ClashResult newClash = clashPhase(AttackUnit, s1, playerTempOffense, playerTempDefense, 
+                                           counterUnit, chosenSkill, cOff, cDef, 
+                                           fullPlayer, PContinueUnbreakCoin, EContinueUnbreakCoin);
+          s1->Coins = savedEnemyCoins;
+
+        sleep(1); 
+
+        
+          return newClash;
+      }
+
+    }
+
+  // -------------------------------------------------------------
+
+// [สำคัญมาก] ถ้าไม่มี Counter ไหนทำงานเลย ให้ส่งค่า "ว่าง" กลับไป
+ClashResult empty = {0}; 
+empty.winner = 0; // ใช้ winner 0 เป็นตัวบอกว่าไม่มี Counter เกิดขึ้น
+return empty;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// p1 = winner p2 = loser
+void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillStats *s2, int playerCoins, int enemyCoins, int clashCount) {
+
+    // --- ClashEffect Identity ---
+
+   // ------------------------------ player win ----------------------------------
+
+  // Heishou Pack - You Branch Adept Heathcliff Skill 4 won
+  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 &&
+      s1 == &p1->skills[3] && enemyCoins <= 0) {
+
+    p1->skills[0].active += 10;
+    if (p1->skills[0].active > 99) p1->skills[0].active = 99;
+
+    printf("\n%s won the Clash, %s gains 10 Burn Stack (%d)\n", p1->name, p1->name, p1->skills[0].active);
+
+     sleep(1);
+  }
+
+  // ---------------------- Lobotomy E.G.O::Solemn Lament Yi Sang -------------------
+
+  // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 1 won
+  if (isId(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
+      s1 == &p1->skills[0] && enemyCoins <= 0) {
+
+    int value = 2;
+
+    if (p2->hasSanity == 1 && p2->sanityGainBase >= 0) { // Normal
+
+            updateSanity(p2, -(value));
+        if (p2->Sanity < -45) p2->Sanity = -45;
+
+      printf("\n%s won the Clash, %s loses %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
+
+      } else if (p2->hasSanity == 1 && p2->sanityGainBase < 0) { // Negative Sanity enemy
+
+          updateSanity(p2, value);
+        if (p2->Sanity > 45) p2->Sanity = 45;
+
+      printf("\n%s won the Clash, %s gains %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
+
+
+     sleep(1);
+  }
+
+  }
+
+  // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 2 won
+  if (isId(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
+      s1 == &p1->skills[1] && enemyCoins <= 0) {
+
+    int value = 1;
+
+      if (p2->hasSanity == 1 && p2->sanityGainBase >= 0) { // Normal
+
+              updateSanity(p2, -(value));
+          if (p2->Sanity < -45) p2->Sanity = -45;
+
+        printf("\n%s won the Clash, %s loses %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
+
+        } else if (p2->hasSanity == 1 && p2->sanityGainBase < 0) { // Negative Sanity enemy
+
+            updateSanity(p2, value);
+          if (p2->Sanity > 45) p2->Sanity = 45;
+
+        printf("\n%s won the Clash, %s gains %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
+
+
+       sleep(1);
+    }
+
+  }
+
+  // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 2 won
+  if (isId(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
+      s1 == &p1->skills[2] && enemyCoins <= 0) {
+
+    int value = 3;
+
+      if (p2->hasSanity == 1 && p2->sanityGainBase >= 0) { // Normal
+
+              updateSanity(p2, -(value));
+          if (p2->Sanity < -45) p2->Sanity = -45;
+
+        printf("\n%s won the Clash, %s loses %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
+
+        } else if (p2->hasSanity == 1 && p2->sanityGainBase < 0) { // Negative Sanity enemy
+
+            updateSanity(p2, value);
+          if (p2->Sanity > 45) p2->Sanity = 45;
+
+        printf("\n%s won the Clash, %s gains %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
+
+
+       sleep(1);
+    }
+
+  }
+
+  // Sukuna:King of Curse - skill 8 Clash lost
+  if (isId(p2->name, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && s2 == &p2->skills[8]) {
+
+    p2->Protection -= 30;
+    p2->DamageUp -= 80;
+
+    printf("\n%s lost the Clash, deals -80%% damage and takes +30%% damage\n",
+      p2->name);
+
+    sleep(1);
+  }
+
+
+  // -----------------------------------------------------------------
+
+  // Jia Qiu S15 lost
+  if (isId(p2->name, "Jia Qiu") == 0 && enemyCoins <= 0 && s2 == &p2->skills[15]) {
+    for (int i = 0; i < p2->numSkills; i++) {
+      p2->skills[i].Defense -= 24;
+    }
+    p2->DamageUp -= 50;
+    printf("\n%s lost the Clash, Deal -50%% damage and Defense -24 for this Encounter\n", p2->name);
+
+     sleep(1);
+  }
+
+  // Meursault:Blade Lineage Mentor Skill 3 won
+  if (isId(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
+      s1 == &p1->skills[2] && enemyCoins <= 0) {
+    p1->AttackPowerBoostNextTurn += 3;
+    printf("\n%s won the Clash, gains 3 Attack Power Up next turn\n", p1->name);
+
+     sleep(1);
+  }
+
+  // Meursault:Blade Lineage Mentor Skill 2 won
+  if (isId(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
+      s1 == &p1->skills[1] && enemyCoins <= 0) {
+    p1->FinalPowerBoostNextTurn += 1;
+    printf("\n%s won the Clash, gains 1 Final Power Up next turn\n", p1->name);
+
+     sleep(1);
+  }
+
+  // Heathcliff:Wild Hunt – skill 3 heal sanity
+  if (isId(p1->name, "Heathcliff:Wild Hunt") == 0 &&
+      s1 == &p1->skills[2] && enemyCoins <= 0) {
+    updateSanity(p1, 10);
+    if (p1->Sanity > 45) p1->Sanity = 45;
+    printf("\n%s won the Clash, heals 10 Sanity (%d)\n", p1->name, p1->Sanity);
+
+     sleep(1);
+  }
+
+  //------------------------- Roland ---------------------------
+
+  // gain Black Silence when lost
+  if (isId(p2->name, "Fixer grade 9?") == 0 && enemyCoins <= 0) {
+    p2->Passive += 1;
+    if (p2->Passive > 60) p2->Passive = 60;
+    printf("\n%s lost the Clash, gains 1 Black Silence(%d - Max 60)\n", p2->name, p2->Passive);
+
+     sleep(1);
+  }
+
+  // lose Black Silence
+  if (isId(p2->name, "Fixer grade 9?") == 0 &&
+      (s2 == &p2->skills[8] || s2 == &p2->skills[1] || s2 == &p2->skills[2]) && enemyCoins <= 0) {
+    p2->Passive -= 2;
+    if (p2->Passive < 0) p2->Passive = 0;
+    p2->Protection -= 20;
+    printf("\n%s lost the Clash, loses 2 Black Silence(%d) and take 20%% more damage\n", p2->name, p2->Passive);
+
+     sleep(1);
+  }
+
+  // lose Black Silence
+  if (isId(p2->name, "Fixer grade 9?") == 0 &&
+      (s2 == &p2->skills[4]) && enemyCoins <= 0 && p2->Passive >= 3) {
+    p2->Passive -= 3;
+    if (p2->Passive < 0) p2->Passive = 0;
+    p2->Protection += 50;
+    printf("\n%s lost the Clash, consumes 3 Black Silence(%d) and take 50%% less damage\n", p2->name, p2->Passive);
+
+     sleep(1);
+  }
+
+  //-------------------------------------------------------------
+
+  // ---------------------Sancho:The Second Kindred of Don Quixote ---------------------
+  // Sancho:The Second Kindred of Don Quixote - Block
+  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") ==
+          0 &&
+      p2->skills[12].active == 0 && p2->skills[13].active == 0 &&
+      p2->Passive >= 5 && enemyCoins <= 0) {
+
+    p2->Passive -= 5;
+    if (p2->Passive < 1) p2->Passive = 1;
+
+    p2->Shield += 25;
+    p2->Protection += 25;
+
+    printf("\n%s consumes 5 Hardblood(%d left) to take -25%% damage and "
+           "gain 25 Shield HP (%.2f)\n",
+           p2->name, p2->Passive, p2->Shield);
+
+     sleep(1);
+  }
+  // Sancho:The Second Kindred of Don Quixote - Skill 8 and 9 lost
+  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+      (s2 == &p2->skills[7] || s2 == &p2->skills[8]) && enemyCoins <= 0 && p2->Passive >= 4) {
+
+    p2->Passive -= 4;
+    if (p2->Passive < 1) p2->Passive = 1;
+    p2->Shield += 20;
+
+    printf("\n%s lost the Clash, consumes 4 Hardblood(%d) to gain 20 Shield HP(%.2f)\n", p2->name, p2->Passive, p2->Shield);
+
+     sleep(1);
+  }
+  // Sancho:The Second Kindred of Don Quixote - Skill 10 lost
+  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+      (s2 == &p2->skills[9]) && enemyCoins <= 0) {
+    p2->DamageUp -= 50;
+    p2->Protection -= 30;
+    printf("\n%s lost the Clash, deals -50%% damage and takes 30%% more damage\n", p2->name);
+
+     sleep(1);
+  }
+  // Sancho:The Second Kindred of Don Quixote - Skill 14 lost
+  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+      (s2 == &p2->skills[13]) && enemyCoins <= 0) {
+    p2->Passive -= 5;
+    if (p2->Passive < 1) p2->Passive = 1;
+    printf("\n%s lost the Clash, loses 5 Hardblood(%d)\n", p2->name, p2->Passive);
+
+     sleep(1);
+  }
+  //-----------------------------------------
+
+  // Sukuna:King of Curse – Skill 4 lost
+  if (isId(p2->name, "Sukuna:King of Curse") == 0 && s2 == &p2->skills[3] &&
+      enemyCoins <= 0) {
+
+    updateSanity(p2, -(10));
+    if (p2->Sanity < -45)
+      p2->Sanity = -45;
+
+    printf("\n%s loses 10 Sanity (%d)\n", p2->name, p2->Sanity);
+
+    sleep(1);
+  }
+
+
+  // --------------------- Lei heng ---------------------
+  // Lei heng – Skill 4 lost
+  if (isId(p2->name, "Lei heng") == 0 && s2 == &p2->skills[3] &&
+      enemyCoins <= 0) {
+
+    updateSanity(p2, -(10));
+    if (p2->Sanity < -45)
+      p2->Sanity = -45;
+
+    printf("\n%s loses 10 Sanity (%d)\n", p2->name, p2->Sanity);
+
+    sleep(1);
+  } // Lei heng – Skill 3 lost
+  else if (isId(p2->name, "Lei heng") == 0 && s2 == &p2->skills[2] &&
+      enemyCoins <= 0) {
+
+    p2->FinalPowerBoost -= 4;
+    p2->Paralyze += 1;
+
+    printf("\n%s lost the Clash, gains 4 Final Power down and 1 Paralyze (Fix the Power of 1 Coins to 0 for one turn)\n", p2->name);
+
+    sleep(1);
+  } // Lei heng – Skill 6 lost
+  else if (isId(p2->name, "Lei heng") == 0 && s2 == &p2->skills[5] &&
+      enemyCoins <= 0) {
+
+    p2->FinalPowerBoost -= 2;
+    p2->Paralyze += 6;
+
+    printf("\n%s lost the Clash, gains 2 Final Power down and 6 Paralyze (Fix the Power of 6 Coins to 0 for one turn)\n", p2->name);
+
+    sleep(1);
+
+  }
+  //-----------------------------------------
+
+  // Dawn Office Fixer Sinclair base form S3 won
+  if (isId(p1->name, "Dawn Office Fixer Sinclair") == 0 &&
+      (s1 == &p1->skills[3] || s1 == &p1->skills[2]) && enemyCoins <= 0) {
+
+    updateSanity(p1, 10);
+    if (p1->Sanity > 45) p1->Sanity = 45;
+
+    printf("\n%s won the Clash, heals 10 Sanity (%d)\n", p1->name, p1->Sanity);
+
+     sleep(1);
+  }
+
+
+  // Erlking Heathcliff – lost the Clash
+  if (isId(p2->name, "Erlking Heathcliff") == 0 && enemyCoins <= 0) {
+
+    updateSanity(p2, -(5));
+    if (p2->Sanity < -45) p2->Sanity = -45;
+    p2->FinalPowerBoostNextTurn -= 1;
+
+    printf("\n%s lost the Clash, loses 5 Sanity(%d) and gains 1 Final Power Down\n", p2->name, p2->Sanity);
+
+     sleep(1);
+  }
+
+
+
+  // Jia Qiu – answer me lost the Clash
+  if (isId(p2->name, "Jia Qiu") == 0 && s2 == &p2->skills[14] && enemyCoins <= 0) {
+
+    p2->skills[15].active += 1;
+
+    if (isId(p1->name, "Hong lu:The Lord of Hongyuan") == 0) {
+
+      printf("\n%s lost the Clash, inflicts 1 Uncompromising Imposition (%d)\n", p2->name, p2->skills[15].active);
+
+    } else {
+
+       printf("\n%s lost the Clash, inflicts 1 Dialogues (%d)\n", p2->name, p2->skills[15].active);
+
+    }
+    
+}
+
+
+// --------------------- King in Binds --------------------------------
+
+// King in Binds skill 2, 3, 4, 5 lose
+if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->skills[2] || s2 == &p2->skills[3] || s2 == &p2->skills[4]) && enemyCoins <= 0) {
+
+  int ReduceValue = 2;
+  if (s2 == &p2->skills[1]) ReduceValue = 1;
+  if (s2 == &p2->skills[4]) ReduceValue = 4;
+
+  p2->skills[2].active -= ReduceValue;
+  if (p2->skills[2].active <= 0) p2->skills[2].active = 0; p2->skills[1].active = 0;
+
+  printf("\n%s lost the Clash, reduce Sinking Count on target by %d (%d)\n", p2->name, ReduceValue, p2->skills[2].active);
+
+   sleep(1);
+
+  if (s2 == &p2->skills[3]) {
+
+    p1->Sanity -= 10;
+
+    printf("\n%s lost the Clash, %s loses 10 Sanity (%d)\n", p2->name, p1->name, p1->Sanity);
+
+     sleep(1);
+    
+  }
+}
+
+// ------------------------------------------------------------
+
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // ------------------------------ enemy win -----------------------------------------------------------------------------------------
+
+  //---------------Sancho:The Second Kindred of Don Quixote ---------------------
+
+  // Sancho:The Second Kindred of Don Quixote - Skill 7 won
+  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+    s1 == &p1->skills[6] && playerCoins <= 0 && p1->HP > 1) {
+
+    printf("\n%s won the Clash, consumes 4%% of Max HP(%d) to gain 1 Hardblood(%d) and deal 25%% more damage (this damage does not lower the unit's HP below 1)\n",
+      p1->name, (int)(p1->MAX_HP * 0.04), p1->Passive);
+
+        p1->HP -= (int)(p1->MAX_HP * 0.04);
+    if (p1->HP < 1) p1->HP = 1;
+
+      p1->DamageUp += 25;
+      p1->Passive += 1;
+
+    sleep(1);
+  }
+
+  // Sancho:The Second Kindred of Don Quixote - Skill 8 and 9 won
+  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+    (s1 == &p1->skills[7] || s1 == &p1->skills[8]) && playerCoins <= 0) {
+
+    printf("\n%s won the Clash, deals 20%% more damage and more 20%% damage for every 10 Hardblood(%d)\n",
+      p1->name, p1->Passive);
+
+      p1->DamageUp += 20 * ((p2->Passive / 10) + 1);
+
+    sleep(1);
+  }
+
+  // Sancho:The Second Kindred of Don Quixote - Skill 10 won
+  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+    (s1 == &p1->skills[9]) && playerCoins <= 0) {
+
+    int ShieldGain = (int)(p1->MAX_HP * 0.15);
+
+      p1->Shield += ShieldGain;
+
+    printf("\n%s won the Clash, gains %d Shield HP(%.2f)\n",
+      p1->name, ShieldGain, p1->Shield);
+
+    sleep(1);
+  }
+
+  // Sancho:The Second Kindred of Don Quixote - Skill 14 won
+  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+      (s1 == &p1->skills[13]) && playerCoins <= 0) {
+      p1->DamageUp += 10;
+    if (p1->Passive < 1) p1->Passive = 1;
+    printf("\n%s won the Clash, deal +10%% damage\n", p1->name);
+
+     sleep(1);
+  }
+
+
+
+
+  // Sukuna:King of Curse - Passive Clash win
+  if (isId(p1->name, "Sukuna:King of Curse") == 0 && playerCoins <= 0) {
+
+      p1->AttackPowerBoostNextTurn += 5;
+
+    printf("\n%s won the Clash, gains 5 Attack Power Up next turn\n",
+      p1->name);
+
+    sleep(1);
+  }
+
+  // Sukuna:King of Curse - skill 8 Clash win
+  if (isId(p1->name, "Sukuna:King of Curse") == 0 && playerCoins <= 0 && s1 == &p1->skills[8]) {
+
+    updateSanity(p1, 10);
+    if (p1->Sanity > 45) p1->Sanity = 45;
+
+    printf("\n%s won the Clash, heals 10 Sanity (%d)\n",
+      p1->name, p2->Sanity);
+
+    sleep(1);
+  }
+
+
+
+  //------------------------------------------------------------------
+
+  //-------------------------- Lei heng ------------------------------
+  // Lei heng – skill 3
+  if (isId(p1->name, "Lei heng") == 0 && (s1 == &p1->skills[2]) &&
+    playerCoins <= 0) {
+
+    printf(
+        "\n%s: Aw heck, don't tell me ny'all are tuckered out already!\n",
+        p2->name);
+
+    sleep(1);
+  }
+
+  // Lei heng – inner strength gain
+  if (isId(p1->name, "Lei heng") == 0 && p1->skills[0].active == 2 &&
+      playerCoins <= 0) {
+
+    p1->Passive += clashCount;
+    if (p1->Passive >= 25)
+      p1->Passive = 25;
+
+    printf("\n%s gains +%d Inner Strength [底力](%d - Max 25)\n", p1->name,
+           clashCount, p1->Passive);
+
+     sleep(1);
+
+  } else if (isId(p1->name, "Lei heng") == 0 &&
+    p1->skills[0].active == 3 && playerCoins <= 0) {
+
+    p1->Passive += clashCount * 2;
+    if (p1->Passive >= 50)
+      p1->Passive = 50;
+
+    printf("\n%s gains +%d Extreme Strength [極力](%d - Max 50)\n",
+           p1->name, clashCount * 2, p1->Passive);
+
+     sleep(1);
+  }
+  //-------------------------------------------------------------
+
+  //-------------------------- Erlking Heathcliff ------------------------------
+
+  // Erlking Heathcliff – won the Clash
+  if (isId(p1->name, "Erlking Heathcliff") == 0 && playerCoins <= 0) {
+
+    updateSanity(p1, 5);
+    if (p1->Sanity > 45) p1->Sanity = 45;
+
+    printf("\n%s won the Clash, heals 5 Sanity (%d)\n", p1->name, p1->Sanity);
+
+     sleep(1);
+  }
+
+  // Erlking Heathcliff – skill 5
+  if (isId(p1->name, "Erlking Heathcliff") == 0 && (s1 == &p1->skills[4]) &&
+    playerCoins <= 0) {
+
+    p1->DamageUpNextTurn += 10;
+    p1->AttackPowerBoostNextTurn += 1;
+
+    printf(
+        "\n%s won the Clash, gains 1 Attack Power Up and deal 10%% more damage next turn\n",
+        p1->name);
+
+    sleep(1);
+  }
+
+  // Erlking Heathcliff – Skill 6
+  if (isId(p1->name, "Erlking Heathcliff") == 0 && s1 == &p1->skills[5] &&
+      playerCoins <= 0) {
+
+    updateSanity(p1, -(5));
+
+    printf(
+        "\n%s loses 5 Sanity from %s's Skill (%d)\n",
+        p2->name, p1->name, p2->Sanity);
+
+    sleep(1);
+  }
+
+  //-------------------------------------------------------------
+
+
+
+
+
+
+  //------------------------- Roland ---------------------------
+
+  // gain Black Silence when won
+  if (isId(p1->name, "Fixer grade 9?") == 0 && playerCoins <= 0) {
+    p1->Passive += 5;
+    if (p1->Passive > 60) p1->Passive = 60;
+    printf("\n%s won the Clash, gains 5 Black Silence(%d - Max 60)\n", p1->name, p1->Passive);
+
+     sleep(1);
+  }
+
+  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 3 && playerCoins <= 0 && s1 == &p1->skills[1]) {
+    p1->Passive -= 3;
+    p1->DamageUp += 50;
+    if (p1->Passive < 0) p1->Passive = 0;
+    printf("\n%s won the Clash, consumes 3 Black Silence(%d) to deal 50%% more damage\n", p1->name, p1->Passive);
+
+     sleep(1);
+  }
+
+  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 5 && playerCoins <= 0 && s1 == &p1->skills[3]) {
+    p1->Passive -= 5;
+    if (p1->Passive < 0) p1->Passive = 0;
+    p2->ParalyzeNextTurn += 2;
+    printf("\n%s won the Clash, consumes 5 Black Silence(%d) to inflicts 2 Paralyze next turn (Fix the Power of 2 Coins to 0 for one turn)\n", p1->name, p1->Passive);
+
+     sleep(1);
+  }
+
+  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 2 && playerCoins <= 0 && s1 == &p1->skills[5]) {
+    p1->Passive -= 2;
+    if (p1->Passive < 0) p1->Passive = 0;
+    p2->Protection -= 20;
+    printf("\n%s won the Clash, consumes 2 Black Silence(%d), %s take 20%% more damage next turn\n", p1->name, p1->Passive, p2->name);
+
+     sleep(1);
+  }
+
+  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 2 && playerCoins <= 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[4])) {
+    p1->Passive -= 2;
+    if (p1->Passive < 0) p1->Passive = 0;
+    p1->DamageUpNextTurn += 15;
+    printf("\n%s won the Clash, consumes 2 Black Silence(%d) to deal 15%% more damage next turn\n", p1->name, p1->Passive);
+
+     sleep(1);
+  }
+
+  if (isId(p1->name, "Fixer grade 9?") == 0 && playerCoins <= 0 && (s1 == &p1->skills[8])) {
+    p1->Passive += 5;
+    if (p1->Passive > 60) p1->Passive = 60;
+    p1->ClashPowerNextTurn += 1;
+    printf("\n%s won the Clash, gains 5 Black Silence(%d - Max 60) and Clash Power +1 next turn\n", p1->name, p1->Passive);
+
+     sleep(1);
+  }
+
+  //------------------------------------------------------------
+
+  // Dawn Office Fixer Sinclair base form S3 lost
+  if (isId(p2->name, "Dawn Office Fixer Sinclair") == 0 && !p2->skills[3].active &&
+     (s2 == &p2->skills[3] || s2 == &p2->skills[2]) && playerCoins <= 0) {
+
+    updateSanity(p2, -(10));
+    if (p2->Sanity < -45) p2->Sanity = -45;
+
+    printf("\n%s lost the Clash, loses 10 Sanity (%d)\n", p2->name, p2->Sanity);
+
+     sleep(1);
+  }
+
+  // Dawn Office Fixer Sinclair EGO form S3 lost
+  if (isId(p2->name, "Dawn Office Fixer Sinclair") == 0 && p2->skills[3].active &&
+      (s2 == &p2->skills[3] || s2 == &p2->skills[2]) && playerCoins <= 0) {
+
+    updateSanity(p2, -(30));
+    if (p2->Sanity < -45) p2->Sanity = -45;
+
+    printf("\n%s lost the Clash, loses 30 Sanity (%d)\n", p2->name, p2->Sanity);
+
+     sleep(1);
+  }
+
+
+
+
+// --------------------- King in Binds --------------------------------
+
+// King in Binds skill 1, 2, 3, 5 win
+if (isId(p1->name, "King in Binds") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1] || s1 == &p1->skills[2] || s1 == &p1->skills[4]) && playerCoins <= 0) {
+
+  int InfilctValue = 3;
+  if (s1 == &p1->skills[2]) InfilctValue = 4;
+  if (s1 == &p1->skills[4]) InfilctValue = 2;
+
+  p1->skills[2].active += InfilctValue;
+  if (p1->skills[2].active > 99) p1->skills[2].active = 99;
+
+  printf("\n%s won the Clash, infilct +%d Sinking Count (%d)\n", p1->name, InfilctValue, p1->skills[2].active);
+
+   sleep(1);
+}
+
+// ------------------------------------------------------------
+
+
+}
+
+
+
+
+
+
+
+  
+
+
+
+
+//-----------------------Clashing phase-------------------------------
+ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
+                       int playerTempDefense, Character *p2, SkillStats *s2,
+                       int enemyTempOffense, int enemyTempDefense,
+                       Character *fullPlayer, int PContinueUnbreakCoin, int EContinueUnbreakCoin) {
+  
+  printf("\n--- Clash Phase ---\n");
+
+  // --------------------- Clash Phase ----------------------
+
+  applyClashStartPassives(p1, s1, p2, s2); // รันให้ฝั่งซ้าย
+  applyClashStartPassives(p2, s2, p1, s1); // รันให้ฝั่งขวา
 
   if (s1->Unbreakable > 0) {
     printf("\nPlayer: '%s' | BasePower %d | CoinPower %d | Coins %d | Offense %d | "
@@ -6487,7 +8200,34 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       enemyUnbreakableLost = EContinueUnbreakCoin;
   }
 
+
+
+  // --- Counter Yield My Flesh ---
+  // เช็คว่า "ผู้แพ้" คือ Meursault และใช้ Skill 3 หรือไม่
+  Character *Winner = NULL;
+  SkillStats *WinnerSkill = NULL;
+  Character *Loser = NULL;
+  SkillStats *LoserSkill = NULL;
+
+  
+  
+
   while (playerCoins > 0 && enemyCoins > 0) {
+
+    // ----------------- On Clashing buff --------------------
+
+    if (isId(p2->name, "King in Binds") == 0) {
+        int Clashpowerbuff = (clashCount + 1)/2;
+
+      if (Clashpowerbuff > 0) {
+
+          printf("\n%s gains +%d Clash Power\n", p2->name, Clashpowerbuff);
+
+      }
+
+    }
+      
+    // --------------------------------------------------
 
     printf("\nRound %d:\nPlayer:\t\tEnemy:\n", round);
 
@@ -6505,63 +8245,47 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     printf("%-10d %-10d\n", playerTotal, enemyTotal);
     usleep((int)(roundDelay * 500000));
 
-          int AmmoLeft = p1->Passive; // Calculate remaining ammo for Meursault:The Thumb's tigermark
-
-    // In coin toss section:
+    // ----------------------- In coin toss section -----------------------
     for (int i = 0; i < maxToss; i++) {
-
-      // ------------------------------- Coins Buff Section ------------------------------------
-
-      // ------------------------------- Player ------------------------------------
-
       int PlayerCoinBuff = 0;
-
-      // Meursault: The Thumb – Buff spend tigermark
-      if (strcasecmp(p1->name, "Meursault:The Thumb") == 0 && !p1->skills[3].active && p1->Passive > 0 
-      && ((s1 == &p1->skills[0] && i == playerCoins - 1) 
-      || (s1 == &p1->skills[1] && (i == playerCoins - 2 || i == playerCoins - 1))
-      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))) {
-
-        if (AmmoLeft > 0) { // If there's still ammo left for this coin
-
-          AmmoLeft--; // Consume 1 ammo for this coin
-        PlayerCoinBuff += 1;
-
-        }
-
-      }
-
-      // Meursault: The Thumb – Buff spend Savage tigermark
-      if (strcasecmp(p1->name, "Meursault:The Thumb") == 0 && p1->skills[3].active && p1->Passive > 0
-      && ((s1 == &p1->skills[0] && i == playerCoins - 1) 
-      || (s1 == &p1->skills[1] && (i == playerCoins - 2 || i == playerCoins - 1))
-      || (s1 == &p1->skills[2] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1))
-      || (s1 == &p1->skills[3] && (i == playerCoins - 3 || i == playerCoins - 2 || i == playerCoins - 1)))) {
-
-        if (AmmoLeft > 0) { // If there's still ammo left for this coin
-
-          AmmoLeft--; // Consume 1 ammo for this coin
-        PlayerCoinBuff += 2;
-
-        }
-
-      }
-
-      if (PlayerCoinBuff > 0) {
-        printf("Player: this Coin Power +%d\n", PlayerCoinBuff);
-      }
-
-      // -------------------------------------------------------------------
-
-      // ------------------------------- Enemy ------------------------------------
-
       int EnemyCoinBuff = 0;
 
-      if (EnemyCoinBuff > 0) {
-        printf("Enemy: this Coin Power +%d\n", EnemyCoinBuff);
-      }
+      int *targetBuffVars[2] = {&PlayerCoinBuff, &EnemyCoinBuff};
+      Character *sideChars[2] = {p1, p2};
+      SkillStats *sideSkills[2] = {s1, s2};
+      int sideRemCoins[2] = {playerCoins, enemyCoins}; // จำนวนเหรียญที่เหลือใน Round นี้
 
-      // -------------------------------------------------------------------
+      for (int side = 0; side < 2; side++) {
+          Character *c = sideChars[side];
+          SkillStats *s = sideSkills[side];
+          int rem = sideRemCoins[side]; // จำนวนเหรียญที่เหลืออยู่ตอนนี้
+
+          if (i < rem && isId(c->name, "Meursault:The Thumb") == 0) {
+
+              // 1. ระบุจำนวนนัดที่สกิลนี้ "ต้องการ" (S1=1, S2=2, S3=3, S4=3)
+              int ammoNeeded = (s == &c->skills[0]) ? 1 : (s == &c->skills[1] ? 2 : 3);
+              if (s == &c->skills[3]) ammoNeeded = 3;
+
+              // 2. คำนวณจุดเริ่มใช้กระสุน โดยอิงจาก "เหรียญที่เหลืออยู่จริง (rem)"
+              // สูตร: เหรียญสุดท้ายตอนนี้ - (จำนวนที่ต้องการ - 1)
+              int startConsumingIdx = rem - ammoNeeded; 
+              if (startConsumingIdx < 0) startConsumingIdx = 0; // ถ้าเหรียญเหลือน้อยกว่าจำนวนที่ใช้ ให้เริ่มที่เหรียญแรก
+
+              // 3. ตรวจสอบว่าเหรียญปัจจุบัน (i) อยู่ในช่วงที่ใช้กระสุนไหม
+              if (i >= startConsumingIdx) {
+                  // ลำดับนัดที่ i (นับจากจุดเริ่มใช้กระสุน)
+                  int ammoOrder = i - startConsumingIdx; 
+
+                  // 4. Priority Logic: ถ้ากระสุน (Passive) มีพอสำหรับลำดับนี้ ให้บัฟ
+                  if (ammoOrder < c->Passive) {
+                      int pwr = c->skills[3].active ? 2 : 1;
+                      *(targetBuffVars[side]) = pwr; 
+                      printf("%s: this Coin Power +%d\n", c->name, pwr);
+                  }
+              }
+          }
+      }
+      // -----------------------------------------------------------------------
 
       // ------------------------------------------------------------------------------------------
 
@@ -6591,7 +8315,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       int bonus = 0;
 
       // Meursault:Blade Lineage Mentor's Passive
-      if (!(strcasecmp(p1->name, "Meursault:Blade Lineage Mentor") == 0 && (s1 == &p1->skills[2]))){
+      if (!(strcmp(s1->name, "Yield My Flesh") == 0)){
         
       // Check if this is player's last coin
       if (i == playerCoins - 1 &&
@@ -6613,24 +8337,32 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       } 
 
       }
-      
+
+      // Meursault:Blade Lineage Mentor's Passive
+      if (!(strcmp(s2->name, "Yield My Flesh") == 0)) {
+
+        // King in Binds Passive
+        int kingPassiveP2 = (isId(p2->name, "King in Binds") == 0) ? (clashCount / 2) : 0;
+        
       // Check if this is enemy's last coin
       if (i == enemyCoins - 1 &&
                (enemyTempOffense > playerTempOffense || p2->ClashPower != 0 ||
-                p2->FinalPowerBoost != 0)) {
+                p2->FinalPowerBoost != 0 || kingPassiveP2 > 0)) {
 
         // Calculate enemy's clash bonus
         int offenseBonus = ((enemyTempOffense - playerTempOffense) / 3);
         if (offenseBonus < 0)
           offenseBonus = 0; // Only positive bonuses
-
-        bonus = p2->ClashPower + p2->FinalPowerBoost + offenseBonus;
+        
+        bonus = p2->ClashPower + p2->FinalPowerBoost + offenseBonus + kingPassiveP2;
 
         if (bonus != 0) {
           enemyTotal += bonus;
           if (enemyTotal <= 0) enemyTotal = 0;
           printf("Enemy Clash Power bonus applied: %d\n", bonus);
         }
+      }
+
       }
 
       usleep((int)(roundDelay * 500000));
@@ -6657,14 +8389,28 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       sleep(1);
 
+      // -------------- Counter --------------
+
+      if (enemyCoins <= 0) {
+
+        ClashResult counterResult = ClashableCounter(p1, s1, playerTempOffense, playerTempDefense, playerCoins, 
+         p2, s2, enemyTempOffense, enemyTempDefense, enemyCoins, 
+         fullPlayer, playerUnbreakableLost, enemyUnbreakableLost);
+
+          // ถ้า winner ไม่เป็น 0 แสดงว่ามีการ Counter เกิดขึ้นจริงๆ
+          if (counterResult.winner != 0) {
+              return counterResult; // จบการ Clash ปัจจุบัน แล้วส่งผลจากการ Counter กลับไปเลย
+          }
+      }
+
+      // ---------------------------------------
+
       // Update Sanity based on clash count
       if (p1->hasSanity && enemyCoins <= 0) {
         int gain = calculateSanityGain(p1, clashCount);
         updateSanity(p1, gain);
 
-        if (ClashPity) {
-        ClashPity = 0; // Clash Pity turn off cause player finally won clash
-        }
+        if (ClashPity) ClashPity = 0;
         
         if (gain < 0) {
           printf("\n%s loses %d Sanity (Sanity %d Clash %d)", p1->name, -gain, p1->Sanity, clashCount);
@@ -6682,6 +8428,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
         } else {
           printf("\n%s gains %d Sanity (Sanity %d Clash %d)\n", p2->name, -loss, p2->Sanity, clashCount);
         }
+      } else {
+        printf("\n");
       }
 
 
@@ -6694,340 +8442,21 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       }
 
 
-
-
-
-
-      // Heishou Pack - You Branch Adept Heathcliff Skill 4 won
-      if (strcasecmp(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 &&
-          s1 == &p1->skills[3] && enemyCoins <= 0) {
-
-        p1->skills[0].active += 10;
-        if (p1->skills[0].active > 99) p1->skills[0].active = 99;
-        
-        printf("\n%s won the Clash, %s gains 10 Burn Stack (%d)\n", p1->name, p1->name, p1->skills[0].active);
-
-         sleep(1);
-      }
-
-      // ---------------------- Lobotomy E.G.O::Solemn Lament Yi Sang -------------------
-      
-      // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 1 won
-      if (strcasecmp(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
-          s1 == &p1->skills[0] && enemyCoins <= 0) {
-
-        int value = 2;
-
-        if (p2->hasSanity == 1 && p2->sanityGainBase >= 0) { // Normal
-
-                updateSanity(p2, -(value));
-            if (p2->Sanity < -45) p2->Sanity = -45;
-
-          printf("\n%s won the Clash, %s loses %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
-
-          } else if (p2->hasSanity == 1 && p2->sanityGainBase < 0) { // Negative Sanity enemy
-
-              updateSanity(p2, value);
-            if (p2->Sanity > 45) p2->Sanity = 45;
-          
-          printf("\n%s won the Clash, %s gains %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
-        
-
-         sleep(1);
-      }
-
-      }
-
-      // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 2 won
-      if (strcasecmp(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
-          s1 == &p1->skills[1] && enemyCoins <= 0) {
-        
-        int value = 1;
-
-          if (p2->hasSanity == 1 && p2->sanityGainBase >= 0) { // Normal
-
-                  updateSanity(p2, -(value));
-              if (p2->Sanity < -45) p2->Sanity = -45;
-
-            printf("\n%s won the Clash, %s loses %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
-
-            } else if (p2->hasSanity == 1 && p2->sanityGainBase < 0) { // Negative Sanity enemy
-
-                updateSanity(p2, value);
-              if (p2->Sanity > 45) p2->Sanity = 45;
-
-            printf("\n%s won the Clash, %s gains %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
-
-
-           sleep(1);
-        }
-        
-      }
-
-      // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 2 won
-      if (strcasecmp(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
-          s1 == &p1->skills[2] && enemyCoins <= 0) {
-        
-        int value = 3;
-
-          if (p2->hasSanity == 1 && p2->sanityGainBase >= 0) { // Normal
-
-                  updateSanity(p2, -(value));
-              if (p2->Sanity < -45) p2->Sanity = -45;
-
-            printf("\n%s won the Clash, %s loses %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
-
-            } else if (p2->hasSanity == 1 && p2->sanityGainBase < 0) { // Negative Sanity enemy
-
-                updateSanity(p2, value);
-              if (p2->Sanity > 45) p2->Sanity = 45;
-
-            printf("\n%s won the Clash, %s gains %d Sanity (%d)\n", p1->name, p2->name, value, p2->Sanity);
-
-
-           sleep(1);
-        }
-        
-      }
-
-      // Sukuna:King of Curse - skill 8 Clash lost
-      if (strcasecmp(p2->name, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && s2 == &p2->skills[8]) {
-
-        p2->Protection -= 30;
-        p2->DamageUp -= 80;
-
-        printf("\n%s lost the Clash, deals -80%% damage and takes +30%% damage\n",
-          p2->name);
-
-        sleep(1);
-      }
-
-
-      // -----------------------------------------------------------------
-
-      // Jia Qiu S15 lost
-      if (strcasecmp(p2->name, "Jia Qiu") == 0 && enemyCoins <= 0 && s2 == &p2->skills[15]) {
-        for (int i = 0; i < p2->numSkills; i++) {
-          p2->skills[i].Defense -= 24;
-        }
-        p2->DamageUp -= 50;
-        printf("\n%s lost the Clash, Deal -50%% damage and Defense -24 for this Encounter\n", p2->name);
-
-         sleep(1);
-      }
-      
-      // Meursault:Blade Lineage Mentor Skill 3 won
-      if (strcasecmp(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
-          s1 == &p1->skills[2] && enemyCoins <= 0) {
-        p1->AttackPowerBoostNextTurn += 3;
-        printf("\n%s won the Clash, gains 3 Attack Power Up next turn\n", p1->name);
-
-         sleep(1);
-      }
-      
-      // Meursault:Blade Lineage Mentor Skill 2 won
-      if (strcasecmp(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
-          s1 == &p1->skills[1] && enemyCoins <= 0) {
-        p1->FinalPowerBoostNextTurn += 1;
-        printf("\n%s won the Clash, gains 1 Final Power Up next turn\n", p1->name);
-
-         sleep(1);
-      }
-
-      // Heathcliff:Wild Hunt – skill 3 heal sanity
-      if (strcasecmp(p1->name, "Heathcliff:Wild Hunt") == 0 &&
-          s1 == &p1->skills[2] && enemyCoins <= 0) {
-        updateSanity(p1, 10);
-        if (p1->Sanity > 45) p1->Sanity = 45;
-        printf("\n%s won the Clash, heals 10 Sanity (%d)\n", p1->name, p1->Sanity);
-
-         sleep(1);
-      }
-
-      //------------------------- Roland ---------------------------
-
-      // gain Black Silence when lost
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 && enemyCoins <= 0) {
-        p2->Passive += 1;
-        if (p2->Passive > 60) p2->Passive = 60;
-        printf("\n%s lost the Clash, gains 1 Black Silence(%d - Max 60)\n", p2->name, p2->Passive);
-
-         sleep(1);
-      }
-      
-      // lose Black Silence
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 &&
-          (s2 == &p2->skills[8] || s2 == &p2->skills[1] || s2 == &p2->skills[2]) && enemyCoins <= 0) {
-        p2->Passive -= 2;
-        if (p2->Passive < 0) p2->Passive = 0;
-        p2->Protection -= 20;
-        printf("\n%s lost the Clash, loses 2 Black Silence(%d) and take 20%% more damage\n", p2->name, p2->Passive);
-
-         sleep(1);
-      }
-
-      // lose Black Silence
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 &&
-          (s2 == &p2->skills[4]) && enemyCoins <= 0 && p2->Passive >= 3) {
-        p2->Passive -= 3;
-        if (p2->Passive < 0) p2->Passive = 0;
-        p2->Protection += 50;
-        printf("\n%s lost the Clash, consumes 3 Black Silence(%d) and take 50%% less damage\n", p2->name, p2->Passive);
-
-         sleep(1);
-      }
-
-      //-------------------------------------------------------------
-
-      // ---------------------Sancho:The Second Kindred of Don Quixote ---------------------
-      // Sancho:The Second Kindred of Don Quixote - Block
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") ==
-              0 &&
-          p2->skills[12].active == 0 && p2->skills[13].active == 0 &&
-          p2->Passive >= 5 && enemyCoins <= 0) {
-
-        p2->Passive -= 5;
-        if (p2->Passive < 1) p2->Passive = 1;
-
-        p2->Shield += 25;
-        p2->Protection += 25;
-
-        printf("\n%s consumes 5 Hardblood(%d left) to take -25%% damage and "
-               "gain 25 Shield HP (%.2f)\n",
-               p2->name, p2->Passive, p2->Shield);
-
-         sleep(1);
-      }
-      // Sancho:The Second Kindred of Don Quixote - Skill 8 and 9 lost
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-          (s2 == &p2->skills[7] || s2 == &p2->skills[8]) && enemyCoins <= 0 && p2->Passive >= 4) {
-        
-        p2->Passive -= 4;
-        if (p2->Passive < 1) p2->Passive = 1;
-        p2->Shield += 20;
-        
-        printf("\n%s lost the Clash, consumes 4 Hardblood(%d) to gain 20 Shield HP(%.2f)\n", p2->name, p2->Passive, p2->Shield);
-
-         sleep(1);
-      }
-      // Sancho:The Second Kindred of Don Quixote - Skill 10 lost
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-          (s2 == &p2->skills[9]) && enemyCoins <= 0) {
-        p2->DamageUp -= 50;
-        p2->Protection -= 30;
-        printf("\n%s lost the Clash, deals -50%% damage and takes 30%% more damage\n", p2->name);
-
-         sleep(1);
-      }
-      // Sancho:The Second Kindred of Don Quixote - Skill 14 lost
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-          (s2 == &p2->skills[13]) && enemyCoins <= 0) {
-        p2->Passive -= 5;
-        if (p2->Passive < 1) p2->Passive = 1;
-        printf("\n%s lost the Clash, loses 5 Hardblood(%d)\n", p2->name, p2->Passive);
-
-         sleep(1);
-      }
-      //-----------------------------------------
-
-      // Sukuna:King of Curse – Skill 4 lost
-      if (strcasecmp(p2->name, "Sukuna:King of Curse") == 0 && s2 == &p2->skills[3] &&
-          enemyCoins <= 0) {
-
-        updateSanity(p2, -(10));
-        if (p2->Sanity < -45)
-          p2->Sanity = -45;
-
-        printf("\n%s loses 10 Sanity (%d)\n", p2->name, p2->Sanity);
-
-        sleep(1);
-      }
-      
-
-      // --------------------- Lei heng ---------------------
-      // Lei heng – Skill 4 lost
-      if (strcasecmp(p2->name, "Lei heng") == 0 && s2 == &p2->skills[3] &&
-          enemyCoins <= 0) {
-
-        updateSanity(p2, -(10));
-        if (p2->Sanity < -45)
-          p2->Sanity = -45;
-
-        printf("\n%s loses 10 Sanity (%d)\n", p2->name, p2->Sanity);
-
-        sleep(1);
-      } // Lei heng – Skill 3 lost
-      else if (strcasecmp(p2->name, "Lei heng") == 0 && s2 == &p2->skills[2] &&
-          enemyCoins <= 0) {
-
-        p2->FinalPowerBoost -= 4;
-        p2->Paralyze += 1;
-
-        printf("\n%s lost the Clash, gains 4 Final Power down and 1 Paralyze (Fix the Power of 1 Coins to 0 for one turn)\n", p2->name);
-
-        sleep(1);
-      } // Lei heng – Skill 6 lost
-      else if (strcasecmp(p2->name, "Lei heng") == 0 && s2 == &p2->skills[5] &&
-          enemyCoins <= 0) {
-
-        p2->FinalPowerBoost -= 2;
-        p2->Paralyze += 6;
-
-        printf("\n%s lost the Clash, gains 2 Final Power down and 6 Paralyze (Fix the Power of 6 Coins to 0 for one turn)\n", p2->name);
-
-        sleep(1);
-        
-      }
-      //-----------------------------------------
-
-      // Dawn Office Fixer Sinclair base form S3 won
-      if (strcasecmp(p1->name, "Dawn Office Fixer Sinclair") == 0 &&
-          (s1 == &p1->skills[3] || s1 == &p1->skills[2]) && enemyCoins <= 0) {
-
-        updateSanity(p1, 10);
-        if (p1->Sanity > 45) p1->Sanity = 45;
-
-        printf("\n%s won the Clash, heals 10 Sanity (%d)\n", p1->name, p1->Sanity);
-
-         sleep(1);
-      }
-
-      
-      // Erlking Heathcliff – lost the Clash
-      if (strcasecmp(p2->name, "Erlking Heathcliff") == 0 && enemyCoins <= 0) {
-
-        updateSanity(p2, -(5));
-        if (p2->Sanity < -45) p2->Sanity = -45;
-        p2->FinalPowerBoostNextTurn -= 1;
-
-        printf("\n%s lost the Clash, loses 5 Sanity(%d) and gains 1 Final Power Down\n", p2->name, p2->Sanity);
-        
-         sleep(1);
-      }
-
-
-
-      // Jia Qiu – answer me lost the Clash
-      if (strcasecmp(p2->name, "Jia Qiu") == 0 && s2 == &p2->skills[14] && enemyCoins <= 0) {
-
-        p2->skills[15].active += 1;
-
-        if (strcasecmp(p1->name, "Hong lu:The Lord of Hongyuan") == 0) {
-
-          printf("\n%s lost the Clash, inflicts 1 Uncompromising Imposition (%d)\n", p2->name, p2->skills[15].active);
-          
-        } else {
-
-           printf("\n%s lost the Clash, inflicts 1 Dialogues (%d)\n", p2->name, p2->skills[15].active);
-
-        }
-
-
-        sleep(1);
-      }
       
 
 
+      // เรียกใช้ฟังก์ชันเดียวจบ (ส่ง Player เป็นคนชนะ, Enemy เป็นคนแพ้)
+      applyClashRoundResult(p1, s1, p2, s2, playerCoins, enemyCoins, clashCount); // Coin need to stay same array, i am too lazy to fix it
+
+
+
+
+      
+
+      if (isId(p2->name, "Meursault:Blade Lineage Mentor") == 0 && s2 == &p2->skills[2] && enemyCoins <= 0) {
+        Loser = p2; LoserSkill = s2;
+      }
+      
 
       
     } else if (enemyTotal > playerTotal && playerCoins > 0) {
@@ -7039,136 +8468,22 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
 
 
+      // -------------- Counter --------------
 
-      
+      if (playerCoins <= 0) {
 
-      // ------------------------- Counter -----------------------------------------
-      // Don Quixote:The Manager of La Manchaland - Counterattack
-      if (strcasecmp(p1->name, "Don Quixote:The Manager of La Manchaland") ==
-              0 &&
-          p1->Passive >= 5 && playerCoins <= 0 &&
-          (s1 != &p1->skills[6] && s1 != &p1->skills[7])) {
+        ClashResult counterResult = ClashableCounter(p2, s2, enemyTempOffense, enemyTempDefense, enemyCoins, 
+          p1, s1, playerTempOffense, playerTempDefense, playerCoins, 
+         fullPlayer, enemyUnbreakableLost, playerUnbreakableLost);
 
-           clearTurnSkillBuffs(p1);
-
-        // Get Don Quixote's Skill 6 and recalculate its effective values
-        SkillStats *chosenSkill = getEffectiveSkill(
-            p1, p2, &p1->skills[6], &playerTempOffense, &playerTempDefense);
-
-        p1->Passive -= 5;
-        if (p1->Passive < 1) p1->Passive = 1;
-        printf("\n%s consumes 5 Hardblood(%d left) to continue clashing with %s (Once per Turn)\n",
-            p1->name, p1->Passive, chosenSkill->name);
-
-        sleep(1);
-
-        p1->HP -= (int)(p1->MAX_HP * 0.03);
-        if (p1->HP < 1) p1->HP = 1;
-
-        int Hardblood = rand() % 3 + 1;
-
-        p1->Passive += Hardblood;
-        if (p1->Passive > 30) p1->Passive = 30;
-
-        printf("\n%s consumes 3%% of Max HP(%d) to gain %d Hardblood (%d) (this damage does not lower the unit's HP below 1)\n", p1->name, (int)(p1->MAX_HP * 0.03), Hardblood,
-               p1->Passive);
-
-        sleep(1);
-
-        if (strcasecmp(p1->name, "Don Quixote:The Manager of La Manchaland") ==
-                0 &&
-            p1->Passive >= 10) {
-
-          clearTurnSkillBuffs(p1);
-
-          printf("\n%s has 10+ Hardblood(%d), The Princess of La Manchaland "
-             "Rodion: Empower Defense Skill\n",
-             p1->name, p1->Passive);
-
-          p1->Passive -= (p1->Passive) / 2;
-
-          sleep(1);
-
-          printf(
-          "\n%s consumes half of Hardblood(%d left) on self to use %s\n",
-          p1->name, p1->Passive, p1->skills[7].name);
-
-          SkillStats *chosenSkill = getEffectiveSkill(
-              p1, p2, &p1->skills[7], &playerTempOffense, &playerTempDefense);
-
-          int savedEnemyCoins = s2->Coins;
-          s2->Coins = enemyCoins;
-
-          // Immediately start a new clash using counter Skill
-          ClashResult newClash =
-              clashPhase(p1, chosenSkill, playerTempOffense, playerTempDefense,
-                         p2, s2, enemyTempOffense, enemyTempDefense, p1, playerUnbreakableLost ,enemyUnbreakableLost);
-
-          // Restore the enemy's coin count for later logic
-          s2->Coins = savedEnemyCoins;
-
-          sleep(1);
-
-          return newClash;
-
-        } else {
-          int savedEnemyCoins = s2->Coins;
-          s2->Coins = enemyCoins;
-
-          // Immediately start a new clash using counter Skill
-          ClashResult newClash =
-              clashPhase(p1, chosenSkill, playerTempOffense, playerTempDefense,
-                         p2, s2, enemyTempOffense, enemyTempDefense, p1, playerUnbreakableLost ,enemyUnbreakableLost);
-
-          // Restore the enemy's coin count for later logic
-          s2->Coins = savedEnemyCoins;
-
-          sleep(1);
-
-          return newClash;
-        }
+          // ถ้า winner ไม่เป็น 0 แสดงว่ามีการ Counter เกิดขึ้นจริงๆ
+          if (counterResult.winner != 0) {
+              return counterResult; // จบการ Clash ปัจจุบัน แล้วส่งผลจากการ Counter กลับไปเลย
+          }
       }
 
-
-
-      // Counter Wild hunt
-        if (strcasecmp(p1->name, "Heathcliff:Wild Hunt") == 0 && p1->Passive >= 5 && p1->Sanity >= 15 && p1->skills[0].active > 0 && !p1->skills[2].active && playerCoins <= 0) {
-
-           clearTurnSkillBuffs(p1);
-
-          p1->skills[2].active = 1;
-
-          printf("\n%s mounted 'Dullahan', at 5+ Coffin(%d) and 15+ Sanity(%d), use '%s' to continue the Clash (Once per Turn)\n",
-             p1->name, p1->Passive, p1->Sanity, p1->skills[3].name);
-
-          sleep(1);
-
-          SkillStats *chosenSkill = getEffectiveSkill(
-              p1, p2, &p1->skills[3], &playerTempOffense, &playerTempDefense);
-
-          int savedEnemyCoins = s2->Coins;
-          s2->Coins = enemyCoins;
-
-          // Immediately start a new clash using counter Skill
-          ClashResult newClash =
-              clashPhase(p1, chosenSkill, playerTempOffense, playerTempDefense,
-                         p2, s2, enemyTempOffense, enemyTempDefense, p1, playerUnbreakableLost ,enemyUnbreakableLost);
-
-          // Restore the enemy's coin count for later logic
-          s2->Coins = savedEnemyCoins;
-
-          sleep(1);
-
-          return newClash;
-
-        }
-
-      // -------------------------------------------------------------
-
-
-
-
-
+      // ---------------------------------------
+      
       
 
       // Update Sanity based on clash count
@@ -7198,6 +8513,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
         } else if (loss < 0) {
            printf("\n%s gains %d Sanity (Sanity %d Clash %d)\n", p1->name, -loss, p1->Sanity, clashCount);
         }
+      } else {
+        printf("\n");
       }
 
 
@@ -7206,268 +8523,26 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
         playerUnbreakableLost++;
       }
 
-      
-
-
-
-
-      //---------------Sancho:The Second Kindred of Don Quixote ---------------------
-     
-      // Sancho:The Second Kindred of Don Quixote - Skill 7 won
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-        s2 == &p2->skills[6] && playerCoins <= 0 && p2->HP > 1) {
-
-        printf("\n%s won the Clash, consumes 4%% of Max HP(%d) to gain 1 Hardblood(%d) and deal 25%% more damage (this damage does not lower the unit's HP below 1)\n",
-          p2->name, (int)(p2->MAX_HP * 0.04), p2->Passive);
-
-          p2->HP -= (int)(p2->MAX_HP * 0.04);
-        if (p2->HP < 1) p2->HP = 1;
-
-        p2->DamageUp += 25;
-        p2->Passive += 1;
-
-        sleep(1);
-      }
-      
-      // Sancho:The Second Kindred of Don Quixote - Skill 8 and 9 won
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-        (s2 == &p2->skills[7] || s2 == &p2->skills[8]) && playerCoins <= 0) {
-
-        printf("\n%s won the Clash, deals 20%% more damage and more 20%% damage for every 10 Hardblood(%d)\n",
-          p2->name, p2->Passive);
-
-        p2->DamageUp += 20 * ((p2->Passive / 10) + 1);
-
-        sleep(1);
-      }
-      
-      // Sancho:The Second Kindred of Don Quixote - Skill 10 won
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-        (s2 == &p2->skills[9]) && playerCoins <= 0) {
-
-        int ShieldGain = (int)(p2->MAX_HP * 0.15);
-
-        p2->Shield += ShieldGain;
-
-        printf("\n%s won the Clash, gains %d Shield HP(%.2f)\n",
-          p2->name, ShieldGain, p2->Shield);
-
-        sleep(1);
-      }
-
-      // Sancho:The Second Kindred of Don Quixote - Skill 14 won
-      if (strcasecmp(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-          (s2 == &p2->skills[13]) && playerCoins <= 0) {
-        p2->DamageUp += 10;
-        if (p2->Passive < 1) p2->Passive = 1;
-        printf("\n%s won the Clash, deal +10%% damage\n", p2->name);
-
-         sleep(1);
-      }
-
-
-      
-
-      // Sukuna:King of Curse - Passive Clash win
-      if (strcasecmp(p2->name, "Sukuna:King of Curse") == 0 && playerCoins <= 0) {
-
-        p2->AttackPowerBoostNextTurn += 5;
-
-        printf("\n%s won the Clash, gains 5 Attack Power Up next turn\n",
-          p2->name);
-
-        sleep(1);
-      }
-
-      // Sukuna:King of Curse - skill 8 Clash win
-      if (strcasecmp(p2->name, "Sukuna:King of Curse") == 0 && playerCoins <= 0 && s2 == &p2->skills[8]) {
-
-        updateSanity(p2, 10);
-        if (p2->Sanity > 45) p2->Sanity = 45;
-
-        printf("\n%s won the Clash, heals 10 Sanity (%d)\n",
-          p2->name, p2->Sanity);
-
-        sleep(1);
-      }
-
-      
-      
-      //------------------------------------------------------------------
-
-      //-------------------------- Lei heng ------------------------------
-      // Lei heng – skill 3
-      if (strcasecmp(p2->name, "Lei heng") == 0 && (s2 == &p2->skills[2]) &&
-        playerCoins <= 0) {
-
-        printf(
-            "\n%s: Aw heck, don't tell me ny'all are tuckered out already!\n",
-            p2->name);
-
-        sleep(1);
-      }
-
-      // Lei heng – inner strength gain
-      if (strcasecmp(p2->name, "Lei heng") == 0 && p2->skills[0].active == 2 &&
-          playerCoins <= 0) {
-
-        p2->Passive += clashCount;
-        if (p2->Passive >= 25)
-          p2->Passive = 25;
-
-        printf("\n%s gains +%d Inner Strength [底力](%d - Max 25)\n", p2->name,
-               clashCount, p2->Passive);
-
-         sleep(1);
-
-      } else if (strcasecmp(p2->name, "Lei heng") == 0 &&
-        p2->skills[0].active == 3 && playerCoins <= 0) {
-
-        p2->Passive += clashCount * 2;
-        if (p2->Passive >= 50)
-          p2->Passive = 50;
-
-        printf("\n%s gains +%d Extreme Strength [極力](%d - Max 50)\n",
-               p2->name, clashCount * 2, p2->Passive);
-
-         sleep(1);
-      }
-      //-------------------------------------------------------------
-
-      //-------------------------- Erlking Heathcliff ------------------------------
-      
-      // Erlking Heathcliff – won the Clash
-      if (strcasecmp(p2->name, "Erlking Heathcliff") == 0 && playerCoins <= 0) {
-
-        updateSanity(p2, 5);
-        if (p2->Sanity > 45) p2->Sanity = 45;
-
-        printf("\n%s won the Clash, heals 5 Sanity (%d)\n", p2->name, p2->Sanity);
-
-         sleep(1);
-      }
-      
-      // Erlking Heathcliff – skill 5
-      if (strcasecmp(p2->name, "Erlking Heathcliff") == 0 && (s2 == &p2->skills[4]) &&
-        playerCoins <= 0) {
-
-        p2->DamageUpNextTurn += 10;
-        p2->AttackPowerBoostNextTurn += 1;
-
-        printf(
-            "\n%s won the Clash, gains 1 Attack Power Up and deal 10%% more damage next turn\n",
-            p2->name);
-
-        sleep(1);
-      }
-
-      // Erlking Heathcliff – Skill 6
-      if (strcasecmp(p2->name, "Erlking Heathcliff") == 0 && s2 == &p2->skills[5] &&
-          playerCoins <= 0) {
-
-        updateSanity(p1, -(5));
-
-        printf(
-            "\n%s loses 5 Sanity from %s's Skill (%d)\n",
-            p1->name, p2->name, p1->Sanity);
-
-        sleep(1);
-      }
-
-      //-------------------------------------------------------------
 
 
 
       
 
+      // เรียกใช้ฟังก์ชันเดียวจบ (ส่ง Player เป็นคนแพ้, Enemy เป็นคนชนะ)
+      applyClashRoundResult(p2, s2, p1, s1, playerCoins, enemyCoins, clashCount); // Coin need to stay same array, i am too lazy to fix it
 
-      //------------------------- Roland ---------------------------
 
-      // gain Black Silence when won
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 && playerCoins <= 0) {
-        p2->Passive += 5;
-        if (p2->Passive > 60) p2->Passive = 60;
-        printf("\n%s won the Clash, gains 5 Black Silence(%d - Max 60)\n", p2->name, p2->Passive);
 
-         sleep(1);
+      
+
+      if (isId(p1->name, "Meursault:Blade Lineage Mentor") == 0 && s1 == &p1->skills[2] && playerCoins <= 0) {
+          Loser = p1; LoserSkill = s1;
       }
 
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 && p2->Passive >= 3 && playerCoins <= 0 && s2 == &p2->skills[1]) {
-        p2->Passive -= 3;
-        p2->DamageUp += 50;
-        if (p2->Passive < 0) p2->Passive = 0;
-        printf("\n%s won the Clash, consumes 3 Black Silence(%d) to deal 50%% more damage\n", p2->name, p2->Passive);
 
-         sleep(1);
-      }
 
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 && p2->Passive >= 5 && playerCoins <= 0 && s2 == &p2->skills[3]) {
-        p2->Passive -= 5;
-        if (p2->Passive < 0) p2->Passive = 0;
-        p1->ParalyzeNextTurn += 2;
-        printf("\n%s won the Clash, consumes 5 Black Silence(%d) to inflicts 2 Paralyze next turn (Fix the Power of 2 Coins to 0 for one turn)\n", p2->name, p2->Passive);
 
-         sleep(1);
-      }
-
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 && p2->Passive >= 2 && playerCoins <= 0 && s2 == &p2->skills[5]) {
-        p2->Passive -= 2;
-        if (p2->Passive < 0) p2->Passive = 0;
-        p1->Protection -= 20;
-        printf("\n%s won the Clash, consumes 2 Black Silence(%d), %s take 20%% more damage next turn\n", p2->name, p2->Passive, p1->name);
-
-         sleep(1);
-      }
-
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 && p2->Passive >= 2 && playerCoins <= 0 && (s2 == &p2->skills[0] || s2 == &p2->skills[4])) {
-        p2->Passive -= 2;
-        if (p2->Passive < 0) p2->Passive = 0;
-        p2->DamageUpNextTurn += 15;
-        printf("\n%s won the Clash, consumes 2 Black Silence(%d) to deal 15%% more damage next turn\n", p2->name, p2->Passive);
-
-         sleep(1);
-      }
-
-      if (strcasecmp(p2->name, "Fixer grade 9?") == 0 && playerCoins <= 0 && (s2 == &p2->skills[8])) {
-        p2->Passive += 5;
-        if (p2->Passive > 60) p2->Passive = 60;
-        p2->ClashPowerNextTurn += 1;
-        printf("\n%s won the Clash, gains 5 Black Silence(%d - Max 60) and Clash Power +1 next turn\n", p2->name, p2->Passive);
-
-         sleep(1);
-      }
-
-      //------------------------------------------------------------
-
-      // Dawn Office Fixer Sinclair base form S3 lost
-      if (strcasecmp(p1->name, "Dawn Office Fixer Sinclair") == 0 && !p1->skills[3].active &&
-         (s1 == &p1->skills[3] || s1 == &p1->skills[2]) && playerCoins <= 0) {
-
-        updateSanity(p1, -(10));
-        if (p1->Sanity < -45) p1->Sanity = -45;
-        
-        printf("\n%s lost the Clash, loses 10 Sanity (%d)\n", p1->name, p1->Sanity);
-
-         sleep(1);
-      }
-
-      // Dawn Office Fixer Sinclair EGO form S3 lost
-      if (strcasecmp(p1->name, "Dawn Office Fixer Sinclair") == 0 && p1->skills[3].active &&
-          (s1 == &p1->skills[3] || s1 == &p1->skills[2]) && playerCoins <= 0) {
-
-        updateSanity(p1, -(30));
-        if (p1->Sanity < -45) p1->Sanity = -45;
-
-        printf("\n%s lost the Clash, loses 30 Sanity (%d)\n", p1->name, p1->Sanity);
-
-         sleep(1);
-      }
-
-      // Counterattack flag for Skill 3
-      if (strcasecmp(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
-          s1 == &p1->skills[2] && playerCoins <= 0) {
-        playerLostWithSkill3 = 1;
-      }
+    
 
     } else {
       printf("Clash is a draw! Tossing agains...\n");
@@ -7547,61 +8622,65 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     result.winner = 99;
   }
 
-  // Counterattack mechanic
-  if (playerLostWithSkill3) {
+  // Yield my flesh mechanic
+    if (Loser != NULL) {
+      // กำหนดเป้าหมายที่จะโดนสวน (คนชนะ)
+      Character *Winner = (Loser == p1) ? p2 : p1;
+      SkillStats *WinnerSkill = (Loser == p1) ? s2 : s1;
+      int winOff = (Winner == p1) ? playerTempOffense : enemyTempOffense;
+      int winDef = (Winner == p1) ? playerTempDefense : enemyTempDefense;
+      int loseOff = (Loser == p1) ? playerTempOffense : enemyTempOffense;
+      int loseDef = (Loser == p1) ? playerTempDefense : enemyTempDefense;
+      int winCoins = (Winner == p1) ? playerCoins : enemyCoins;
+    
     usleep(500000);
-    attackPhase(p2, result.enemyskillUsed, result.enemyTempOffense,
-                result.enemyTempDefense, p1, result.playerskillUsed,
-                result.playerTempOffense, result.playerTempDefense,
-                (result.enemyCoins > result.enemyskillUsed->Unbreakable)
-                    ? result.enemyCoins
-                    : result.enemyskillUsed->Unbreakable,
-      result.enemyUnbreakableLost
-      , clashCount);
+       attackPhase(Winner, WinnerSkill, winOff, winDef, Loser, LoserSkill, loseOff, loseDef, winCoins, 0, clashCount);
     usleep(500000);
-    if (p1->HP > 0) {
+    if (Loser->HP > 0) {
 
-      clearTurnSkillBuffs(p1);
+      // ----------- Clear yield my flesh Remembrance for claim their bones ----------------
+        Loser->DamageUp = 0;
+        Loser->DmgMutiplierBoost = 0;
+        Loser->OffenseBoost = 0;
+        Loser->DefenseBoost = 0;
       
-      printf("\nCounterattack triggered\n");
-      usleep(500000);
-      printf("\nYield my flesh.....\n");
+      printf("\nYield My Flesh.....\n");
       
-      if ((strcasecmp(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
-         p1->HP <= p1->MAX_HP * 0.6)) {
+      if ((isId(Loser->name, "Meursault:Blade Lineage Mentor") == 0 &&
+         Loser->HP <= Loser->MAX_HP * 0.6)) {
 
 
-        printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0\n",p1->name);
+        printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0\n",Loser->name);
 
         int PowerBuff;
         int DamageBuff;
 
-        if (abs(p1->Sanity) >= 30) {
+        if (abs(Loser->Sanity) >= 30) {
 
-          PowerBuff = (3/p1->skills[3].Coins) < 1 ? 1 : (3/p1->skills[3].Coins);
-          DamageBuff = (100/p1->skills[3].Coins);
+          PowerBuff = (3/Loser->skills[3].Coins) < 1 ? 1 : (3/Loser->skills[3].Coins);
+          DamageBuff = (100/Loser->skills[3].Coins);
           
-          p1->CoinPowerBoost += PowerBuff;
-          p1->DamageUp += DamageBuff;
+          Loser->CoinPowerBoost += PowerBuff;
+          Loser->DamageUp += DamageBuff;
 
-          printf("At 30+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", p1->Sanity, PowerBuff, DamageBuff);
+          printf("At 30+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", Loser->Sanity, PowerBuff, DamageBuff);
 
           sleep(1);
         }
-      else if (abs(p1->Sanity) >= 10) {
+      else if (abs(Loser->Sanity) >= 10) {
 
-        PowerBuff = (3/p1->skills[3].Coins) < 1 ? 1 : (3/p1->skills[3].Coins);
-        DamageBuff = (50/p1->skills[3].Coins);
+        PowerBuff = (3/Loser->skills[3].Coins) < 1 ? 1 : (3/Loser->skills[3].Coins);
+        DamageBuff = (50/Loser->skills[3].Coins);
 
-        p1->CoinPowerBoost += PowerBuff;
-        p1->DamageUp += DamageBuff;
+        Loser->CoinPowerBoost += PowerBuff;
+        Loser->DamageUp += DamageBuff;
 
-        printf("At 10+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", p1->Sanity, PowerBuff, DamageBuff);
+        printf("At 10+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", Loser->Sanity, PowerBuff, DamageBuff);
 
         sleep(1);
       } 
 
-        printf("\n%s: If you will cut... then wager your life on it.\n", p1->name);
+        printf("\n%s: If you will cut... then wager your life on it.\n", Loser->name);
 
         sleep(1);
 
@@ -7609,25 +8688,24 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       
       usleep(500000);
       
-      attackPhase(fullPlayer, &fullPlayer->skills[3],
-                  fullPlayer->skills[3].Offense, fullPlayer->skills[3].Defense,
-                  p2, result.enemyskillUsed, result.enemyTempOffense,
-                  result.enemyTempDefense, fullPlayer->skills[3].Coins, 0 , 0);
+      attackPhase(Loser, &Loser->skills[3], Loser->skills[3].Offense, Loser->skills[3].Defense,
+        Winner, WinnerSkill, winOff, winDef, Loser->skills[3].Coins, 0, 0);
+      
       fullPlayer->skills[3].active = 0;
 
-      p2->ParalyzeNextTurn += 5;
+       Winner->ParalyzeNextTurn += 5;
 
-      printf("\nTo claim their bones!\n");
+      printf("\nTo Claim Their Bones!\n");
 
       printf("\n%s inflicts 5 Paralyze next turn (Fix the Power of 5 Coins to 0 for one "
              "turn) to %s\n",
-             p1->name, p2->name);
+             Loser->name, Winner->name);
 
-      updateSanity(p1, 15);
-      if (p1->Sanity > 45) p1->Sanity = 45;
+      updateSanity(Loser, 15);
+      if (Loser->Sanity > 45) Loser->Sanity = 45;
 
       printf("\n%s heals 15 Sanity (%d)\n",
-         p1->name, p1->Sanity);
+        Loser->name, Loser->Sanity);
     }
     result.winner = 99;
   }
@@ -7669,6 +8747,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
   
   clearTurnEffects(player);
   clearTurnEffects(enemy);
+
   if (pIndex == 0) {
     player->name = "Meursault:The Thumb";
     player->HP = 122;
@@ -7979,6 +9058,23 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     enemy->skills[16] =(SkillStats){
       "Like a Roaring Storm", 5, 8, 1, 37, 0, 1, 1, 0, 0, 0};
     enemy->numSkills = 17; // <-- important
+  } else if (eIndex == 6) {
+    enemy->name = "King in Binds";
+    enemy->HP = 3519/2;
+    enemy->MAX_HP = 3519;
+      enemy->hasSanity = 0;
+    enemy->skills[0] = (SkillStats){"Enveloping Resignation", 3, 4, 2, 0, 0, 1, 0, 0, 3, 1}; 
+    // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable
+    enemy->skills[1] =
+        (SkillStats){"Strangling Despair", 4, 4, 3, 0, 0, 1, 0, 0, 3, 1};
+    enemy->skills[2] = (SkillStats){"Chainbreaker", 3, 4, 4, 0, 0, 1, 0, 0, 3, 1};
+    enemy->skills[3] = (SkillStats){"Chains of Binding", 5, 5, 2, 0, 0, 1, 0, 0, 2, 1};
+    enemy->skills[4] = (SkillStats){"Thou Wilt Sink", 8, 10, 1, 0, 0, 1, 0, 0, 2, 1};
+    enemy->skills[5] =
+        (SkillStats){"Present Thyself Before the King", 35, -15, 1, 0, 0, 1, 0, 0, 0, 0};
+    enemy->skills[6] =
+      (SkillStats){"Moment of Audience", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    enemy->numSkills = 6; // <-- important
   } else {
     enemy->name = "Fixer grade 9?";
     enemy->HP = 1897;
@@ -8011,18 +9107,2177 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
   
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ----------------------------------------------------------------
+// handleTurnStart — Before everything after turn %d
+// ----------------------------------------------------------------
+// Function สำหรับจัดการ Effect ตอนเริ่ม Turn
+// c = ตัวละครที่กำลังตาย (เช่น player)
+// opponent = ตัวละครฝ่ายตรงข้าม (เช่น enemy หรือ boss)
+// forcedSkillIndex = ตัวแปร pointer สำหรับบังคับให้ใช้สกิลที่กำหนด (สำหรับ AI/Enemy)
+void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, int playerSkill1, int playerSkill2, int enemySkill1, int enemySkill2) {
+
+  //------------------- Turn Start ----------------------------
+
+    // ---------------- Sancho:The Second Kindred of Don Quixote -----------------------
+
+  // Sancho:The Second Kindred of Don Quixote – heal HP at start
+  if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+
+    int healvalue = (((enemy->MAX_HP - enemy->HP) / enemy->MAX_HP) * 100)/2;
+    if (healvalue > 30) healvalue = 30;
+    if (healvalue > 0) {
+
+    enemy->HP += healvalue;
+      if (enemy->HP > enemy->MAX_HP) enemy->HP = enemy->MAX_HP;
+
+    printf("\n%s heals (percentage missing HP/2) HP (%d - Max 30)\n",
+           enemy->name, healvalue);
+
+    sleep(1);
+    }
+  }
+
+    // Sancho:The Second Kindred of Don Quixote – heal sanity at -15 Sanity or less
+    if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->Sanity <= -15 && enemy->HP > 1) {
+
+      int healvalue = ((enemy->MAX_HP - enemy->HP) / enemy->MAX_HP * 100)/2;
+      int consumed = 5 - (enemy->Sanity/5);
+      if (consumed > enemy->HP) consumed = enemy->HP + 1;
+
+      if (enemy->Passive >= consumed) {
+      enemy->Passive -= consumed;
+      if (enemy->Passive < 1) enemy->Passive = 1;
+      updateSanity(enemy, healvalue);
+      enemy->ClashPower += 2;
+
+      printf("\n%s at -15 or less Sanity, consumes %d Hardblood (%d left) to gain %d Sanity and gain 2 Clash Power Up\n",
+             enemy->name, consumed, enemy->Passive, healvalue);
+
+      sleep(1);
+      }
+    }
+
+  // Sancho:The Second Kindred of Don Quixote with Don Quixote:The Manager of La Manchaland - Power down
+  if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+    isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->skills[5].active == 0) {
+
+    enemy->skills[5].active = 1;
+
+    enemy->Sanity = -45;
+    enemy->SanityFreezeTurns = 1;
+
+    printf("\n%s gains 'Call of Mother', Start Phase with -45 Sanity for two turns \n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: Don't you hear it? A call...\n", player->name);
+
+    sleep(1);
+  }
+
+    // -----------------------------------------------------------
+
+
+  // -------------------------- Heathcliff:Wild Hunt -------------------------
+  // Wild hunt – Buff
+  if (isId(player->name, "Heathcliff:Wild Hunt") == 0 && player->Sanity >= 45 && player->skills[0].active <= 0) {
+
+    player->skills[0].active++;
+    if (player->skills[0].active > 3) player->skills[0].active = 3;
+
+    printf("\n%s at 45+ Sanity, gains 'Dullahan'\n",
+           player->name);
+
+    sleep(1);
+  }
+
+  // Heathcliff:Wild Hunt - Call of erlking
+    if (isId(player->name, "Heathcliff:Wild Hunt") == 0 && (player->HP <= player->MAX_HP * 0.5 || player->Sanity <= -45) && player->skills[0].active == 0 && !player->skills[1].active) {
+
+      player->skills[1].active = 1;
+      player->skills[0].active += 1;
+      if (player->skills[0].active > 3) player->skills[0].active = 3;
+
+      if (player->Sanity <= -45) player->SanityFreezeTurns = 0;
+
+      printf("\n%s at 50%% or less HP, or at -45 Sanity, gain 'Dullahan' (Once per Encounter)\n", player->name);
+
+      if (player->Sanity <= -25) {
+      int missingSP = -player->Sanity;       // how far below 0
+        int extraHeal = 2 * missingSP;           // 2 SP per missing SP
+        if (extraHeal > 50) extraHeal = 50;      // cap at 50
+
+        int totalHeal = 10 + extraHeal;          // base 10 + extra
+      updateSanity(player, totalHeal);
+
+      printf("\n%s heals %d Sanity(%d)\n",
+        player->name, totalHeal, player->Sanity);
+      }
+
+    }
+
+  // ------------------------------------------------
+
+
+  // Erlking Heathcliff – always use skill 9 if HP ≤ 50
+  if (isId(enemy->name, "Erlking Heathcliff") == 0 && enemy->HP <= 50 &&
+    !enemy->skills[8].active && enemy->Passive == 2) {
+
+    enemy->skills[8].active = 1;
+
+    *enemySkillIndex = 8;
+
+  }
+
+
+
+  // --------------------- Heishou Pack - You Branch Adept Heathcliff ------------------
+
+  // Heishou Pack - You Branch Adept Heathcliff - Skill 3 Unbreakable coins reset
+  if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+
+    player->skills[2].Unbreakable = 0;
+
+    if (player->Passive >= 20 && player->HP <= player->MAX_HP * 0.5) player->skills[2].Copies = 3; // S3 Pity
+    else player->skills[2].Copies = 1;
+
+  }
+
+  // Heishou Pack - You Branch Adept Heathcliff - Heal from anti death
+  if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player->skills[3].active == 1) {
+
+    player->skills[3].active = 2;
+
+    int healHPpercentag = player->skills[0].active + 20;
+    if (healHPpercentag > 49) healHPpercentag = 49;
+    int healvalue = (player->MAX_HP * healHPpercentag/100);
+
+    player->HP += (player->HP + healvalue) > player->MAX_HP ? player->MAX_HP - player->HP : healvalue;
+
+    printf("\n%s heals %d%% HP (%.2f), and remove all Burn on self (Max 49%%; Once per Encounter)\n",
+      player->name, healHPpercentag, player->HP);
+
+      player->skills[0].active = 0;
+      player->skills[1].active = 0;
+
+  }
+
+  // --------------------------------------------------------
+
+  // Meursault:The Thumb - Skill 3 Unbreakable coins reset
+  if (isId(player->name, "Meursault:The Thumb") == 0) {
+
+    player->skills[2].Unbreakable = 0;
+
+  }
+
+  if (isId(player->name, "Meursault:The Thumb") == 0 && !player->skills[3].active && player->Passive == 0) {
+
+    int amount = ((int)(12 * enemy->MAX_HP)) / 847;
+    if (amount < 12) amount = 12;
+
+    if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->name, "Don Quixote") == 0) amount += 4; // pity for boss
+
+    player->Passive = amount;
+
+    printf("\n%s gains %d Tigermark Rounds\n", player->name, amount);
+
+    sleep(1);
+
+  }
+
+  // ------------------- Dawn Office Fixer Sinclair -----------------------------
+
+  // Dawn Office Fixer Sinclair - Ego
+  if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && !player->skills[3].active && player->HP <= player->MAX_HP * 0.3 && player->Sanity > -45 && player->skills[0].active) {
+
+    player->skills[0].active = 0;
+     player->Sanity = 45;
+      player->skills[2] = player->skills[5];
+      player->skills[3] = player->skills[5];
+      player->skills[3].active = 1;
+      player->skills[2].Copies = -1;
+      player->skills[3].Copies = 1;
+
+    printf("\n%s at 30%% or less HP and Sanity isn't -45, reset Sanity to 45; then enters the Volatile E.G.O::Waxen Pinion state (Once per Encounter)\n", player->name);
+
+    sleep(1);
+
+    printf("\n%s: If sorrow has become my indelible stigma, then... I choose to rise with it instead!\n", player->name);
+
+    sleep(1);
+
+  } else if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && !player->skills[3].active && player->Sanity >= 40) {
+
+     updateSanity(player, -(20));
+    player->skills[2] = player->skills[5];
+    player->skills[3] = player->skills[5];
+    player->skills[3].active = 1;
+    player->skills[2].Copies = -1;
+    player->skills[3].Copies = 1;
+
+    printf("\n%s consumes 20 Sanity(%d) to enter the Volatile E.G.O::Waxen Pinion state\n", player->name, player->Sanity);
+
+    sleep(1);
+
+    printf("\n%s: This time... I'll definitely put an end to this!\n", player->name);
+
+    sleep(1);
+
+  } else if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active && player->Sanity <= 0) {
+
+    int clashpowerbuff = 3 * player->Passive;
+    if (clashpowerbuff > 20) clashpowerbuff = 20;
+
+     player->Passive = 0;
+    player->skills[3] = player->skills[4];
+    player->skills[2] = player->skills[4];
+    player->skills[3].active = 0;
+    player->skills[2].Copies = 1;
+    player->skills[3].Copies = -1;
+    player->ClashPower = clashpowerbuff;
+    player->ClashPowerNextTurn = clashpowerbuff;
+
+
+      printf("\n%s exits the Volatile E.G.O::Waxen Pinion state and loses all 'Volatile Passion' to gain +(Volatile Passion x 3) (%d - Max 20) Clash Power for this turn and next turn\n", player->name, clashpowerbuff);
+
+      sleep(1);
+
+    printf("\n%s: ... I have to be bold!\n", player->name);
+
+    sleep(1);
+
+
+    }
+
+  // Dawn Office Fixer Sinclair - Volatile Passion
+  if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active) {
+
+      player->Passive += 1;
+
+    player->FinalPowerBoost += 1 * player->Passive;
+      player->DamageUp += 20 * player->Passive;
+
+    printf("\n%s gains 1 'Volatile Passion', gain 1 Final Power(%d), gain +20%% damage(%d%%) for every stack (%d)\n", player->name, 1 * player->Passive, 20 * player->Passive, player->Passive);
+
+    sleep(1);
+
+  }
+
+  // ------------------------------------------------------------------ 
+
+  // ------------------- Jia Qiu -----------------------------
+  // Jia Qiu - Power down
+  if (isId(enemy->name, "Jia Qiu") == 0) {
+
+    if (enemy->Passive == 0) {
+
+    enemy->Passive = 1;
+
+    for (int i = 0; i < enemy->numSkills; i++) {
+        enemy->skills[i].Offense -= 35;
+        enemy->skills[i].Defense -= 35;
+    }
+
+    enemy->DamageUp += 30;
+      updateSanity(enemy, 30);
+
+    printf("\n%s gains 'A Sliver of Anticipation', He's not giving it his all. Heal 30 Sanity, Lose 35 Offense, 35 Defense and Deal 30%% more damage\n",
+           enemy->name);
+
+    sleep(1);
+
+    } else {
+      enemy->DamageUp += 30;
+    }
+  }
+
+  // Jia Qiu - Last attack at 85% HP
+    if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP < enemy->MAX_HP * 0.85 && enemy->Passive == 2 && enemy->skills[5].active == 0) {
+
+      *enemySkillIndex = 5;
+
+      enemy->skills[5].active = 1;
+    }
+
+  // -------------------------------------------------------------
+
+  //--------------------- Lei heng -----------------------------
+
+  // Lei heng – if HP ≤ 60%
+  if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP <= enemy->MAX_HP * 0.6 || (enemy->skills[1].active >= 1 && enemy->skills[2].active >= 3)) &&
+    enemy->skills[0].active == 2 && enemy->skills[4].active == 0) {
+
+    enemy->skills[4].active = 1; // Active 'Unrelenting Spirit [剛氣]'
+
+    printf("\n%s activates 'Unrelenting Spirit [剛氣]'!\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: Can't leave a dance unfinished. Ain't that right?\n", enemy->name);
+
+     sleep(1);
+  }
+
+  // Lei heng – if HP ≤ 40%
+  if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP <= enemy->MAX_HP * 0.4 || (enemy->skills[1].active >= 2 && enemy->skills[2].active >= 3)) &&
+    enemy->skills[0].active == 2) {
+
+    enemy->skills[0].active = 3; // Phase 4
+
+    printf("\n%s converts 'Inner Strength [底力]' to 'Extreme Strength [極力]'\n",
+      enemy->name);
+
+    sleep(1);
+
+    printf("\n%s converts 'Unrelenting Spirit [剛氣]' to 'Unrelenting Spirit - Shin [剛氣-心]'\n",
+      enemy->name);
+
+    sleep(1);
+
+    printf("\n%s replaces the powerful attack '%s' with '%s'\n", enemy->name,
+      enemy->skills[2].name, enemy->skills[5].name);
+
+    sleep(1);
+
+    GainNewPattern(enemy, player);
+
+  }
+
+  // Lei heng – skill 3 using first fight
+  if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[2].active == 0 && enemy->skills[0].active == 2) {
+
+    enemy->skills[2].active = 1; // Turn Count
+    *enemySkillIndex = 2; 
+    enemy->skills[1].active++; // Overheat count
+    if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
+
+  }
+
+  // Lei heng – skill 3 every 3 turns
+  else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[2].active > 0 && enemy->skills[2].active < 3) && enemy->skills[0].active == 2) {
+
+    enemy->skills[2].active++; // Turn Count
+
+  }
+  else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[2].active >= 3) && enemy->skills[0].active == 2) {
+
+    *enemySkillIndex = 2; 
+    enemy->skills[1].active++; // Overheat count
+    if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
+
+  }
+
+  // Lei heng – skill 6 using first fight
+  if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[5].active == 0 && enemy->skills[0].active == 3) {
+
+    enemy->skills[5].active = 1;
+    *enemySkillIndex = 5; 
+    enemy->skills[1].active++; // Overheat count
+    if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
+
+  }
+
+  // Lei heng – skill 6 every 3 turns
+    else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 3) && enemy->skills[0].active == 3) {
+
+      enemy->skills[5].active++; // Turn Count
+
+    }
+    else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[5].active >= 3) && enemy->skills[0].active == 3) {
+
+      *enemySkillIndex = 5; 
+      enemy->skills[1].active++; // Overheat count
+      if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
+
+    }
+
+  //-------------------------------------------------------------
+
+  // ------------------------- Sancho --------------------------
+
+  // Sancho – skill 13 using first fight
+  if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+    enemy->HP <= enemy->MAX_HP * 0.6 && enemy->skills[12].active) {
+
+    enemy->skills[12].active = 0;
+  *enemySkillIndex = 12;
+
+  }
+  // Sancho – skill 14 using first fight
+  if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+    enemy->HP <= enemy->MAX_HP * 0.3 && enemy->skills[13].active && enemy->skills[12].active == 0) {
+
+    enemy->skills[13].active = 0;
+  *enemySkillIndex = 13;
+
+  sleep(1);
+  }
+
+  //-------------------------------------------------------------------------
+
+  // ------------------------- King in Binds --------------------------
+
+  // King in Binds – skill 6 using first fight
+  if (isId(enemy->name, "King in Binds") == 0 && enemy->skills[5].active == 0 && enemy->skills[0].active == 1) {
+
+    enemy->skills[5].active = 1;
+    *enemySkillIndex = 5; 
+    if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
+
+  }
+
+  // King in Binds – skill 6 every 5 turns
+    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 5) && enemy->skills[0].active == 1) {
+
+      enemy->skills[5].active++; // Turn Count
+
+    }
+    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active >= 5) && enemy->skills[0].active == 1) {
+
+      *enemySkillIndex = 5; 
+      enemy->skills[5].active = 1;
+
+    }
+
+  //-------------------------------------------------------------------------
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ----------------------------------------------------------------
+// handleBeforeFight — After showing player hp and sanity
+// ----------------------------------------------------------------
+void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex, int playerSkill1, int playerSkill2, int enemySkill1, int enemySkill2) {
+
+    // ------------------ Before fight -----------------------
+
+
+    // --------------------------- Sukuna:King of Curse --------------------------------
+
+
+    // Sukuna:King of Curse Chanting
+    if (isId(enemy->name, "Sukuna:King of Curse") == 0 && enemy->skills[4].active < 3 && TurnCount % 3 == 0) {
+
+       *enemySkillIndex = 4;
+
+    }
+
+    // Sukuna:King of Curse World Cutting Slash
+    else if (isId(enemy->name, "Sukuna:King of Curse") == 0 && enemy->skills[4].active == 3) {
+
+     *enemySkillIndex = 8;
+
+      enemy->skills[4].active = 0;
+
+      printf("\n%s: No more playing around, brat.\n",
+        enemy->name);
+
+      sleep(1);
+
+    }
+
+    // ---------------------------------------------------------------------
+
+
+     // ------------------ Jia Qiu -----------------------
+
+    // Jia Qiu - Last attack at 10% HP
+      if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP < enemy->MAX_HP * 0.1 && enemy->Passive == 6) {
+
+        printf("\n%s: I expect you to fight to your deaths in this crucial struggle, reversible as they may be.\n",
+          enemy->name);
+
+          *enemySkillIndex = 15;
+
+        enemy->Passive = 7;
+
+      }
+
+    // Jia Qiu - Taunt S14
+    if (isId(enemy->name, "Jia Qiu") == 0 && &enemy->skills[*enemySkillIndex] == &enemy->skills[14]) {
+
+      printf("\n%s: It must lie there still, shrouded it may be.\n",
+        enemy->name);
+
+    }
+
+    // Jia Qiu - Last attack at 30% HP
+    if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP < enemy->MAX_HP * 0.3 && enemy->Passive == 4) {
+
+      printf("\n%s: Do not fear the futility. There will be time for that once you have spoken your mind.\n",
+        enemy->name);
+
+        *enemySkillIndex = 16;
+
+      enemy->Passive = 5;
+
+    }
+
+    // Jia Qiu - Last attack at 85% HP
+      if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP < enemy->MAX_HP * 0.85 && enemy->Passive == 2 && enemy->skills[5].active == 0) {
+
+        *enemySkillIndex = 5;
+
+        enemy->skills[5].active = 1;
+      }
+
+    // -------------------------------------------------------------
+
+    // Roland - Skill 9 Unbreakable coins reset
+  if (isId(enemy->name, "Fixer grade 9?") == 0 && enemy->skills[8].Unbreakable > 0) {
+
+    enemy->skills[8].Unbreakable = 0;
+
+  }
+
+    //Roland Furioso
+    if (isId(enemy->name, "Fixer grade 9?") == 0) {
+
+      int allInactive = 1; // assume all inactive
+
+      // check skills 0–8
+      for (int i = 0; i <= 8; i++) {
+          if (enemy->skills[i].Copies == 1) {
+              allInactive = 0; // found one active
+              break;
+          }
+      }
+
+      if (allInactive == 1) {
+
+        for (int i = 0; i <= 8; i++) {
+          enemy->skills[i].Copies = 1;
+        }
+
+        printf("\n%s: I just wanted to stop the cycle. To make it end somewhere.\n",
+        enemy->name);
+
+        *enemySkillIndex = 9;
+
+        sleep(1);
+      } else {
+          // Normal random selection
+          *enemySkillIndex = (rand() % 2 == 0 ? enemySkill1 : enemySkill2);
+      }
+
+    } 
+
+    // Lei heng – skill 3 and skill 6 Before fight
+      if (isId(enemy->name, "Lei heng") == 0 &&
+          (&enemy->skills[*enemySkillIndex] == &enemy->skills[2] ||
+           (&enemy->skills[*enemySkillIndex] == &enemy->skills[5]))) {
+
+        printf("\n%s: I'maboutta drop somethin' big on y'all! Don't let it kill "
+               "y'all now and spoil the fun!\n",
+               enemy->name);
+
+        sleep(1);
+      }
+
+      // Sancho – Before fight
+      if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+          (&enemy->skills[*enemySkillIndex] == &enemy->skills[12] ||
+           (&enemy->skills[*enemySkillIndex] == &enemy->skills[13]))) {
+
+        if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0) {
+
+          printf("\n%s: My name is Sancho!\n",
+                 enemy->name);
+
+          printf("\n%s: ...\n",
+             player->name);
+
+          sleep(1);
+
+          printf("\n%s: And I, Sancho, declare upon my honor; this lance shall end that festering, slothful dream!\n", enemy->name);
+
+          printf("\n%s: You... Are like... Him... what's a juvenile dream!\n",
+             player->name);
+
+        } else {
+          printf("\n%s: That's just attachment; my dream has already ended\n", enemy->name);
+        }
+
+        sleep(1);
+      }
+
+    // Don Quixote:The Manager of La Manchaland – Before fight
+    if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+        (&player->skills[playerSkill1] == &player->skills[2] ||
+         (&player->skills[playerSkill2] == &player->skills[2])) && player->Passive >= 15) {
+
+        printf("\n%s: When it comes to making weapons, I had surpassed my father.\n",
+          player->name);
+
+      sleep(1);
+
+    } else if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0 && player->Passive >= 15) {
+
+      printf("\n%s: With your weapons... I will lead this bloody battle to victory.\n",
+        player->name);
+
+      sleep(1);
+
+    }
+
+    // -------------------------------------------------
+
+    // Sukuna - Domain Expansion:Malevolent Shrine
+    if (isId(enemy->name, "Sukuna:King of Curse") == 0 && enemy->HP <= 50) {
+
+      printf("\n%s at 50 HP or less than, use '%s' instead!\n", enemy->name, enemy->skills[6].name);
+
+      sleep(1);
+
+      printf("\n%s: Brat... You just savor it.\n",
+        enemy->name);
+
+      *enemySkillIndex = 6;
+
+      sleep(1);
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+// ----------------------------------------------------------------
+  // handleTurnEnd — shared turn-end logic for all battle loops
+  // ----------------------------------------------------------------
+  void handleTurnEnd(Character *player, Character *enemy, int playerSkillIndex,int enemySkillIndex) {
+    
+    // ----------------------------- Turn End ------------------------------
+
+    // --- Decrement Sanity Lock ---
+    if (player->SanityFreezeTurns > 0) {
+        player->SanityFreezeTurns--;
+        if (player->SanityFreezeTurns == 0) player->SanityFreezeTurns = 0;
+    }
+    
+    // ---------------------------------
+
+    // for character panic recover
+
+    // --- Panic Recovery ---
+    if (player->Sanity <= -45 && player->SanityFreezeTurns != 1) {
+
+      // Check if the enemy is permanently locked in panic (-1)
+      if (player->SanityFreezeTurns == 0) {
+
+          player->Sanity = 0;
+
+        printf("\n%s snaps out of panic! (Sanity reset to 0)\n", player->name);
+
+
+        // Buff after panic (Only applies if they successfully recovered)
+        if (isId(player->name, "Erlking Heathcliff") == 0) {
+            player->AttackPowerBoostNextTurn += 2;
+          printf("\n%s gains 2 Attack Power up next turn\n", player->name);
+        } 
+        else if (isId(player->name, "Lei heng") == 0) {
+          int healSanity = (player->MAX_HP - player->HP) / player->MAX_HP * 100;
+            if (healSanity > 30) healSanity = 30;
+
+              updateSanity(player, healSanity);
+              printf("\n%s heals Sanity by this unit's missing HP (%d - Max 30)\n", player->name, player->Sanity);
+          }
+        else if (isId(player->name, "Sancho:The Second Kindred of Don Quixote") == 0 && player->Passive >= 1) {
+
+            player->Passive -= 3;
+          if (player->Passive < 1) player->Passive = 1;
+          player->AttackPowerBoostNextTurn += 3;
+          player->DamageUpNextTurn += 30;
+
+              printf("\n%s consumes 3 Hardblood (%d) to gain 3 Attack Power Up and +30%% damage next turn\n", player->name, player->Passive);
+          }
+        else if (isId(player->name, "Sukuna:King of Curse") == 0) {
+
+              player->ClashPowerNextTurn += 3;
+
+                printf("\n%s gain 2 Clash Power Up next turn\n", player->name);
+            }
+      } 
+    }
+
+
+
+    // --- ลดจำนวนเทิร์น Stagger ---
+    if (player->Stagger > 0) {
+        player->Stagger--;
+        if (player->Stagger == 0) {
+            printf("\n%s has recovered from STAGGER!\n", player->name);
+        }
+    }
+
+
+
+
+
+
+
+    
+
+    // Erlking Heathcliff Phase 2
+    if (isId(enemy->name, "Erlking Heathcliff") == 0 && (enemy->HP <= enemy->MAX_HP * 0.7 || TurnCount >= 6) &&
+        enemy->Passive == 0) {
+
+      enemy->Passive = 1;
+
+      enemy->sanityLossBase = 10;
+
+      enemy->skills[1] = enemy->skills[5];
+      enemy->skills[2] = enemy->skills[4];
+      enemy->skills[1].Copies = 0;
+      enemy->skills[2].Copies = 0;
+
+      enemy->skills[3].Copies = 4;
+      enemy->skills[4].Copies = 3;
+      enemy->skills[5].Copies = 3;
+      enemy->skills[6].Copies = 2;
+      enemy->skills[7].Copies = 2;
+
+      printf("\n%s: May you wake in torment, my dear Catherine.\n", enemy->name);
+
+      sleep(1);
+    }
+
+     // Heathcliff:Wild Hunt - Dullahan
+      if (isId(player->name, "Heathcliff:Wild Hunt") == 0 && player->skills[0].active > 0) {
+
+        player->skills[2].active = 0; // Reset Counter
+        
+        player->skills[0].active += 1; // Dullahan
+        if (player->skills[0].active > 3) player->skills[0].active = 3;
+        
+        if (player->skills[0].active >= 3 || player->Sanity < 0) player->skills[2].Copies = 3; // A bit buff for unlucky player
+
+        printf("\n%s gains 1 Dullahan (%d - Max 3)\n",
+          player->name, player->skills[0].active);
+
+        if (player->Sanity <= -25) {
+
+          player->skills[0].active = 0;
+          player->skills[2].Copies = 1;
+
+          printf("\n%s at -25 or less, loses all 'Dullahan'\n", player->name);
+          
+        } else {
+
+        updateSanity(player, -(5));
+
+        printf("\n%s loses 5 Sanity (%d)\n",
+          player->name, player->Sanity);
+
+          if (player->Sanity <= -25) {
+
+            player->skills[0].active = 0;
+            player->skills[2].Copies = 1;
+
+            printf("\n%s at -25 or less, loses all 'Dullahan'\n", player->name);
+
+          } else {
+          
+        int losevalue = (15 - (player->Passive/2));
+          if (losevalue < 10) losevalue = 10;
+
+        updateSanity(player, -(losevalue));
+
+        printf("\n%s loses %d Sanity (%d)\n",
+          player->name, losevalue, player->Sanity);
+
+          }
+
+        }
+        
+      }
+
+    // -------------------------------- Lei heng --------------------------------
+
+    // Lei heng – skill 3 and skill 6 turn end
+    if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[0].active == 3 && enemy->skills[3].active > 0) {
+
+      enemy->skills[5].active = 1;
+
+      printf("\n%s heals Sanity equal to Extreme Strength [底力] consumed(%d)\n", enemy->name, enemy->skills[3].active);
+      updateSanity(enemy, enemy->skills[3].active);
+        enemy->skills[3].active = 0;
+
+    } else if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[0].active == 2 && enemy->skills[3].active > 0) {
+
+      enemy->skills[2].active = 1;
+
+      printf("\n%s heals Sanity equal to Inner Strength [底力] consumed(%d)\n", enemy->name, enemy->skills[3].active);
+      updateSanity(enemy, enemy->skills[3].active);
+      enemy->skills[3].active = 0;
+
+    } 
+
+    // Lei heng – HP < 90%
+    if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP < enemy->MAX_HP * 0.9 || TurnCount >= 2) && enemy->skills[0].active == 0) {
+      
+      GainNewPattern(enemy, player);
+
+      enemy->skills[0].active = 1; // Phase 2
+
+      printf("\n%s: Huh... y'all ain't half bad! Keep makin' it worth my bullet fees!\n",
+             enemy->name);
+
+      enemy->skills[0].name = "Double Slash - Blast [爆]";
+      enemy->skills[0].CoinPower += 1;
+      enemy->skills[1].name = "Triple Slash - Blast [爆]";
+      enemy->skills[1].CoinPower += 1;
+
+      //enemy->skills[2].Copies = 1;
+      enemy->skills[3].Copies = 4;
+      enemy->skills[4].Copies = 2;
+
+      sleep(1);
+    }
+
+    // Lei heng – HP < 80%
+    if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP < enemy->MAX_HP * 0.8 || TurnCount >= 4) && enemy->skills[0].active == 1) {
+
+      GainNewPattern(enemy, player);
+
+       enemy->skills[0].active = 2; // Phase 3
+
+      printf("\n%s gains 25 Inner Strength [底力]\n", enemy->name);
+
+      enemy->Passive += 25;
+      if (enemy->Passive > 25) enemy->Passive = 25;
+
+      sleep(1);
+
+      printf("\n%s: That's more like it. Y'all are firin' me up!\n",
+         enemy->name);
+
+      sleep(1);
+
+    }
+
+     // -------------------------------------------------------------
+
+    // King in Binds - Tremor
+    if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[3].active > 0 || enemy->skills[4].active > 0) && player->HP > 0) {
+
+        enemy->skills[4].active -= 1;
+      if (enemy->skills[4].active <= 0) enemy->skills[4].active = 0;
+
+      printf("\n%s loses 1 Tremor Count (%d)\n", player->name, enemy->skills[4].active);
+
+      if (enemy->skills[4].active <= 0) enemy->skills[3].active = 0;
+
+      sleep(1);
+    }
+      
+
+      // Gregor:Firefist - Burn
+        if (isId(player->name, "Gregor:Firefist") == 0 && (player->skills[0].active > 0 || player->skills[1].active > 0) && enemy->HP > 0) {
+
+          int damage = player->skills[0].active > 0 ? player->skills[0].active : 1;
+
+          if (enemy->Shield > 0) {
+              enemy->Shield -= damage;
+              if (enemy->Shield < 0) {
+                  // คำนวณส่วนที่ทะลุเกราะ
+                    enemy->HP += enemy->Shield; // เพราะ Shield เป็นค่าลบ
+                    enemy->Shield = 0;             // เกราะหมดแล้ว
+              }
+          } else {
+                enemy->HP -= damage;
+          }
+
+          if (enemy->HP < 0) enemy->HP = 0;
+          player->skills[1].active--; // Count Burn min 1
+          if (player->skills[1].active <= 0) player->skills[1].active = 0;
+
+          printf("\n%s takes %d damage from Burn (Count %d)\n", enemy->name, damage, player->skills[1].active);
+
+          if (player->skills[1].active <= 0) player->skills[0].active = 0;
+
+          sleep(1);
+        }
+      
+
+    // ----------------------- Heishou Pack - You Branch Adept Heathcliff ----------------
+    
+    // Heishou Pack - You Branch Adept Heathcliff - Burn
+    if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (player->skills[1].active > 0 || player->skills[0].active > 0) && player->HP > 0) {
+
+       int damage = player->skills[0].active > 0 ? player->skills[0].active : 1;
+      
+      if (player->Shield > 0) {
+          player->Shield -= damage;
+        if (player->Shield < 0) {
+            // คำนวณส่วนที่ทะลุเกราะ
+                player->HP += player->Shield; // เพราะ Shield เป็นค่าลบ
+                player->Shield = 0;             // เกราะหมดแล้ว
+        }
+      } else {
+            player->HP -= damage;
+      }
+      
+      if (player->HP < 1) player->HP = 1;
+      player->skills[1].active--;
+      if (player->skills[1].active <= 0) player->skills[1].active = 0;
+
+      printf("\n%s takes %d damage from Burn (Count %d)\n", player->name, damage, player->skills[1].active);
+
+      if (player->skills[1].active <= 0) player->skills[0].active = 0;
+
+      sleep(1);
+
+      int gain = 1;
+      if (player->HP < player->MAX_HP * 0.5) gain += 1;
+
+      player->Passive += gain;
+      if (player->Passive > 20) player->Passive = 20;
+
+       printf("\n%s gains +%d Battleblood Instinct (%d)\n", player->name, gain, player->Passive);
+    }
+
+    // Heishou Pack - You Branch Adept Heathcliff - Bloodflame
+    if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player->skills[2].active > 0) {
+
+      player->skills[2].active--;
+
+       printf("\n%s loses 1 Bloodflame [血炎] (%d)\n", player->name, player->skills[2].active);
+    }
+
+    // -------------------------------------------------------------
+    
+    // Binah - Fairy
+    if (isId(player->name, "Binah") == 0 && player->skills[0].active > 0) {
+
+      if (!player->Passive) {
+
+      enemy->HP -= player->skills[0].active;
+      if (enemy->HP < 0) enemy->HP = 0;
+
+      printf("\n%s take true damage equal to Fairy on self (%d)\n", enemy->name, player->skills[0].active);
+
+      sleep(1);
+
+      } else {
+
+        int fairydamage = 0.5*((enemy->MAX_HP/100) * player->skills[0].active);
+        
+        enemy->HP -= fairydamage;
+        if (enemy->HP < 0) enemy->HP = 0;
+
+        printf("\n%s take (0.5 x Fairy on self (%d))%% Max HP true damage (%d)\n", enemy->name, player->skills[0].active, fairydamage);
+
+        sleep(1);
+        
+      }
+
+      player->skills[0].active = player->skills[0].active/2;
+
+       printf("\nhalve the Fairy stack on %s (%d)\n", enemy->name, player->skills[0].active);
+
+      sleep(1);
+    }
+
+    // Dawn Office Fixer Sinclair - Volatile Passion
+    if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active) {
+
+        updateSanity(player, -((5 * player->Passive) > 40 ? 40 : (5 * player->Passive)));
+
+      printf("\n%s lose 5 Sanity(%d - Max 40) for every stack (%d) (Sanity %d)\n", player->name, 5 * player->Passive, player->Passive, player->Sanity);
+
+      sleep(1);
+
+    }
+
+    // ------------------------------ Roland -----------------------
+
+    // Fixer grade 9? – heals every 3 turns on 0+ Sanity
+    if (isId(enemy->name, "Fixer grade 9?") == 0 && enemy->Sanity >= 0 && (TurnCount % 3) == 0) {
+
+      int losevalue = (enemy->Sanity/2);
+
+      updateSanity(enemy, -losevalue);
+
+       printf("\n%s loses %d Sanity (%d)\n", enemy->name, losevalue, enemy->Sanity);
+
+      sleep(1);
+
+     float missingHPPercent = ((float)(enemy->MAX_HP - enemy->HP) / enemy->MAX_HP) * 100.0f;
+
+      int gainvalue = 3 + (missingHPPercent/10);
+
+      enemy->Passive += gainvalue;
+
+      printf("\n%s gains %d Black Silence (%d)\n", enemy->name, gainvalue, enemy->Passive);
+
+      sleep(1);
+
+    } else if (isId(enemy->name, "Fixer grade 9?") == 0 && enemy->Sanity < 0 && (TurnCount % 3) == 0) {
+
+        updateSanity(enemy, -5);
+
+      printf("\n%s loses 5 Sanity (%d)\n", enemy->name, enemy->Sanity);
+
+      sleep(1);
+
+        enemy->DamageUpNextTurn += enemy->Passive * 2;
+
+      printf("\n%s gains +2%% damage (%d%%) for every Black Silence (%d) next turn\n", enemy->name, enemy->Passive * 2, enemy->Passive);
+
+      sleep(1);
+
+      }
+
+    // Roland - Ultimate
+    if (isId(enemy->name, "Fixer grade 9?") == 0 && enemy->skills[9].active > 0) {
+
+      enemy->skills[9].active -= 1;
+      enemy->ClashPowerNextTurn -= enemy->skills[9].active;
+
+      printf("\n%s loses 1 Sorrow(%d)\n", enemy->name, enemy->skills[9].active);
+
+      sleep(1);
+
+    }
+
+    // Roland - Ultimate
+    if (isId(enemy->name, "Fixer grade 9?") ==
+            0 &&
+      &enemy->skills[enemySkillIndex] == &enemy->skills[9]) {
+
+      printf("\n%s gains 3 Sorrow, gain 1 Clash Power Down for every 1 Stacks, lose 1 Stacks at Turn End\n", enemy->name);
+
+      enemy->skills[9].active = 3;
+      enemy->ClashPowerNextTurn -= enemy->skills[9].active;
+
+      sleep(1);
+
+    }
+    // -------------------------------------------------------------
+
+      //------------------------ Lobotomy E.G.O::Solemn Lament Yi Sang ---------------------------
+
+    // Lobotomy E.G.O::Solemn Lament Yi Sang - Reload
+    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player->Passive <= 0) {
+
+      updateSanity(player, -(15));
+      
+       int ShieldGain = (player->skills[0].active * 2) > 40 ? 40 : (player->skills[0].active * 2);
+      int Shield = (ShieldGain/100.0f) * player->MAX_HP;
+
+      player->Shield += Shield; 
+      
+      printf("\n%s use 'Reload', Spends 15 Sanity(%d) to gain 20 The Living & The Departed and gain Shield equal to (Butterfly on the target x 2)%% of Max HP. (%d%% - Max 40%%) (%d - Shield %.2f)\n", player->name, player->Sanity, ShieldGain, Shield, player->Shield);
+
+        player->Passive = 20;
+
+      sleep(1);
+    }
+
+    // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly
+    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player->skills[0].active > 0) {
+      player->skills[0].active = 0;
+        
+      printf("\n%s loses all Butterfly on self\n", enemy->name);
+    
+      sleep(1);
+    }
+
+  //--------------------------------------------------------------
+
+    // Jia Qiu enemy heal sanity
+    if (isId(enemy->name, "Jia Qiu") == 0 && enemy->skills[15].active > 0) {
+
+      updateSanity(player, 5);
+
+        printf("\n%s heals 5 Sanity (%d)\n", player->name, player->Sanity);
+        sleep(1);
+
+    }
+
+    // Jia Qiu Phase 2
+    if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.6 &&
+        enemy->Passive == 2 && enemy->skills[15].active == 0) {
+
+      printf("\n%s: Reflect upon yourself! Exhume your humanity, your righteousness from deep within!\n", enemy->name);
+
+      if (isId(player->name, "Hong lu:The Lord of Hongyuan") == 0) {
+
+        printf("\n%s: Phew... okay, fine. Then... As the Lord of Hongyuan, I hereby grant you audience.\n", player->name);
+
+        sleep(1);
+
+         printf("\n%s gains 3 Uncompromising Imposition, Turn End heal 5 Sanity, When HP drop to 0 heal up to max HP and gain 1 Final Power; then lose 1 stack\n", player->name);
+      } else {
+        sleep(1);
+
+         printf("\n%s gains 3 Dialogues, Turn End heal 5 Sanity, When HP drop to 0 heal up to max HP; then lose 1 stack\n", player->name);
+      }
+
+      enemy->skills[15].active = 3;
+
+      enemy->Passive = 3;
+
+      // Disable the old
+      for (int i = 0; i < enemy->numSkills; i++) {
+        if (enemy->skills[i].Copies > 0) {
+          enemy->skills[i] = enemy->skills[3];
+          enemy->skills[i].Copies = 0;
+        }
+      }
+
+      // Set copies for the newly mapped primary skills
+       enemy->skills[7].Copies = 3;
+      enemy->skills[8].Copies = 3;
+      enemy->skills[9].Copies = 3;
+       enemy->skills[10].Copies = 2;
+       enemy->skills[11].Copies = 2;
+       enemy->skills[12].Copies = 2;
+       enemy->skills[13].Copies = 2;
+       enemy->skills[14].Copies = 2;
+       enemy->skills[15].Copies = 0;
+       enemy->skills[16].Copies = 0;
+    }
+
+      // ------------------------------ Cap HP --------------------------
+
+      // Don Quixote Phase 2
+      if (isId(enemy->name, "Don Quixote") == 0 && enemy->HP <= 0 &&
+          enemy->Passive == 0) {
+
+        printf("\n%s: If that's what you really yearn for...\n", enemy->name);
+
+        sleep(1);
+
+        printf("\n%s tranforms to 'Sancho:The Second Kindred of Don Quixote'\n",
+               enemy->name);
+
+        enemy->MAX_HP = 583;
+        enemy->HP = 583;
+        enemy->name = "Sancho:The Second Kindred of Don Quixote";
+        enemy->Sanity = 0;
+        enemy->sanityGainBase = 6;
+        enemy->sanityLossBase = 4;
+        enemy->immuneToPanicSkip = 1;
+        enemy->Passive = 1;
+
+        // Disable the old S0, S1, S2
+        enemy->skills[0] = enemy->skills[3];
+         enemy->skills[1] = enemy->skills[3];
+         enemy->skills[2] = enemy->skills[3];
+        enemy->skills[0].Copies = 0; // in pick skill function copies 0 will auto delete skill from lastused 
+        enemy->skills[1].Copies = 0;
+        enemy->skills[2].Copies = 0;
+
+        // Set copies for the newly mapped primary skills
+        enemy->skills[3].Copies = 4;
+        enemy->skills[4].Copies = 4;
+        enemy->skills[5].Copies = 4;
+
+        enemy->skills[6].Copies = 3;
+        enemy->skills[7].Copies = 3;
+        enemy->skills[8].Copies = 3;
+        enemy->skills[9].Copies = 3;
+        enemy->skills[10].Copies = 3;
+        enemy->skills[11].Copies = 3;
+
+        sleep(1);
+
+        if (isId(player->name,
+                       "Don Quixote:The Manager of La Manchaland") == 0) {
+          printf(
+              "\n%s: I shall show you. Even if it’s a false dream... I will still "
+              "move forward without hesitation!\n",
+              enemy->name);
+        } else {
+          printf("\n%s: Let wrap it up.\n", enemy->name);
+        }
+      }
+
+      // Sukuna:King of Curse cursed reverse technique
+      if (isId(enemy->name, "Sukuna:King of Curse") == 0 && enemy->HP <= 0 && enemy->Passive == 0) {
+
+        enemy->Passive = 1;
+
+        enemy->HP = enemy->MAX_HP;
+        updateSanity(enemy, 30);
+
+        printf("\n%s used 'Cursed Reverse Technique', heal up to Max HP, heal 30 Sanity (Once per Encounter)\n", enemy->name);
+
+        sleep(1);
+
+        printf("\n%s: Arm yourself...\n", enemy->name);
+
+        sleep(1);
+      }
+      
+      // Jia Qiu Anti low
+      if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.3 &&
+          enemy->Passive == 3) {
+
+        enemy->Passive = 4;
+
+        enemy->HP = (int)(enemy->MAX_HP * 0.3);
+
+        printf("\n%s blocked, cap HP to 30%% for this turn\n", enemy->name);
+      }
+
+      // Jia Qiu LAST
+      if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.1 &&
+          enemy->Passive == 5) {
+
+        enemy->Passive = 6;
+
+        enemy->HP = (int)(enemy->MAX_HP * 0.1);
+
+        printf("\n%s blocked, cap HP to 10%% for this turn\n", enemy->name);
+      }
+
+      // Erlking Heathcliff Anti low
+      if (isId(enemy->name, "Erlking Heathcliff") == 0 && enemy->HP <= 50 &&
+          enemy->Passive == 1) {
+
+        enemy->Passive = 2;
+
+        enemy->HP = 50;
+
+        printf("\n%s used 'Withstand', cap HP to 50 for this turn\n", enemy->name);
+
+        sleep(1);
+
+        printf("\n%s: Please, Catherine. Appear before me and tear me asunder. Let me see your eyes as I expire.\n", enemy->name);
+
+        sleep(1);
+      }
+
+    // ----------------- King in Binds -----------------------
+
+    // King in Binds Bandages of the King in Binds
+    if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
+        enemy->Passive == 1) {
+
+      enemy->skills[1].active += 2; // Sinking Stack
+      if (enemy->skills[1].active > 99) enemy->skills[1].active = 99;
+      enemy->skills[2].active += 1; // Sinking Count
+      if (enemy->skills[2].active > 99) enemy->skills[2].active = 99;
+
+      enemy->HP = (int)(enemy->MAX_HP * 0.2);
+
+      printf("\n%s gain +2 Sinking Stack (%d) and +1 Sinking Count (%d) from 'Bandages of the King in Binds'\n", player->name, enemy->skills[1].active, enemy->skills[2].active);
+    }
+
+// King in Binds anti low
+if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
+    enemy->skills[0].active == 0) {
+
+  enemy->skills[0].active = 1;
+
+  enemy->Passive = 1;
+
+  enemy->HP = (int)(enemy->MAX_HP * 0.2);
+
+  printf("\n%s snapping Bandages, cap HP to 20%% for this turn, apply 'Bandages of the King in Binds' on all enemies.\n", enemy->name);
+}
+
+    // --------------------------------------------------
+
+
+      
+
+    clearTurnEffects(player);
+
+
+    
+    // Lost CutScene
+    if (isId(enemy->name, "Lei heng") == 0 && enemy->HP <= enemy->MAX_HP*0.2) {
+
+      enemy->HP = 1;
+      
+      printf("\n%s: I'll be frank, y'all. Real impressed that you even pushed me this far.\n", enemy->name);
+
+      sleep(2);
+
+      attackPhase(enemy, &enemy->skills[0],
+        enemy->skills[0].Offense, enemy->skills[0].Defense,
+        player, &player->skills[0], player->skills[0].Offense,
+         player->skills[0].Defense, enemy->skills[0].Coins, 0 , 0);
+
+      sleep(2);
+
+      if (strstr(player->name, "Ryoshu") != NULL) {
+        printf("\n%s: But... Yoshihide\n", enemy->name);
+      } else if (isId(player->name, "Meursault:The Thumb") == 0) {
+        printf("\n%s: But... Chacuihu\n", enemy->name);
+      } else {
+       printf("\n%s: But... %s...\n", enemy->name, player->name);
+      }
+
+      sleep(4);
+
+      attackPhase(enemy, &enemy->skills[2],
+        enemy->skills[2].Offense, enemy->skills[2].Defense,
+        player, &player->skills[0], player->skills[0].Offense,
+         player->skills[0].Defense, enemy->skills[2].Coins, 0 , 0);
+
+      printf("\n%s: ... Ya darn sure oughta've harder if ya really wanted to win!\n", enemy->name);
+
+      sleep(3);
+
+      player->HP = 1;
+      enemy->HP = 0;
+
+
+    } else if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= 0) {
+
+      printf("\n%s: Fine, You win.\n", enemy->name);
+
+      sleep(1);
+
+    } else {
+
+    // ---------------------------
+
+    }
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // ------------------------- King in Binds Battle -------------------------
+void runKingInBindsBattle(
+        Character *player,
+        Character *boss,
+        int *playerSkill1, int *playerSkill2, int *playerSkill3,
+        int *playerLastUnused,
+        int *enemySkill1,  int *enemySkill2,  int *enemySkill3,
+        int *enemyLastUnused)
+{
+    KingDmgBonus = 0.0f;
+   KingClashBonus = 0;
+
+    // ============================================================
+    // PHASE 1 — Knight (shadow of the player)
+    // ============================================================
+
+  const char *realID = player->name;
+
+  // 1. ตั้งชื่อแยกให้จบตั้งแต่ตรงนี้
+  static char pTag[256], eTag[256];
+  sprintf(pTag, "[Player] %s", realID);
+  sprintf(eTag, "[Enemy] %s", realID);
+
+  Character enemy = *player; 
+  player->name = pTag;
+    enemy.name = eTag;
+
+  printf("\nThe King in Binds raises his hand...\n");
+  sleep(1);
+  printf("\nA body that covered with Red Bandage snaps out, A shadow emerges — bearing your very visage.\n");
+  sleep(2);
+  printf("\n'A Knight' has appeared! (A mirror of %s)\n\n", player->name);
+  sleep(1);
+
+   runCombatEvent(player, boss, &kingFirstEvent, playerSkill1, playerSkill2, playerSkill3);
+
+      if (KingDmgBonus > 0.0f) {
+          for (int i = 0; i < player->numSkills; i++)
+              player->skills[i].DmgMutiplier += KingDmgBonus;
+          KingDmgBonus = 0.0f;
+      }
+
+  // Knight skill pool — แยกจาก player
+  int kSkill1 = -1, kSkill2 = -1, kSkill3 = -1, kLastUnused = -1;
+  getSkills(&enemy, &kSkill1, &kSkill2, &kSkill3, kLastUnused, enemy.numSkills);
+
+  while (player->HP > 0 && enemy.HP > 0) {
+
+    if (KingClashBonus > 0) {
+            player->ClashPower += KingClashBonus;
+    }
+
+      printf("\n--- Turn %d (Knight Phase) ---\n", TurnCount);
+
+    int IsplayerUnableToAct = isPanicked(player) || isStaggered(player);
+    int IsenemyUnableToAct  = isPanicked(&enemy)  || isStaggered(&enemy);
+
+    // ถ้าทั้งคู่ทำอะไรไม่ได้เลย
+    if (IsplayerUnableToAct && IsenemyUnableToAct) {
+          printf("\nBoth are unable to act! They recover...\n");
+          if (isPanicked(player)) { player->Sanity = 0; }
+      if (isPanicked(&enemy)) { enemy.Sanity = 0; }
+          TurnCount++;
+          continue;
+      }
+
+      // -------------------------------------------------------
+      // Knight เลือก skill — แสดง SKILL ของ TURN นี้ก่อน
+      // (kSkill1/kSkill2 ที่ roll มาจาก turn ก่อน)
+      // -------------------------------------------------------
+      int enemySkillIndex = (rand() % 2 == 0) ? kSkill1 : kSkill2;
+      kLastUnused = (enemySkillIndex == kSkill1) ? kSkill2 : kSkill1;
+
+      // handleTurnStart ด้วย player จริงเป็น p1, knight เป็น enemy
+    // 1. รัน Passive ของ Player (ตัวเรา)
+    // ส่งสกิลของเรา (*playerSkill1...) เข้าช่องที่ 4-5 และสกิลของร่างเงา (kSkill1...) เข้าช่องที่ 6-7
+    
+    handleTurnStart(player, &enemy, &enemySkillIndex,
+      *playerSkill1, *playerSkill2, kSkill1, kSkill2);
+
+    // 2. รัน Passive ของ Knight (ร่างเงา)
+    // สลับตำแหน่ง: ส่งร่างเงาเข้าช่องแรก, ส่งสกิลร่างเงาเข้าช่องที่ 4-5 และสกิลของเราเข้าช่องที่ 6-7
+    handleTurnStart(&enemy, player, &enemySkillIndex,
+      kSkill1, kSkill2, *playerSkill1, *playerSkill2);
+
+      // แสดง HP
+    printf("\nCurrent HP:\n");
+    
+    // แสดงผลของ Player
+    if (player->Stagger > 0) printf("[Stagger] ");
+    printf("%s = %.2f / %.2f", player->name, player->HP, player->MAX_HP);
+    if (player->Shield > 0) printf(" (Shield %.2f)", player->Shield);
+    printf("\n");
+
+    // แสดงผลของ Enemy
+    if (enemy.Stagger > 0) printf("[Stagger] ");
+    printf("%s = %.2f / %.2f", enemy.name, enemy.HP, enemy.MAX_HP);
+    if (enemy.Shield > 0) printf(" (Shield %.2f)", enemy.Shield);
+    printf("\n");
+
+      if (player->hasSanity || enemy.hasSanity) {
+          printf("[Sanity] ");
+          if (player->hasSanity)
+              printf("%s: %d (%s) ", player->name, player->Sanity, getSanityStatus(player));
+          if (enemy.hasSanity)
+              printf("| %s: %d (%s)", enemy.name, enemy.Sanity, getSanityStatus(&enemy));
+          printf("\n");
+      }
+
+    // ---------- Before Fight -----------
+
+    // 1. รัน Passive ของ Player (ตัวเรา)
+    // ส่งสกิลของเรา (*playerSkill1...) เข้าช่องที่ 4-5 และสกิลของร่างเงา (kSkill1...) เข้าช่องที่ 6-7
+    handleBeforeFight(player, &enemy, &enemySkillIndex,
+      *playerSkill1, *playerSkill2, kSkill1, kSkill2);
+
+    // 2. รัน Passive ของ Knight (ร่างเงา)
+    // สลับตำแหน่ง: ส่งร่างเงาเข้าช่องแรก, ส่งสกิลร่างเงาเข้าช่องที่ 4-5 และสกิลของเราเข้าช่องที่ 6-7
+      handleBeforeFight(&enemy, player, &enemySkillIndex,
+      kSkill1, kSkill2, *playerSkill1, *playerSkill2);
+
+      // แสดง knight skill
+      if (!IsenemyUnableToAct) {
+          SkillStats *ks = &enemy.skills[enemySkillIndex];
+          if (ks->Unbreakable > 0 && ks->Clashable)
+              printf("\nA Knight uses %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
+                     ks->Offense + enemy.OffenseBoost,
+                     ks->Defense + enemy.DefenseBoost,
+                     ks->Unbreakable);
+          else if (ks->Unbreakable <= 0 && ks->Clashable)
+              printf("\nA Knight uses %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
+                     ks->Offense + enemy.OffenseBoost,
+                     ks->Defense + enemy.DefenseBoost);
+          else if (ks->Unbreakable > 0 && !ks->Clashable)
+              printf("\nA Knight uses %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
+                     ks->Offense + enemy.OffenseBoost,
+                     ks->Defense + enemy.DefenseBoost,
+                     ks->Unbreakable);
+          else
+              printf("\nA Knight uses %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
+                     ks->Offense + enemy.OffenseBoost,
+                     ks->Defense + enemy.DefenseBoost);
+      }
+
+      // -------------------------------------------------------
+      // Player เลือก skill — แสดง skill ของ turn นี้
+      // (playerSkill1/playerSkill2 ที่ roll มาจาก turn ก่อน)
+      // -------------------------------------------------------
+      int playerSkillIndex;
+
+      if (!IsplayerUnableToAct) {
+          printf("\nYour skills:\n");
+
+          // แสดง skill 1
+          SkillStats *ps1 = &player->skills[*playerSkill1];
+          if (ps1->Unbreakable > 0 && ps1->Clashable)
+              printf("1. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ps1->name, ps1->BasePower, ps1->CoinPower, ps1->Coins,
+                     ps1->Offense + player->OffenseBoost,
+                     ps1->Defense + player->DefenseBoost,
+                     ps1->Unbreakable);
+          else if (ps1->Unbreakable <= 0 && ps1->Clashable)
+              printf("1. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ps1->name, ps1->BasePower, ps1->CoinPower, ps1->Coins,
+                     ps1->Offense + player->OffenseBoost,
+                     ps1->Defense + player->DefenseBoost);
+          else if (ps1->Unbreakable > 0 && !ps1->Clashable)
+              printf("1. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ps1->name, ps1->BasePower, ps1->CoinPower, ps1->Coins,
+                     ps1->Offense + player->OffenseBoost,
+                     ps1->Defense + player->DefenseBoost,
+                     ps1->Unbreakable);
+          else
+              printf("1. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ps1->name, ps1->BasePower, ps1->CoinPower, ps1->Coins,
+                     ps1->Offense + player->OffenseBoost,
+                     ps1->Defense + player->DefenseBoost);
+
+          // แสดง skill 2
+          SkillStats *ps2 = &player->skills[*playerSkill2];
+          if (ps2->Unbreakable > 0 && ps2->Clashable)
+              printf("2. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ps2->name, ps2->BasePower, ps2->CoinPower, ps2->Coins,
+                     ps2->Offense + player->OffenseBoost,
+                     ps2->Defense + player->DefenseBoost,
+                     ps2->Unbreakable);
+          else if (ps2->Unbreakable <= 0 && ps2->Clashable)
+              printf("2. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ps2->name, ps2->BasePower, ps2->CoinPower, ps2->Coins,
+                     ps2->Offense + player->OffenseBoost,
+                     ps2->Defense + player->DefenseBoost);
+          else if (ps2->Unbreakable > 0 && !ps2->Clashable)
+              printf("2. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ps2->name, ps2->BasePower, ps2->CoinPower, ps2->Coins,
+                     ps2->Offense + player->OffenseBoost,
+                     ps2->Defense + player->DefenseBoost,
+                     ps2->Unbreakable);
+          else
+              printf("2. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ps2->name, ps2->BasePower, ps2->CoinPower, ps2->Coins,
+                     ps2->Offense + player->OffenseBoost,
+                     ps2->Defense + player->DefenseBoost);
+
+          // แสดง next skill
+          SkillStats *ps3 = &player->skills[*playerSkill3];
+          if (ps3->Unbreakable > 0 && ps3->Clashable)
+              printf("Next Skill: %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ps3->name, ps3->BasePower, ps3->CoinPower, ps3->Coins,
+                     ps3->Offense + player->OffenseBoost,
+                     ps3->Defense + player->DefenseBoost,
+                     ps3->Unbreakable);
+          else if (ps3->Unbreakable <= 0 && ps3->Clashable)
+              printf("Next Skill: %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ps3->name, ps3->BasePower, ps3->CoinPower, ps3->Coins,
+                     ps3->Offense + player->OffenseBoost,
+                     ps3->Defense + player->DefenseBoost);
+          else if (ps3->Unbreakable > 0 && !ps3->Clashable)
+              printf("Next Skill: %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                     ps3->name, ps3->BasePower, ps3->CoinPower, ps3->Coins,
+                     ps3->Offense + player->OffenseBoost,
+                     ps3->Defense + player->DefenseBoost,
+                     ps3->Unbreakable);
+          else
+              printf("Next Skill: %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                     ps3->name, ps3->BasePower, ps3->CoinPower, ps3->Coins,
+                     ps3->Offense + player->OffenseBoost,
+                     ps3->Defense + player->DefenseBoost);
+
+          int choice;
+          while (1) {
+              printf("Choose skill (1-2): ");
+              if (scanf("%d", &choice) == 1 && (choice == 1 || choice == 2)) break;
+              while (getchar() != '\n');
+          }
+          playerSkillIndex  = (choice == 1) ? *playerSkill1 : *playerSkill2;
+          *playerLastUnused = (choice == 1) ? *playerSkill2 : *playerSkill1;
+      } else {
+          playerSkillIndex = *playerSkill1;
+      }
+
+      // roll skill ใหม่หลังเลือกแล้ว (สำหรับ turn หน้า)
+      getSkills(player, playerSkill1, playerSkill2, playerSkill3,
+                *playerLastUnused, player->numSkills);
+      getSkills(&enemy, &kSkill1, &kSkill2, &kSkill3,
+                kLastUnused, enemy.numSkills);
+
+      // -------------------------------------------------------
+      // getEffectiveSkill — knight ใช้ชื่อ player ชั่วคราว
+      // เพื่อให้ passive buff ใน getEffectiveSkill ทำงาน
+      // -------------------------------------------------------
+      int playerTempOffense = 0, playerTempDefense = 0;
+      int enemyTempOffense  = 0, enemyTempDefense  = 0;
+
+      playerTempOffense += player->OffenseBoost;
+      playerTempDefense += player->DefenseBoost;
+      enemyTempOffense  += enemy.OffenseBoost;
+      enemyTempDefense  += enemy.DefenseBoost;
+
+      SkillStats *playerSkillEffective =
+          getEffectiveSkill(player, &enemy,
+                            &player->skills[playerSkillIndex],
+                            &playerTempOffense, &playerTempDefense);
+
+      SkillStats *enemySkillEffective =
+          getEffectiveSkill(&enemy, player,
+                            &enemy.skills[enemySkillIndex],
+                            &enemyTempOffense, &enemyTempDefense);
+
+      // -------------------------------------------------------
+      // Combat (เหมือน main loop ทุกอย่าง)
+      // ชื่อ knight ยังเป็น player->name อยู่ในช่วงนี้
+      // -------------------------------------------------------
+    if (!player->skills[playerSkillIndex].Clashable && enemy.skills[enemySkillIndex].Clashable) {
+      attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+                  enemyTempDefense, player, playerSkillEffective,
+                  playerTempOffense, playerTempDefense,
+                  enemySkillEffective->Coins, 0, 0);
+      attackPhase(player, playerSkillEffective, playerTempOffense,
+                  playerTempDefense, &enemy, enemySkillEffective,
+                  enemyTempOffense, enemyTempDefense,
+                  playerSkillEffective->Coins, 0, 0);
+
+    } else if (player->skills[playerSkillIndex].Clashable && !enemy.skills[enemySkillIndex].Clashable) {
+      attackPhase(player, playerSkillEffective, playerTempOffense,
+                  playerTempDefense, &enemy, enemySkillEffective,
+                  enemyTempOffense, enemyTempDefense,
+                  playerSkillEffective->Coins, 0, 0);
+      attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+                  enemyTempDefense, player, playerSkillEffective,
+                  playerTempOffense, playerTempDefense,
+                  enemySkillEffective->Coins, 0, 0);
+
+    } else if (!player->skills[playerSkillIndex].Clashable && !enemy.skills[enemySkillIndex].Clashable) {
+      int randomattack = rand() % 2 + 1;
+      if (randomattack == 1) {
+          attackPhase(player, playerSkillEffective, playerTempOffense,
+                      playerTempDefense, &enemy, enemySkillEffective,
+                      enemyTempOffense, enemyTempDefense,
+                      playerSkillEffective->Coins, 0, 0);
+          attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+                      enemyTempDefense, player, playerSkillEffective,
+                      playerTempOffense, playerTempDefense,
+                      enemySkillEffective->Coins, 0, 0);
+      } else {
+          attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+                      enemyTempDefense, player, playerSkillEffective,
+                      playerTempOffense, playerTempDefense,
+                      enemySkillEffective->Coins, 0, 0);
+          attackPhase(player, playerSkillEffective, playerTempOffense,
+                      playerTempDefense, &enemy, enemySkillEffective,
+                      enemyTempOffense, enemyTempDefense,
+                      playerSkillEffective->Coins, 0, 0);
+      }
+
+    } else if (IsplayerUnableToAct && !IsenemyUnableToAct) {
+      attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+                  enemyTempDefense, player, playerSkillEffective,
+                  playerTempOffense, playerTempDefense,
+                  enemySkillEffective->Coins, 0, 0);
+
+    } else if (!IsplayerUnableToAct && IsenemyUnableToAct) {
+      attackPhase(player, playerSkillEffective, playerTempOffense,
+                  playerTempDefense, &enemy, enemySkillEffective,
+                  enemyTempOffense, enemyTempDefense,
+                  playerSkillEffective->Coins, 0, 0);
+
+    } else {
+      ClashResult clash =
+          clashPhase(player, playerSkillEffective, playerTempOffense,
+                     playerTempDefense, &enemy, enemySkillEffective,
+                     enemyTempOffense, enemyTempDefense, player, 0, 0);
+
+      if (clash.winner == 1)
+          attackPhase(
+              player, clash.playerskillUsed,
+              clash.playerTempOffense, clash.playerTempDefense,
+              &enemy, clash.enemyskillUsed,
+              clash.enemyTempOffense, clash.enemyTempDefense,
+              (clash.playerskillUsed->Unbreakable > 0)
+                  ? ((clash.playerCoins > clash.playerskillUsed->Unbreakable)
+                         ? clash.playerCoins
+                         : clash.playerskillUsed->Unbreakable)
+                  : clash.playerCoins,
+              clash.playerUnbreakableLost, clash.ClashCount);
+      else if (clash.winner == 2)
+          attackPhase(
+              &enemy, clash.enemyskillUsed,
+              clash.enemyTempOffense, clash.enemyTempDefense,
+              player, clash.playerskillUsed,
+              clash.playerTempOffense, clash.playerTempDefense,
+              (clash.enemyskillUsed->Unbreakable > 0)
+                  ? ((clash.enemyCoins > clash.enemyskillUsed->Unbreakable)
+                         ? clash.enemyCoins
+                         : clash.enemyskillUsed->Unbreakable)
+                  : clash.enemyCoins,
+              clash.enemyUnbreakableLost, clash.ClashCount);
+    }
+      // -------------------------------------------------------
+      // คืนชื่อ knight กลับก่อน handleTurnEnd
+      // เพื่อให้ output แสดงว่า "A Knight" ไม่ใช่ player->name
+      // handleTurnEnd จะทำ passive ของ player ถูกต้อง
+      // เพราะ player pointer ตัวจริงยังเป็น player อยู่
+      // -------------------------------------------------------
+
+    printf("\n--- Turn End ---\n");
+
+    handleTurnEnd(player, &enemy, playerSkillIndex, enemySkillIndex); // รันของ Player
+    handleTurnEnd(&enemy, player, enemySkillIndex, playerSkillIndex); // รันของ Knight
+
+    // ... (สุ่มสกิลใหม่สำหรับเทิร์นหน้า) ...
+    TurnCount++;
+  }
+
+  // Player ตายใน knight phase
+  if (player->HP <= 0) return;
+
+    // ============================================================
+    // PHASE 2 — Knight ตาย → Event → Boss ออกมา
+    // ============================================================
+  // คืนชื่อเดิมให้ Player ทันที เพื่อไปสู้กับ Boss ตัวจริงแบบไม่มี Tag
+  player->name = realID;
+  
+    printf("\nThe shadow dissipates into thin air...\n");
+    sleep(2);
+
+    int sanityLoss = 5 * (TurnCount - 1);
+    if (sanityLoss > 45) sanityLoss = 45;
+    updateSanity(player, -sanityLoss);
+    printf("\n%s lose %d Sanity (Max 45) from Passive 'Closing of the Banquet' (%d)\n",
+           player->name ,sanityLoss, player->Sanity);
+    sleep(1);
+
+    printf("\nThe King in Binds descends from his throne...\n");
+    sleep(1);
+    printf("\nGrand Welcome...\n");
+    sleep(2);
+
+    getSkills(boss, enemySkill1, enemySkill2, enemySkill3,
+              *enemyLastUnused, boss->numSkills);
+
+    // ============================================================
+    // PHASE 3 — Boss phase
+    // ============================================================
+
+  int GrandWelcome = 0;
+
+    while (player->HP > 0 && boss->HP > 0) {
+
+        printf("\n--- Turn %d (King in Binds) ---\n", TurnCount);
+
+      int IsplayerUnableToAct = isPanicked(player);
+
+      // Boss เลือก skill
+      int eIdx = (rand() % 2 == 0) ? *enemySkill1 : *enemySkill2;
+      *enemyLastUnused = (eIdx == *enemySkill1) ? *enemySkill2 : *enemySkill1;
+      getSkills(boss, enemySkill1, enemySkill2, enemySkill3,
+                *enemyLastUnused, boss->numSkills);
+
+      handleTurnStart(player, boss, &eIdx, *playerSkill1, *playerSkill2, *enemySkill1, *enemySkill2);
+
+        if (GrandWelcome == 0) {
+          GrandWelcome = 1;
+            runCombatEvent(player, boss, &kingMidEvent, playerSkill1, playerSkill2, playerSkill3);
+          if (KingDmgBonus > 0.0f) {
+            for (int i = 0; i < player->numSkills; i++)
+                player->skills[i].DmgMutiplier += KingDmgBonus;
+            KingDmgBonus = 0.0f;
+          }
+
+          if (KingClashBonus > 0) {
+            player->ClashPower += KingClashBonus;
+          }
+        }
+
+        // แสดง HP
+      printf("\nCurrent HP:\n");
+
+      // แสดงผลของ Player
+      if (player->Stagger > 0) printf("[Stagger] ");
+      printf("%s = %.2f / %.2f", player->name, player->HP, player->MAX_HP);
+      if (player->Shield > 0) printf(" (Shield %.2f)", player->Shield);
+      printf("\n");
+
+      // แสดงผลของ Enemy
+      if (boss->Stagger > 0) printf("[Stagger] ");
+      printf("%s = %.2f / %.2f", boss->name, boss->HP, boss->MAX_HP);
+      if (boss->Shield > 0) printf(" (Shield %.2f)", boss->Shield);
+      printf("\n");
+
+        if (player->hasSanity)
+            printf("[Sanity] %s: %d (%s)\n",
+                   player->name, player->Sanity, getSanityStatus(player));
+
+        // Apply player passives + enemy turn-start forced-skill logic
+          handleBeforeFight(player, boss, &eIdx, *playerSkill1, *playerSkill2, *enemySkill1, *enemySkill2);
+
+          if (boss->skills[eIdx].Unbreakable > 0 && boss->skills[eIdx].Clashable)
+            printf("\nEnemy uses %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                   boss->skills[eIdx].name,
+                   boss->skills[eIdx].BasePower, boss->skills[eIdx].CoinPower,
+                   boss->skills[eIdx].Coins,
+                   boss->skills[eIdx].Offense + boss->OffenseBoost,
+                   boss->skills[eIdx].Defense + boss->DefenseBoost,
+                   boss->skills[eIdx].Unbreakable);
+        else if (boss->skills[eIdx].Unbreakable <= 0 && boss->skills[eIdx].Clashable)
+            printf("\nEnemy uses %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                   boss->skills[eIdx].name,
+                   boss->skills[eIdx].BasePower, boss->skills[eIdx].CoinPower,
+                   boss->skills[eIdx].Coins,
+                   boss->skills[eIdx].Offense + boss->OffenseBoost,
+                   boss->skills[eIdx].Defense + boss->DefenseBoost);
+        else if (boss->skills[eIdx].Unbreakable > 0 && !boss->skills[eIdx].Clashable)
+            printf("\nEnemy uses %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                   boss->skills[eIdx].name,
+                   boss->skills[eIdx].BasePower, boss->skills[eIdx].CoinPower,
+                   boss->skills[eIdx].Coins,
+                   boss->skills[eIdx].Offense + boss->OffenseBoost,
+                   boss->skills[eIdx].Defense + boss->DefenseBoost,
+                   boss->skills[eIdx].Unbreakable);
+        else
+            printf("\nEnemy uses %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                   boss->skills[eIdx].name,
+                   boss->skills[eIdx].BasePower, boss->skills[eIdx].CoinPower,
+                   boss->skills[eIdx].Coins,
+                   boss->skills[eIdx].Offense + boss->OffenseBoost,
+                   boss->skills[eIdx].Defense + boss->DefenseBoost);
+
+        // Player เลือก skill — copy จาก main() ทุกอย่าง
+        int playerSkillIndex;
+
+        if (!IsplayerUnableToAct) {
+            printf("\nYour skills:\n");
+            if (player->skills[*playerSkill1].Unbreakable > 0 && player->skills[*playerSkill1].Clashable) {
+                printf("1. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower,
+                       player->skills[*playerSkill1].CoinPower,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill1].Defense + player->DefenseBoost,
+                       player->skills[*playerSkill1].Unbreakable);
+            } else if (player->skills[*playerSkill1].Unbreakable <= 0 && player->skills[*playerSkill1].Clashable) {
+                printf("1. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower,
+                       player->skills[*playerSkill1].CoinPower,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill1].Defense + player->DefenseBoost);
+            } else if (player->skills[*playerSkill1].Unbreakable > 0 && !player->skills[*playerSkill1].Clashable) {
+                printf("1. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower,
+                       player->skills[*playerSkill1].CoinPower,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill1].Defense + player->DefenseBoost,
+                       player->skills[*playerSkill1].Unbreakable);
+            } else {
+                printf("1. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower,
+                       player->skills[*playerSkill1].CoinPower,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill1].Defense + player->DefenseBoost);
+            }
+
+            if (player->skills[*playerSkill2].Unbreakable > 0 && player->skills[*playerSkill2].Clashable) {
+                printf("2. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower,
+                       player->skills[*playerSkill2].CoinPower,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill2].Defense + player->DefenseBoost,
+                       player->skills[*playerSkill2].Unbreakable);
+            } else if (player->skills[*playerSkill2].Unbreakable <= 0 && player->skills[*playerSkill2].Clashable) {
+                printf("2. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower,
+                       player->skills[*playerSkill2].CoinPower,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill2].Defense + player->DefenseBoost);
+            } else if (player->skills[*playerSkill2].Unbreakable > 0 && !player->skills[*playerSkill2].Clashable) {
+                printf("2. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower,
+                       player->skills[*playerSkill2].CoinPower,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill2].Defense + player->DefenseBoost,
+                       player->skills[*playerSkill2].Unbreakable);
+            } else {
+                printf("2. %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower,
+                       player->skills[*playerSkill2].CoinPower,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill2].Defense + player->DefenseBoost);
+            }
+
+            if (player->skills[*playerSkill3].Unbreakable > 0 && player->skills[*playerSkill3].Clashable) {
+                printf("Next Skill: %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower,
+                       player->skills[*playerSkill3].CoinPower,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill3].Defense + player->DefenseBoost,
+                       player->skills[*playerSkill3].Unbreakable);
+            } else if (player->skills[*playerSkill3].Unbreakable <= 0 && player->skills[*playerSkill3].Clashable) {
+                printf("Next Skill: %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower,
+                       player->skills[*playerSkill3].CoinPower,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill3].Defense + player->DefenseBoost);
+            } else if (player->skills[*playerSkill3].Unbreakable > 0 && !player->skills[*playerSkill3].Clashable) {
+                printf("Next Skill: %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower,
+                       player->skills[*playerSkill3].CoinPower,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill3].Defense + player->DefenseBoost,
+                       player->skills[*playerSkill3].Unbreakable);
+            } else {
+                printf("Next Skill: %s (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower,
+                       player->skills[*playerSkill3].CoinPower,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + player->OffenseBoost,
+                       player->skills[*playerSkill3].Defense + player->DefenseBoost);
+            }
+
+            int choice;
+            while (1) {
+                printf("Choose skill (1-2): ");
+                if (scanf("%d", &choice) == 1 && (choice == 1 || choice == 2)) break;
+                while (getchar() != '\n');
+            }
+            playerSkillIndex  = (choice == 1) ? *playerSkill1 : *playerSkill2;
+            *playerLastUnused = (choice == 1) ? *playerSkill2 : *playerSkill1;
+        } else {
+            playerSkillIndex = *playerSkill1;
+        }
+
+        getSkills(player, playerSkill1, playerSkill2, playerSkill3,
+                  *playerLastUnused, player->numSkills);
+
+      int playerTempOffense = 0, playerTempDefense = 0;
+      int enemyTempOffense  = 0, enemyTempDefense  = 0;
+
+      playerTempOffense += player->OffenseBoost;
+      playerTempDefense += player->DefenseBoost;
+      enemyTempOffense  += boss->OffenseBoost;
+      enemyTempDefense  += boss->DefenseBoost;
+
+        SkillStats *playerSkillEffective =
+            getEffectiveSkill(player, boss,
+                              &player->skills[playerSkillIndex],
+                              &playerTempOffense, &playerTempDefense);
+        SkillStats *enemySkillEffective =
+            getEffectiveSkill(boss, player,
+                              &boss->skills[eIdx],
+                              &enemyTempOffense, &enemyTempDefense);
+
+        // Combat — เหมือน main() ทุกอย่าง
+        if (!player->skills[playerSkillIndex].Clashable && boss->skills[eIdx].Clashable) {
+
+            attackPhase(boss, enemySkillEffective, enemyTempOffense,
+                        enemyTempDefense, player, playerSkillEffective,
+                        playerTempOffense, playerTempDefense,
+                        enemySkillEffective->Coins, 0, 0);
+            attackPhase(player, playerSkillEffective, playerTempOffense,
+                        playerTempDefense, boss, enemySkillEffective,
+                        enemyTempOffense, enemyTempDefense,
+                        playerSkillEffective->Coins, 0, 0);
+
+        } else if (player->skills[playerSkillIndex].Clashable && !boss->skills[eIdx].Clashable) {
+
+            attackPhase(player, playerSkillEffective, playerTempOffense,
+                        playerTempDefense, boss, enemySkillEffective,
+                        enemyTempOffense, enemyTempDefense,
+                        playerSkillEffective->Coins, 0, 0);
+            attackPhase(boss, enemySkillEffective, enemyTempOffense,
+                        enemyTempDefense, player, playerSkillEffective,
+                        playerTempOffense, playerTempDefense,
+                        enemySkillEffective->Coins, 0, 0);
+
+        } else if (!player->skills[playerSkillIndex].Clashable && !boss->skills[eIdx].Clashable) {
+
+            int randomattack = rand() % 2 + 1;
+            if (randomattack == 1) {
+                attackPhase(player, playerSkillEffective, playerTempOffense,
+                            playerTempDefense, boss, enemySkillEffective,
+                            enemyTempOffense, enemyTempDefense,
+                            playerSkillEffective->Coins, 0, 0);
+                attackPhase(boss, enemySkillEffective, enemyTempOffense,
+                            enemyTempDefense, player, playerSkillEffective,
+                            playerTempOffense, playerTempDefense,
+                            enemySkillEffective->Coins, 0, 0);
+            } else {
+                attackPhase(boss, enemySkillEffective, enemyTempOffense,
+                            enemyTempDefense, player, playerSkillEffective,
+                            playerTempOffense, playerTempDefense,
+                            enemySkillEffective->Coins, 0, 0);
+                attackPhase(player, playerSkillEffective, playerTempOffense,
+                            playerTempDefense, boss, enemySkillEffective,
+                            enemyTempOffense, enemyTempDefense,
+                            playerSkillEffective->Coins, 0, 0);
+            }
+
+        } else if (IsplayerUnableToAct && !isPanicked(boss)) {
+
+            attackPhase(boss, enemySkillEffective, enemyTempOffense,
+                        enemyTempDefense, player, playerSkillEffective,
+                        playerTempOffense, playerTempDefense,
+                        enemySkillEffective->Coins, 0, 0);
+
+        } else if (!IsplayerUnableToAct && isPanicked(boss)) {
+
+            attackPhase(player, playerSkillEffective, playerTempOffense,
+                        playerTempDefense, boss, enemySkillEffective,
+                        enemyTempOffense, enemyTempDefense,
+                        playerSkillEffective->Coins, 0, 0);
+
+        } else {
+
+            ClashResult clash =
+                clashPhase(player, playerSkillEffective, playerTempOffense,
+                           playerTempDefense, boss, enemySkillEffective,
+                           enemyTempOffense, enemyTempDefense, player, 0, 0);
+
+            if (clash.winner == 1)
+                attackPhase(
+                    player, clash.playerskillUsed,
+                    clash.playerTempOffense, clash.playerTempDefense,
+                    boss, clash.enemyskillUsed,
+                    clash.enemyTempOffense, clash.enemyTempDefense,
+                    (clash.playerskillUsed->Unbreakable > 0)
+                        ? ((clash.playerCoins > clash.playerskillUsed->Unbreakable)
+                               ? clash.playerCoins
+                               : clash.playerskillUsed->Unbreakable)
+                        : clash.playerCoins,
+                    clash.playerUnbreakableLost, clash.ClashCount);
+            else if (clash.winner == 2)
+                attackPhase(
+                    boss, clash.enemyskillUsed,
+                    clash.enemyTempOffense, clash.enemyTempDefense,
+                    player, clash.playerskillUsed,
+                    clash.playerTempOffense, clash.playerTempDefense,
+                    (clash.enemyskillUsed->Unbreakable > 0)
+                        ? ((clash.enemyCoins > clash.enemyskillUsed->Unbreakable)
+                               ? clash.enemyCoins
+                               : clash.enemyskillUsed->Unbreakable)
+                        : clash.enemyCoins,
+                    clash.enemyUnbreakableLost, clash.ClashCount);
+        }
+
+      printf("\n--- Turn End ---\n");
+
+        handleTurnEnd(player, boss, playerSkillIndex, eIdx);
+
+        handleTurnEnd(boss, player, eIdx, playerSkillIndex);
+
+        TurnCount++;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main() {
   srand(time(NULL));
   const char identity[10][100] = {
       "Meursault:The Thumb",  "Meursault:Blade Lineage Mentor",
       "Heathcliff:Wild Hunt", "Hong lu:The Lord of Hongyuan",
       "Yi sang:Fell Bullet",  "Don Quixote:The Manager of La Manchaland", "Lobotomy E.G.O::Solemn Lament Yi Sang", "Dawn Office Fixer Sinclair", "Gregor:Firefist", "Heishou Pack - You Branch Adept Heathcliff"};
-  const char enemyNames[7][100] = {"Bandit",
+  const char enemyNames[8][100] = {"Bandit",
                                    "Lei heng",
                                    "Erlking Heathcliff",
                                    "Sukuna:King of Curse",
                                    "Don Quixote",
                                    "Jia Qiu",
+                                   "King in Binds",
                                    "Fixer grade 9?"};
   int selected_identity = -1, selected_enemy = -1;
 
@@ -8137,7 +11392,7 @@ int main() {
           printf("Passive Skills:\n");
           printf(" 1. Variant Sancho Hardblood Arts\n Turn Start: When at 15+ 'Hardblood' using Variant Sancho Hardblood Arts instead for each skills\n");
           printf(" 2. Bearer of the Blood Kin\n When at 30%% or less HP, 'Responsibility' activate, Clash Power +1, Deal +20%% damage, Take +20%% damage and gain 3 Hardblood\n");
-          printf(" 3. Armadura de Sangre\n If this unit lost the Clash, consumes 5 'Hardblood' to use 'Laughters Will Subside' to continue clashing (Once per Turn), if won the Clash with 'Laughters Will Subside' gain 5 'Hardblood'. At 10+ use 'Variant Sancho Hardblood Arts 15 - Buildup to Finale' instead\n");
+          printf(" 3. Armadura de Sangre\n If this unit lost the Clash, consumes 5 'Hardblood' to use 'Laughters Will Subside' to continue clashing (Once per Turn), if win the Clash with 'Laughters Will Subside' gain 5 'Hardblood'. At 10+ use 'Variant Sancho Hardblood Arts 15 - Buildup to Finale' instead\n");
           printf(" 4. Hardblood\n When use certain skills gain randomly 1-3 Hardblood (Max 30) ('Hardblood' cannot drop below 1)\n");
               } 
           else if (selected_identity - 1 == 6) {
@@ -8180,7 +11435,7 @@ int main() {
                printf(" - If main target have 30+ (Burn Stack + Burn Count), deal +0.3%% damage instead (Max 60%%)\n");
           printf(" 2. District 12 Special Workshop Fuel\n When start Encounter gain 100 'District 12 Fuel' use for certain skills, when at 50 or less become 'Overheated Fuel', Buff all skills and Burn inflicting; when 'Overheated Fuel' reach 0 use 'I have to keep going for big' instead of current skill\n");
                printf(" 3. ... All burnt to ashes.\n When attack with skills, inflict 'Burn' based on skills used\n");
-               printf(" 4. Burn\n - At 1+ Count, or at 1+ Stack (Turn End: If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), Turn End: Deal fixed damage equal to Stack. Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+               printf(" 4. Burn\n When Inflicted: At 1+ Count, or at 1+ Stack (Turn End: If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), Turn End: Deal fixed damage equal to Stack. Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
               }
                else if (selected_identity - 1 == 9) {
                  //Taunt
@@ -8192,8 +11447,8 @@ int main() {
                  //Passive
                  printf("Passive Skills:\n");
                  printf(" 1. Flame Rooster's Death Defiance [炎鳥不死戦]\n In this Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn. Then, at the next Turn Start, heal (20 + Burn Stack on self)%% HP, and remove all Burn on self (Max 49%%; once per Encounter)\n");
-                 printf(" 2. Burn\n At 1+ Count, or at 1+ Stack (Turn End: If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), Turn End: Deal fixed damage equal to Stack. Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
-                  printf(" 3. Gamefowl\n Cannot be fall below 1 HP due to Burn damage.\n");
+                 printf(" 2. Burn\n When Inflicted: At 1+ Count, or at 1+ Stack (Turn End: If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), Turn End: Deal fixed damage equal to Stack. Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+                  printf(" 3. Gamefowl\n Cannot be fall below 1 HP due to Burn damage. When use certain skills gains Burn\n");
                  printf(" 4. Bloody Storm of Blades\n Combat Start: gain 1 Offense Up and 1 Defense Up for every 20%% missing HP on self (Max 3)\n");
                  printf(" 5. Bloodflame [血炎]\n Gain by using certain Skills (Max 3 Stack), when attack heal 3 Sanity. At 45+ Sanity, gain 1 Offense for next turn instead (Max 3 times per turn), Turn End: lose 1 Stack\n");
                  printf(" 6. Battleblood Instinct\n Deal 0.75%% damage for every Stack (Max 20 Stack). At 20+ Stack,  activate 'Rooster's Rampaging Blades Under the Ensanguined Heaven' instead of 'Bloodflame Massacre [血炎亂舞]'\n Gain 'Battleblood Instinct' when meeting one of the following\n");
@@ -8210,9 +11465,9 @@ int main() {
         //Passive
         printf("Passive Skills:\n");
         printf(" 1. The Final Reception\n At 50%% or less HP, activate 'Serious', increase HP and Max HP to 1150, gains +100%% damage and 5 Final Power for one turn; then gain new Skills set (Once per Encounter) (Cannot be defeat until this effect activated)\n");
-             printf(" 2. Fairy\n Inflict by certain Skills, Take (Fairy Stack) fixed damage addition for every hit, if this unit's in activated 'An Arbiter', Take (0.5 x Fairy Stack)%% Max HP fixed damage addition for every hit instead. Turn End: Take (Fairy Stack) fixed damage; then halve stack (Round down), if this unit's in activated 'An Arbiter', Take (0.5 x Fairy Stack)%% Max HP fixed damage; then halve stack (Round down) instead\n");
+             printf(" 2. Fairy\n Inflict by certain Skills, Take (Fairy Stack) fixed damage addition for every hit, if this unit's in activated 'An Arbiter', Take (0.5 x Fairy Stack)%% Max HP fixed damage addition for every hit instead. Turn End: Take (Fairy Stack) fixed true damage (true damage ignore Shield HP); then halve stack (Round down), if this unit's in activated 'An Arbiter', Take (0.5 x Fairy Stack)%% Max HP true fixed damage (true damage ignore Shield HP); then halve stack (Round down) instead\n");
              printf(" 3. Incomplete Arbiter\n In this Encounter, deals -20%% damage, Final Power -1. When activation 'Serious', activate 'An Arbiter' instead\n");
-        printf(" 4. An Arbiter\n Gains +50%% damage, Final Power +2, Deal +20%% damage and +10 Base Power for every Fairy on enemy, when getting attack by Full Clash Lost Coin, Take -80%% damage and gain (50 + Missing HP/3) Shield HP (Max 100), when getting attack and at 0+ Sanity, consumes 10 Sanity to gain (100 + Missing HP/2) Shield HP\n");
+        printf(" 4. An Arbiter\n Gains +50%% damage, Final Power +2, Deal +20%% damage and +10 Base Power for every Fairy on enemy, when getting attack by Full Clash Lost Coin, Take -80%% damage and gain (50 + Missing HP/3) Shield HP (Max 100 per attacked), when getting attack and at 0+ Sanity, consumes 10 Sanity to gain (100 + Missing HP/2) Shield HP (Max 300 per attacked)\n");
             } 
         
           printf("\nSkills (%d total):\n", tempPlayer.numSkills);
@@ -8261,13 +11516,13 @@ int main() {
   // -------------------- Enemy Selection ---------------------
 
   printf("\nEnemy Options:\n");
-  for (int i = 0; i < 7; i++)
+  for (int i = 0; i < 8; i++)
       printf("%d. %s\n", i + 1, enemyNames[i]);
 
   while (1) {
-      printf("\nChoose enemy (1-7): ");
+      printf("\nChoose enemy (1-8): ");
       if (scanf("%d", &selected_enemy) == 1 &&
-          selected_enemy >= 1 && selected_enemy <= 7) {
+          selected_enemy >= 1 && selected_enemy <= 8) {
 
           // Setup temp characters for info preview
           setupCharacters(&tempPlayer, &tempEnemy, 0, selected_enemy - 1);
@@ -8378,7 +11633,25 @@ int main() {
           printf(" 6. I still await your answer.\n At 60%% or less HP, apply 3 Dialogues to enemy. Dialogues: Turn End: heal 5 Sanity, When HP drop to 0 heal up to max HP; then lose 1 stack\n");
           printf(" 7. Do not fear the futility.\n At 30%% or less HP, Turn End: Cap HP to 30%%; then use 'Like a Roaring Storm' at Turn Start\n");
           printf(" 8. perhaps they must be shaken afore you are to speak your truth.\n At 10%% or less HP, Turn End: Cap HP to 10%%; then use a powerful attack 'Tiangang Star - Form (格)' at Turn Start\n");
-            }  else {
+            } else if (selected_enemy - 1 == 6) {
+          //Taunt
+          printf("'Grand Welcome...'\n\n");
+
+          //Description
+          printf("The King in Binds (O-01-20-12) is a WAW-class Abnormality, the boss without 'Sanity' that focus on decrease enemy Sanity, he's the king... and the king shall have a knight beside\n\n");
+
+          //Passive
+           printf("Passive Skills:\n");
+           printf(" 1. The King Shall Have a Knight Beside\n Start Encounter: This unit Summons 'A Knight' that imitate from 'Enemy'. Turn Start: Start the 'Combat Event'\n");
+          printf(" 2. Closing of the Banquet\n When 'A Knight' reaches 0 HP, Turn End: All enemy lose (5 x Turn used) Sanity (Max 45), Turn Start: Start the 'Combat Event'; then this unit joins the Battle\n");
+          printf(" 3. Refracted Struggle\n On Clashing: This unit gain (Clash Count/2) in a Clash (Rounded down) (This effect activing repeating on new Clash Round)\n");
+          printf(" 4. Snapping Bandages\n Turn End: at 20%% or less HP, apply 'Bandages of the King in Binds' on all enemies. Turn Start: Use a powerful attack, repeat every 5th turn\n");
+          printf(" 5. Bandages of the King in Binds\n Turn End: Gain +2 Sinking Stack and +1 Sinking Count\n");
+          printf(" 6. Thou Wilt Sink\n When attack with certain skills, inflict 'Sinking' based on skills used\n");
+          printf(" 7. Bound by Guilt\n When attack with certain skills, inflict 'Tremor' or trigger 'Tremor Burst' based on skills used\n");
+          printf(" 8. Sinking\n When Inflicted: At 1+ Count, or at 1+ Stack (If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Hit: Lose (Stack) Sanity (if this unit doesn't have Sanity, take (Stack) damage instead). Then reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+          printf(" 9. Tremor\n When Inflicted: At 1+ Count, or at 1+ Stack (If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Trigger by 'Tremor Burst', Take (Stack) Fixed Damage, if this unit took (Max HP/2) damage from 'Tremor Burst' in this Encounter, enter 'Stagger' State (Cannot act for one turn) and reset this progess. Then reduce 1 Count. Turn End: Lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+            } else {
           //Taunt
           printf("'That's that, and this is this.'\n\n");
 
@@ -8443,10 +11716,6 @@ int main() {
 
   // Use actual selections here
   setupCharacters(&player, &enemy, selected_identity - 1, selected_enemy - 1);
-
-   //Initialize OLD_SANITY to current sanity so Turn 1 doesn't reset to 0
-    OLD_SANITYP1 = player.Sanity;
-    OLD_SANITYP2 = enemy.Sanity;
 
   if (strcmp(player.name, "Don Quixote:The Manager of La Manchaland") == 0 &&
       strcmp(enemy.name, "Don Quixote") == 0) {
@@ -8542,21 +11811,37 @@ int main() {
                enemy.numSkills);
   
   // Battle loop
-  while (player.HP > 0 && enemy.HP > 0) {
+  if (selected_enemy - 1 == 6) {
+
+    // For King in Binds
+    
+          if (selected_enemy - 1 == 6) {
+
+              runKingInBindsBattle(
+                  &player, &enemy,
+                  &playerSkill1, &playerSkill2, &playerSkill3, &playerLastUnused,
+                  &enemySkill1,  &enemySkill2,  &enemySkill3,  &enemyLastUnused);
+
+    }
+    
+  } else { 
+    
+    while (player.HP > 0 && enemy.HP > 0) {
 
     printf("\n--- Turn %d ---\n", TurnCount);
 
-    // Check who can act this turn
-    int IsplayerPanicked = isPanicked(&player);
-    int IsenemyPanicked = isPanicked(&enemy);
+      // Check who can act this turn
+      int IsplayerUnableToAct = isPanicked(&player) || isStaggered(&player);
+      int IsenemyUnableToAct  = isPanicked(&enemy)  || isStaggered(&enemy);
 
-    // If both can't act, both recover
-    if (IsplayerPanicked && IsenemyPanicked) {
-      printf("\nBoth are unable to act! They recover...\n");
-      player.Sanity = 0;
-      enemy.Sanity = 0;
-      continue;
-    }
+      // ถ้าทั้งคู่ทำอะไรไม่ได้เลย
+      if (IsplayerUnableToAct && IsenemyUnableToAct) {
+            printf("\nBoth are unable to act! They recover...\n");
+            if (isPanicked(&player)) { player.Sanity = 0; }
+        if (isPanicked(&enemy)) { enemy.Sanity = 0; }
+            TurnCount++;
+            continue;
+        }
 
     // Enemy picks one skill (only if can act)
     int enemySkillIndex = (rand() % 2 == 0 ? enemySkill1 : enemySkill2);
@@ -8569,634 +11854,37 @@ int main() {
 
     //------------------- Turn Start ----------------------------
 
-      // ---------------- Sancho:The Second Kindred of Don Quixote -----------------------
+      handleTurnStart(&player, &enemy, &enemySkillIndex, playerSkill1, playerSkill2, enemySkill1, enemySkill2);
 
-    // Sancho:The Second Kindred of Don Quixote – heal HP at start
-    if (strcasecmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+      printf("\nCurrent HP:\n");
 
-      int healvalue = (((enemy.MAX_HP - enemy.HP) / enemy.MAX_HP) * 100)/2;
-      if (healvalue > 30) healvalue = 30;
-      if (healvalue > 0) {
-
-      enemy.HP += healvalue;
-        if (enemy.HP > enemy.MAX_HP) enemy.HP = enemy.MAX_HP;
-
-      printf("\n%s heals (percentage missing HP/2) HP (%d - Max 30)\n",
-             enemy.name, healvalue);
-
-      sleep(1);
-      }
-    }
-
-      // Sancho:The Second Kindred of Don Quixote – heal sanity at -15 Sanity or less
-      if (strcasecmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy.Sanity <= -15 && enemy.HP > 1) {
-
-        int healvalue = ((enemy.MAX_HP - enemy.HP) / enemy.MAX_HP * 100)/2;
-        int consumed = 5 - (enemy.Sanity/5);
-        if (consumed > enemy.HP) consumed = enemy.HP + 1;
-
-        if (enemy.Passive >= consumed) {
-        enemy.Passive -= consumed;
-        if (enemy.Passive < 1) enemy.Passive = 1;
-        updateSanity(&enemy, healvalue);
-        enemy.ClashPower += 2;
-
-        printf("\n%s at -15 or less Sanity, consumes %d Hardblood (%d left) to gain %d Sanity and gain 2 Clash Power Up\n",
-               enemy.name, consumed, enemy.Passive, healvalue);
-
-        sleep(1);
-        }
-      }
-
-    // Sancho:The Second Kindred of Don Quixote with Don Quixote:The Manager of La Manchaland - Power down
-    if (strcmp(player.name, "Don Quixote:The Manager of La Manchaland") == 0 &&
-        strcmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy.skills[5].active == 0) {
-
-      enemy.skills[5].active = 1;
-
-      enemy.Sanity = -45;
-      enemy.SanityFreezeTurns = 1;
-
-      printf("\n%s gains 'Call of Mother', Start Phase with -45 Sanity for two turns \n", enemy.name);
-
-      sleep(1);
-
-      printf("\n%s: Don't you hear it? A call...\n", player.name);
-
-      sleep(1);
-    }
-
-      // -----------------------------------------------------------
-
-
-    // -------------------------- Heathcliff:Wild Hunt -------------------------
-    // Wild hunt – Buff
-    if (strcasecmp(player.name, "Heathcliff:Wild Hunt") == 0 && player.Sanity >= 45 && player.skills[0].active <= 0) {
-
-      player.skills[0].active++;
-      if (player.skills[0].active > 3) player.skills[0].active = 3;
-
-      printf("\n%s at 45+ Sanity, gains 'Dullahan'\n",
-             player.name);
-
-      sleep(1);
-    }
-
-    // Heathcliff:Wild Hunt - Call of erlking
-      if (strcasecmp(player.name, "Heathcliff:Wild Hunt") == 0 && (player.HP <= player.MAX_HP * 0.5 || player.Sanity <= -45) && player.skills[0].active == 0 && !player.skills[1].active) {
-
-        player.skills[1].active = 1;
-        player.skills[0].active += 1;
-        if (player.skills[0].active > 3) player.skills[0].active = 3;
-
-        if (player.Sanity <= -45) IsplayerPanicked = 0;
-
-        printf("\n%s at 50%% or less HP, or at -45 Sanity, gain 'Dullahan' (Once per Encounter)\n", player.name);
-
-        if (player.Sanity <= -25) {
-        int missingSP = -player.Sanity;       // how far below 0
-          int extraHeal = 2 * missingSP;           // 2 SP per missing SP
-          if (extraHeal > 50) extraHeal = 50;      // cap at 50
-
-          int totalHeal = 10 + extraHeal;          // base 10 + extra
-        updateSanity(&player, totalHeal);
-
-        printf("\n%s heals %d Sanity(%d)\n",
-          player.name, totalHeal, player.Sanity);
-        }
-
-      }
-
-    // ------------------------------------------------
-
-
-    // Erlking Heathcliff – always use skill 9 if HP ≤ 50
-    if (strcasecmp(enemy.name, "Erlking Heathcliff") == 0 && enemy.HP <= 50 &&
-      !enemy.skills[8].active && enemy.Passive == 2) {
-
-      enemy.skills[8].active = 1;
-
-      enemySkillIndex = 8;
-
-    }
-
-    
-
-    // --------------------- Heishou Pack - You Branch Adept Heathcliff ------------------
-
-    // Heishou Pack - You Branch Adept Heathcliff - Skill 3 Unbreakable coins reset
-    if (strcasecmp(player.name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
-
-      player.skills[2].Unbreakable = 0;
-
-      if (player.Passive >= 20 && player.HP <= player.MAX_HP * 0.5) player.skills[2].Copies = 3; // S3 Pity
-      else player.skills[2].Copies = 1;
-
-    }
-
-    // Heishou Pack - You Branch Adept Heathcliff - Heal from anti death
-    if (strcasecmp(player.name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player.skills[3].active == 1) {
-
-      player.skills[3].active = 2;
-
-      int healHPpercentag = player.skills[0].active + 20;
-      if (healHPpercentag > 49) healHPpercentag = 49;
-      int healvalue = (player.MAX_HP * healHPpercentag/100);
-
-      player.HP += (player.HP + healvalue) > player.MAX_HP ? player.MAX_HP - player.HP : healvalue;
-
-      printf("\n%s heals %d%% HP (%.2f), and remove all Burn on self (Max 49%%; Once per Encounter)\n",
-        player.name, healHPpercentag, player.HP);
-
-        player.skills[0].active = 0;
-        player.skills[1].active = 0;
-
-    }
-
-    // --------------------------------------------------------
-
-    // Meursault:The Thumb - Skill 3 Unbreakable coins reset
-    if (strcasecmp(player.name, "Meursault:The Thumb") == 0) {
-
-      player.skills[2].Unbreakable = 0;
-
-    }
-
-    if (strcasecmp(player.name, "Meursault:The Thumb") == 0 && !player.skills[3].active && player.Passive == 0) {
-    
-      int amount = ((int)(12 * enemy.MAX_HP)) / 847;
-      if (amount < 12) amount = 12;
-
-      if (strcasecmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0 || strcasecmp(enemy.name, "Don Quixote") == 0) amount += 4; // pity for boss
-
-      player.Passive = amount;
-      
-      printf("\n%s gains %d Tigermark Rounds\n", player.name, amount);
-
-      sleep(1);
-
-    }
-
-    // ------------------- Dawn Office Fixer Sinclair -----------------------------
-
-    // Dawn Office Fixer Sinclair - Ego
-    if (strcasecmp(player.name, "Dawn Office Fixer Sinclair") == 0 && !player.skills[3].active && player.HP <= player.MAX_HP * 0.3 && player.Sanity > -45 && player.skills[0].active) {
-
-      player.skills[0].active = 0;
-       player.Sanity = 45;
-        player.skills[2] = player.skills[5];
-        player.skills[3] = player.skills[5];
-        player.skills[3].active = 1;
-        player.skills[2].Copies = -1;
-        player.skills[3].Copies = 1;
-
-      printf("\n%s at 30%% or less HP and Sanity isn't -45, reset Sanity to 45; then enters the Volatile E.G.O::Waxen Pinion state (Once per Encounter)\n", player.name);
-
-      sleep(1);
-
-      printf("\n%s: If sorrow has become my indelible stigma, then... I choose to rise with it instead!\n", player.name);
-
-      sleep(1);
-
-    } else if (strcasecmp(player.name, "Dawn Office Fixer Sinclair") == 0 && !player.skills[3].active && player.Sanity >= 40) {
-
-       updateSanity(&player, -(20));
-      player.skills[2] = player.skills[5];
-      player.skills[3] = player.skills[5];
-      player.skills[3].active = 1;
-      player.skills[2].Copies = -1;
-      player.skills[3].Copies = 1;
-
-      printf("\n%s consumes 20 Sanity(%d) to enter the Volatile E.G.O::Waxen Pinion state\n", player.name, player.Sanity);
-
-      sleep(1);
-
-      printf("\n%s: This time... I'll definitely put an end to this!\n", player.name);
-
-      sleep(1);
-
-    } else if (strcasecmp(player.name, "Dawn Office Fixer Sinclair") == 0 && player.skills[3].active && player.Sanity <= 0) {
-
-      int clashpowerbuff = 3 * player.Passive;
-      if (clashpowerbuff > 20) clashpowerbuff = 20;
-
-       player.Passive = 0;
-      player.skills[3] = player.skills[4];
-      player.skills[2] = player.skills[4];
-      player.skills[3].active = 0;
-      player.skills[2].Copies = 1;
-      player.skills[3].Copies = -1;
-      player.ClashPower = clashpowerbuff;
-      player.ClashPowerNextTurn = clashpowerbuff;
-      
-
-        printf("\n%s exits the Volatile E.G.O::Waxen Pinion state and loses all 'Volatile Passion' to gain +(Volatile Passion x 3) (%d - Max 20) Clash Power for this turn and next turn\n", player.name, clashpowerbuff);
-
-        sleep(1);
-
-      printf("\n%s: ... I have to be bold!\n", player.name);
-
-      sleep(1);
-
-
-      }
-
-    // Dawn Office Fixer Sinclair - Volatile Passion
-    if (strcasecmp(player.name, "Dawn Office Fixer Sinclair") == 0 && player.skills[3].active) {
-
-        player.Passive += 1;
-
-      player.FinalPowerBoost += 1 * player.Passive;
-        player.DamageUp += 20 * player.Passive;
-
-      printf("\n%s gains 1 'Volatile Passion', gain 1 Final Power(%d), gain +20%% damage(%d%%) for every stack (%d)\n", player.name, 1 * player.Passive, 20 * player.Passive, player.Passive);
-
-      sleep(1);
-
-    }
-
-    // ------------------------------------------------------------------ 
-
-    // ------------------- Jia Qiu -----------------------------
-    // Jia Qiu - Power down
-    if (strcasecmp(enemy.name, "Jia Qiu") == 0) {
-      
-      if (enemy.Passive == 0) {
-        
-      enemy.Passive = 1;
-
-      for (int i = 0; i < enemy.numSkills; i++) {
-          enemy.skills[i].Offense -= 35;
-          enemy.skills[i].Defense -= 35;
-      }
-
-      enemy.DamageUp += 30;
-        updateSanity(&enemy, 30);
-
-      printf("\n%s gains 'A Sliver of Anticipation', He's not giving it his all. Heal 30 Sanity, Lose 35 Offense, 35 Defense and Deal 30%% more damage\n",
-             enemy.name);
-
-      sleep(1);
-
-      } else {
-        enemy.DamageUp += 30;
-      }
-    }
-    
-    // Jia Qiu - Last attack at 85% HP
-      if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP < enemy.MAX_HP * 0.85 && enemy.Passive == 2 && enemy.skills[5].active == 0) {
-
-        enemySkillIndex = 5;
-
-        enemy.skills[5].active = 1;
-      }
-    
-    // -------------------------------------------------------------
-
-    //--------------------- Lei heng -----------------------------
-
-    // Lei heng – if HP ≤ 60%
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.HP <= enemy.MAX_HP * 0.6 || (enemy.skills[1].active >= 1 && enemy.skills[2].active >= 3)) &&
-      enemy.skills[0].active == 2 && enemy.skills[4].active == 0) {
-
-      enemy.skills[4].active = 1; // Active 'Unrelenting Spirit [剛氣]'
-
-      printf("\n%s activates 'Unrelenting Spirit [剛氣]'!\n", enemy.name);
-
-      sleep(1);
-
-      printf("\n%s: Can't leave a dance unfinished. Ain't that right?\n", enemy.name);
-
-       sleep(1);
-    }
-
-    // Lei heng – if HP ≤ 40%
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.HP <= enemy.MAX_HP * 0.4 || (enemy.skills[1].active >= 2 && enemy.skills[2].active >= 3)) &&
-      enemy.skills[0].active == 2) {
-
-      enemy.skills[0].active = 3; // Phase 4
-
-      printf("\n%s converts 'Inner Strength [底力]' to 'Extreme Strength [極力]'\n",
-        enemy.name);
-
-      sleep(1);
-
-      printf("\n%s converts 'Unrelenting Spirit [剛氣]' to 'Unrelenting Spirit - Shin [剛氣-心]'\n",
-        enemy.name);
-
-      sleep(1);
-
-      printf("\n%s replaces the powerful attack '%s' with '%s'\n", enemy.name,
-        enemy.skills[2].name, enemy.skills[5].name);
-
-      sleep(1);
-
-      GainNewPattern(&enemy, &player);
-
-    }
-    
-    // Lei heng – skill 3 using first fight
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && enemy.skills[2].active == 0 && enemy.skills[0].active == 2) {
-
-      enemy.skills[2].active = 1; // Turn Count
-      enemySkillIndex = 2; 
-      enemy.skills[1].active++; // Overheat count
-      if (enemy.skills[1].active > 5) enemy.skills[1].active = 5;
-
-    }
-
-    // Lei heng – skill 3 every 3 turns
-    else if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.skills[2].active > 0 && enemy.skills[2].active < 3) && enemy.skills[0].active == 2) {
-
-      enemy.skills[2].active++; // Turn Count
-
-    }
-    else if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.skills[2].active >= 3) && enemy.skills[0].active == 2) {
-
-      enemySkillIndex = 2; 
-      enemy.skills[1].active++; // Overheat count
-      if (enemy.skills[1].active > 5) enemy.skills[1].active = 5;
-
-    }
-    
-    // Lei heng – skill 6 using first fight
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && enemy.skills[5].active == 0 && enemy.skills[0].active == 3) {
-
-      enemy.skills[5].active = 1;
-      enemySkillIndex = 5; 
-      enemy.skills[1].active++; // Overheat count
-      if (enemy.skills[1].active > 5) enemy.skills[1].active = 5;
-
-    }
-
-    // Lei heng – skill 6 every 3 turns
-      else if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.skills[5].active > 0 && enemy.skills[5].active < 3) && enemy.skills[0].active == 3) {
-
-        enemy.skills[5].active++; // Turn Count
-
-      }
-      else if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.skills[5].active >= 3) && enemy.skills[0].active == 3) {
-
-        enemySkillIndex = 5; 
-        enemy.skills[1].active++; // Overheat count
-        if (enemy.skills[1].active > 5) enemy.skills[1].active = 5;
-
-      }
-    
-    //-------------------------------------------------------------
-
-    // ------------------------- Sancho --------------------------
-
-    // Sancho – skill 13 using first fight
-    if (strcasecmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-      enemy.HP <= enemy.MAX_HP * 0.6 && enemy.skills[12].active) {
-
-      enemy.skills[12].active = 0;
-    enemySkillIndex = 12;
-
-    }
-    // Sancho – skill 14 using first fight
-    if (strcasecmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-      enemy.HP <= enemy.MAX_HP * 0.3 && enemy.skills[13].active && enemy.skills[12].active == 0) {
-
-      enemy.skills[13].active = 0;
-    enemySkillIndex = 13;
-
-    sleep(1);
-    }
-    
-    //-------------------------------------------------------------------------
-
-    //-------------------------------------------------------------------------
-
-    if (player.HP < 0) player.HP = 0;
-    if (enemy.HP < 0) enemy.HP = 0;
-    if (player.Shield > 0 && enemy.Shield > 0) {
-      printf("\nCurrent HP:\n%s = %.2f / %.2f (Shield %.2f)\n%s = %.2f / %.2f (Shield %.2f)\n",
-             player.name, player.HP, player.MAX_HP, player.Shield,
-             enemy.name, enemy.HP, enemy.MAX_HP, enemy.Shield);
-    } else if (player.Shield > 0) {
-      printf("\nCurrent HP:\n%s = %.2f / %.2f (Shield %.2f)\n%s = %.2f  / %.2f\n",
-             player.name, player.HP, player.MAX_HP, player.Shield,
-             enemy.name, enemy.HP, enemy.MAX_HP);
-    } else if (enemy.Shield > 0) {
-      printf("\nCurrent HP:\n%s = %.2f / %.2f\n%s = %.2f / %.2f (Shield %.2f)\n",
-             player.name, player.HP, player.MAX_HP,
-             enemy.name, enemy.HP, enemy.MAX_HP, enemy.Shield);
-    } else {
-      printf("\nCurrent HP:\n%s = %.2f / %.2f\n%s = %.2f / %.2f\n",
-             player.name, player.HP, player.MAX_HP,
-             enemy.name, enemy.HP, enemy.MAX_HP);
-    }
-
-    // Display Sanity status
-    if (player.hasSanity || enemy.hasSanity) {
-      printf("[Sanity] ");
-
-      if (player.hasSanity) {
-        printf("%s: %d (%s) ", player.name, player.Sanity,
-               getSanityStatus(&player));
-      }
-
-      if (enemy.hasSanity) {
-        printf("| %s: %d (%s)", enemy.name, enemy.Sanity,
-               getSanityStatus(&enemy));
-      }
-
+      // แสดงผลของ Player
+      if (player.Stagger > 0) printf("[Stagger] ");
+      printf("%s = %.2f / %.2f", player.name, player.HP, player.MAX_HP);
+      if (player.Shield > 0) printf(" (Shield %.2f)", player.Shield);
       printf("\n");
 
-    }
-    
-      // ------------------ Before fight -----------------------
-
-
-      // --------------------------- Sukuna:King of Curse --------------------------------
+      // แสดงผลของ Enemy
+      if (enemy.Stagger > 0) printf("[Stagger] ");
+      printf("%s = %.2f / %.2f", enemy.name, enemy.HP, enemy.MAX_HP);
+      if (enemy.Shield > 0) printf(" (Shield %.2f)", enemy.Shield);
+      printf("\n");
 
       
-      // Sukuna:King of Curse Chanting
-      if (strcasecmp(enemy.name, "Sukuna:King of Curse") == 0 && enemy.skills[4].active < 3 && TurnCount % 3 == 0) {
-
-         enemySkillIndex = 4;
-
+      if (player.hasSanity || enemy.hasSanity) {
+        printf("[Sanity] ");
+        if (player.hasSanity)
+          printf("%s: %d (%s) ", player.name, player.Sanity, getSanityStatus(&player));
+        if (enemy.hasSanity)
+          printf("| %s: %d (%s)", enemy.name, enemy.Sanity, getSanityStatus(&enemy));
+        printf("\n");
       }
 
-      // Sukuna:King of Curse World Cutting Slash
-      else if (strcasecmp(enemy.name, "Sukuna:King of Curse") == 0 && enemy.skills[4].active == 3) {
+        // ------------------ Before fight -----------------------
 
-       enemySkillIndex = 8;
+      handleBeforeFight(&player, &enemy, &enemySkillIndex, playerSkill1, playerSkill2, enemySkill1, enemySkill2);
 
-        enemy.skills[4].active = 0;
-
-        printf("\n%s: No more playing around, brat.\n",
-          enemy.name);
-
-        sleep(1);
-
-      }
-
-      // ---------------------------------------------------------------------
-
-
-       // ------------------ Jia Qiu -----------------------
-
-      // Jia Qiu - Last attack at 10% HP
-        if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP < enemy.MAX_HP * 0.1 && enemy.Passive == 6) {
-
-          printf("\n%s: I expect you to fight to your deaths in this crucial struggle, reversible as they may be.\n",
-            enemy.name);
-
-            enemySkillIndex = 15;
-
-          enemy.Passive = 7;
-
-        }
-
-      // Jia Qiu - Taunt S14
-      if (strcasecmp(enemy.name, "Jia Qiu") == 0 && &enemy.skills[enemySkillIndex] == &enemy.skills[14]) {
-
-        printf("\n%s: It must lie there still, shrouded it may be.\n",
-          enemy.name);
-
-      }
-
-      // Jia Qiu - Last attack at 30% HP
-      if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP < enemy.MAX_HP * 0.3 && enemy.Passive == 4) {
-
-        printf("\n%s: Do not fear the futility. There will be time for that once you have spoken your mind.\n",
-          enemy.name);
-
-          enemySkillIndex = 16;
-
-        enemy.Passive = 5;
-
-      }
-
-      // Jia Qiu - Last attack at 85% HP
-        if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP < enemy.MAX_HP * 0.85 && enemy.Passive == 2 && enemy.skills[5].active == 0) {
-
-          enemySkillIndex = 5;
-
-          enemy.skills[5].active = 1;
-        }
-
-      // -------------------------------------------------------------
-
-      // Roland - Skill 9 Unbreakable coins reset
-    if (strcasecmp(enemy.name, "Fixer grade 9?") == 0 && enemy.skills[8].Unbreakable > 0) {
-
-      enemy.skills[8].Unbreakable = 0;
-
-    }
-
-      //Roland Furioso
-      if (strcasecmp(enemy.name, "Fixer grade 9?") == 0) {
-
-        int allInactive = 1; // assume all inactive
-
-        // check skills 0–8
-        for (int i = 0; i <= 8; i++) {
-            if (enemy.skills[i].Copies == 1) {
-                allInactive = 0; // found one active
-                break;
-            }
-        }
-
-        if (allInactive == 1) {
-
-          for (int i = 0; i <= 8; i++) {
-            enemy.skills[i].Copies = 1;
-          }
-          
-          printf("\n%s: I just wanted to stop the cycle. To make it end somewhere.\n",
-          enemy.name);
-
-          enemySkillIndex = 9;
-
-          sleep(1);
-        } else {
-            // Normal random selection
-            enemySkillIndex = (rand() % 2 == 0 ? enemySkill1 : enemySkill2);
-        }
-
-      } 
-
-      // Lei heng – skill 3 and skill 6 Before fight
-        if (strcasecmp(enemy.name, "Lei heng") == 0 &&
-            (&enemy.skills[enemySkillIndex] == &enemy.skills[2] ||
-             (&enemy.skills[enemySkillIndex] == &enemy.skills[5]))) {
-
-          printf("\n%s: I'maboutta drop somethin' big on y'all! Don't let it kill "
-                 "y'all now and spoil the fun!\n",
-                 enemy.name);
-
-          sleep(1);
-        }
-
-        // Sancho – Before fight
-        if (strcasecmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
-            (&enemy.skills[enemySkillIndex] == &enemy.skills[12] ||
-             (&enemy.skills[enemySkillIndex] == &enemy.skills[13]))) {
-
-          if (strcasecmp(player.name, "Don Quixote:The Manager of La Manchaland") == 0) {
-
-            printf("\n%s: My name is Sancho!\n",
-                   enemy.name);
-
-            printf("\n%s: ...\n",
-               player.name);
-
-            sleep(1);
-
-            printf("\n%s: And I, Sancho, declare upon my honor; this lance shall end that festering, slothful dream!\n", enemy.name);
-
-            printf("\n%s: You... Are like... Him... what's a juvenile dream!\n",
-               player.name);
-
-          } else {
-            printf("\n%s: That's just attachment; my dream has already ended\n", enemy.name);
-          }
-
-          sleep(1);
-        }
-
-      // Don Quixote:The Manager of La Manchaland – Before fight
-      if (strcasecmp(player.name, "Don Quixote:The Manager of La Manchaland") == 0 &&
-          (&player.skills[playerSkill1] == &player.skills[2] ||
-           (&player.skills[playerSkill2] == &player.skills[2])) && player.Passive >= 15) {
-
-          printf("\n%s: When it comes to making weapons, I had surpassed my father.\n",
-            player.name);
-
-        sleep(1);
-
-      } else if (strcasecmp(player.name, "Don Quixote:The Manager of La Manchaland") == 0 && player.Passive >= 15) {
-
-        printf("\n%s: With your weapons... I will lead this bloody battle to victory.\n",
-          player.name);
-
-        sleep(1);
-
-      }
-
-      // -------------------------------------------------
-
-      // Sukuna - Domain Expansion:Malevolent Shrine
-      if (strcasecmp(enemy.name, "Sukuna:King of Curse") == 0 && enemy.HP <= 50) {
-
-        printf("\n%s at 50 HP or less than, use '%s' instead!\n", enemy.name, enemy.skills[6].name);
-
-        sleep(1);
-
-        printf("\n%s: Brat... You just savor it.\n",
-          enemy.name);
-
-        enemySkillIndex = 6;
-
-        sleep(1);
-
-      }
-
-    if (!IsenemyPanicked) {
+      if (!IsenemyUnableToAct) {
       if (enemy.skills[enemySkillIndex].Unbreakable > 0 && enemy.skills[enemySkillIndex].Clashable) {
         printf("\nEnemy uses %s (BasePower %d CoinPower %d Coins %d Offense %d "
                "Defense %d Unbreakable %d)\n",
@@ -9241,7 +11929,7 @@ int main() {
     // Player picks one skill (only if can act)
     int playerSkillIndex;
     
-    if (!IsplayerPanicked) {
+    if (!IsplayerUnableToAct) {
       printf("\nYour skills:\n");
       if (player.skills[playerSkill1].Unbreakable > 0 && player.skills[playerSkill1].Clashable) {
         printf("1. %s (BasePower %d CoinPower %d Coins %d Offense %d Defense %d "
@@ -9382,9 +12070,9 @@ int main() {
     getSkills(&player, &playerSkill1, &playerSkill2, &playerSkill3, playerLastUnused,
                  player.numSkills);
 
-    int playerTempOffense, playerTempDefense;
-    int enemyTempOffense, enemyTempDefense;
-
+      int playerTempOffense = 0, playerTempDefense = 0;
+      int enemyTempOffense = 0, enemyTempDefense = 0;
+      
     playerTempOffense += player.OffenseBoost;
     playerTempDefense += player.DefenseBoost;
 
@@ -9455,14 +12143,14 @@ int main() {
       }
 
       }
-    else if (IsplayerPanicked && !IsenemyPanicked) {
+    else if (IsplayerUnableToAct && !IsenemyUnableToAct) {
 
       attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                   enemyTempDefense, &player, playerSkillEffective,
                   playerTempOffense, playerTempDefense,
                   enemySkillEffective->Coins, 0, 0);
 
-    } else if (!IsplayerPanicked && IsenemyPanicked) {
+    } else if (!IsplayerUnableToAct && IsenemyUnableToAct) {
       // Enemy is panicked (punching bag), player attacks freely
       
       attackPhase(&player, playerSkillEffective, playerTempOffense,
@@ -9504,672 +12192,18 @@ int main() {
     }
 
     
+      printf("\n--- Turn End ---\n");
 
+      // 1. จบเทิร์นของผู้เล่น (จัดการกระสุน/Sanity/ล้างบัฟผู้เล่น)
+      handleTurnEnd(&player, &enemy, playerSkillIndex, enemySkillIndex);
 
-    printf("\n--- Turn End ---\n");
-
-    
-    // ----------------------------- Turn End ------------------------------
-
-    // --- Decrement Sanity Lock ---
-    if (player.SanityFreezeTurns > 0) {
-        player.SanityFreezeTurns--;
-        if (player.SanityFreezeTurns == 0) {
-        }
-    }
-    if (enemy.SanityFreezeTurns > 0) {
-        enemy.SanityFreezeTurns--;
-        if (enemy.SanityFreezeTurns == 0) {
-        }
-    }
-    
-    // ---------------------------------
-
-    // for character panic recover
-
-    // --- Player Panic Recovery ---
-    if (OLD_SANITYP1 <= -45 && player.Sanity <= -45) {
-
-        // Only recover if not permanently frozen (-1)
-        if (player.SanityFreezeTurns != -1) {
-            player.Sanity = 0;
-            player.SanityFreezeTurns = 0;
-          
-            printf("\n%s snaps out of panic! (Sanity reset to 0)\n", player.name);
-            OLD_SANITYP1 = player.Sanity;
-        } else {
-            OLD_SANITYP1 = player.Sanity; // Update tracker but don't recover
-        }
-    } else {
-      OLD_SANITYP1 = player.Sanity;
-    }
-
-    // --- Enemy Panic Recovery ---
-    if (OLD_SANITYP2 <= -45 && enemy.Sanity <= -45) {
-
-      // Check if the enemy is permanently locked in panic (-1)
-      if (enemy.SanityFreezeTurns != -1) {
-
-        enemy.Sanity = 0;
-        enemy.SanityFreezeTurns = 0;
-
-        printf("\n%s snaps out of panic! (Sanity reset to 0)\n", enemy.name);
-        OLD_SANITYP2 = enemy.Sanity;
-
-
-        // Buff after panic (Only applies if they successfully recovered)
-        if (strcasecmp(enemy.name, "Erlking Heathcliff") == 0) {
-          enemy.AttackPowerBoostNextTurn += 2;
-          printf("\n%s gains 2 Attack Power up next turn\n", enemy.name);
-        } 
-        else if (strcasecmp(enemy.name, "Lei heng") == 0) {
-          int healSanity = (enemy.MAX_HP - enemy.HP) / enemy.MAX_HP * 100;
-            if (healSanity > 30) healSanity = 30;
-
-              updateSanity(&enemy, healSanity);
-              printf("\n%s heals Sanity by this unit's missing HP (%d - Max 30)\n", enemy.name, enemy.Sanity);
-          }
-        else if (strcasecmp(enemy.name, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy.Passive >= 1) {
-
-            enemy.Passive -= 3;
-          if (enemy.Passive < 1) enemy.Passive = 1;
-          enemy.AttackPowerBoostNextTurn += 3;
-          enemy.DamageUpNextTurn += 30;
-
-              printf("\n%s consumes 3 Hardblood (%d) to gain 3 Attack Power Up and +30%% damage next turn\n", enemy.name, enemy.Passive);
-          }
-        else if (strcasecmp(enemy.name, "Sukuna:King of Curse") == 0) {
-
-              enemy.ClashPowerNextTurn += 3;
-
-                printf("\n%s gain 2 Clash Power Up next turn\n", enemy.name);
-            }
-      } else {
-          // SanityFreezeTurns is -1: Do not recover, stay panicked
-          OLD_SANITYP2 = enemy.Sanity;
-      }
-
-    } else {
-        OLD_SANITYP2 = enemy.Sanity;
-    }
-
-
-
-
-
-
-
-
-
-
-    
-
-    // Erlking Heathcliff Phase 2
-    if (strcasecmp(enemy.name, "Erlking Heathcliff") == 0 && (enemy.HP <= enemy.MAX_HP * 0.7 || TurnCount >= 6) &&
-        enemy.Passive == 0) {
-
-      enemy.Passive = 1;
-
-      enemy.sanityLossBase = 10;
-
-      enemy.skills[1] = enemy.skills[5];
-      enemy.skills[2] = enemy.skills[4];
-      enemy.skills[1].Copies = 0;
-      enemy.skills[2].Copies = 0;
-
-      enemy.skills[3].Copies = 4;
-      enemy.skills[4].Copies = 3;
-      enemy.skills[5].Copies = 3;
-      enemy.skills[6].Copies = 2;
-      enemy.skills[7].Copies = 2;
-
-      printf("\n%s: May you wake in torment, my dear Catherine.\n", enemy.name);
-
-      sleep(1);
-    }
-
-     // Heathcliff:Wild Hunt - Dullahan
-      if (strcasecmp(player.name, "Heathcliff:Wild Hunt") == 0 && player.skills[0].active > 0) {
-
-        player.skills[2].active = 0; // Reset Counter
-        
-        player.skills[0].active += 1; // Dullahan
-        if (player.skills[0].active > 3) player.skills[0].active = 3;
-        
-        if (player.skills[0].active >= 3 || player.Sanity < 0) player.skills[2].Copies = 3; // A bit buff for unlucky player
-
-        printf("\n%s gains 1 Dullahan (%d - Max 3)\n",
-          player.name, player.skills[0].active);
-
-        if (player.Sanity <= -25) {
-
-          player.skills[0].active = 0;
-          player.skills[2].Copies = 1;
-
-          printf("\n%s at -25 or less, loses all 'Dullahan'\n", player.name);
-          
-        } else {
-
-        updateSanity(&player, -(5));
-
-        printf("\n%s loses 5 Sanity (%d)\n",
-          player.name, player.Sanity);
-
-          if (player.Sanity <= -25) {
-
-            player.skills[0].active = 0;
-            player.skills[2].Copies = 1;
-
-            printf("\n%s at -25 or less, loses all 'Dullahan'\n", player.name);
-
-          } else {
-          
-        int losevalue = (15 - (player.Passive/2));
-          if (losevalue < 10) losevalue = 10;
-
-        updateSanity(&player, -(losevalue));
-
-        printf("\n%s loses %d Sanity (%d)\n",
-          player.name, losevalue, player.Sanity);
-
-          }
-
-        }
-        
-      }
-
-    // -------------------------------- Lei heng --------------------------------
-
-    // Lei heng – skill 3 and skill 6 turn end
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && enemy.skills[0].active == 3 && enemy.skills[3].active > 0) {
-
-      enemy.skills[5].active = 1;
-
-      printf("\n%s heals Sanity equal to Extreme Strength [底力] consumed(%d)\n", enemy.name, enemy.skills[3].active);
-      updateSanity(&enemy, enemy.skills[3].active);
-        enemy.skills[3].active = 0;
-
-    } else if (strcasecmp(enemy.name, "Lei heng") == 0 && enemy.skills[0].active == 2 && enemy.skills[3].active > 0) {
-
-      enemy.skills[2].active = 1;
-
-      printf("\n%s heals Sanity equal to Inner Strength [底力] consumed(%d)\n", enemy.name, enemy.skills[3].active);
-      updateSanity(&enemy, enemy.skills[3].active);
-      enemy.skills[3].active = 0;
-
-    } 
-
-    // Lei heng – HP < 90%
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.HP < enemy.MAX_HP * 0.9 || TurnCount >= 2) && enemy.skills[0].active == 0) {
+      // 2. จบเทิร์นของบอส (จัดการความสามารถบอส/ล้างบัฟบอส)
+      handleTurnEnd(&enemy, &player, enemySkillIndex, playerSkillIndex);
       
-      GainNewPattern(&enemy, &player);
-
-      enemy.skills[0].active = 1; // Phase 2
-
-      printf("\n%s: Huh... y'all ain't half bad! Keep makin' it worth my bullet fees!\n",
-             enemy.name);
-
-      enemy.skills[0].name = "Double Slash - Blast [爆]";
-      enemy.skills[0].CoinPower += 1;
-      enemy.skills[1].name = "Triple Slash - Blast [爆]";
-      enemy.skills[1].CoinPower += 1;
-
-      //enemy.skills[2].Copies = 1;
-      enemy.skills[3].Copies = 4;
-      enemy.skills[4].Copies = 2;
-
-      sleep(1);
-    }
-
-    // Lei heng – HP < 80%
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && (enemy.HP < enemy.MAX_HP * 0.8 || TurnCount >= 4) && enemy.skills[0].active == 1) {
-
-      GainNewPattern(&enemy, &player);
-
-       enemy.skills[0].active = 2; // Phase 3
-
-      printf("\n%s gains 25 Inner Strength [底力]\n", enemy.name);
-
-      enemy.Passive += 25;
-      if (enemy.Passive > 25) enemy.Passive = 25;
-
-      sleep(1);
-
-      printf("\n%s: That's more like it. Y'all are firin' me up!\n",
-         enemy.name);
-
-      sleep(1);
-
-    }
-
-     // -------------------------------------------------------------
-      
-
-      // Gregor:Firefist - Burn
-        if (strcasecmp(player.name, "Gregor:Firefist") == 0 && (player.skills[0].active > 0 || player.skills[1].active > 0) && enemy.HP > 0) {
-
-          int damage = player.skills[0].active > 0 ? player.skills[0].active : 1;
-          
-            enemy.HP -= damage; // Stack burn min 1
-          if (player.HP < 0) player.HP = 0;
-          player.skills[1].active--; // Count Burn min 1
-          if (player.skills[1].active <= 0) player.skills[1].active = 0;
-
-          printf("\n%s takes %d damage from Burn (Count %d)\n", enemy.name, damage, player.skills[1].active);
-
-          if (player.skills[1].active <= 0) player.skills[0].active = 0;
-
-          sleep(1);
-        }
-      
-
-    // ----------------------- Heishou Pack - You Branch Adept Heathcliff ----------------
-    
-    // Heishou Pack - You Branch Adept Heathcliff - Burn
-    if (strcasecmp(player.name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (player.skills[1].active > 0 || player.skills[0].active > 0) && player.HP > 0) {
-
-       int damage = player.skills[0].active > 0 ? player.skills[0].active : 1;
-      
-      player.HP -= damage;
-      if (player.HP < 1) player.HP = 1;
-      player.skills[1].active--;
-      if (player.skills[1].active <= 0) player.skills[1].active = 0;
-
-      printf("\n%s takes %d damage from Burn (Count %d)\n", player.name, damage, player.skills[1].active);
-
-      if (player.skills[1].active <= 0) player.skills[0].active = 0;
-
-      sleep(1);
-
-      int gain = 1;
-      if (player.HP < player.MAX_HP * 0.5) gain += 1;
-
-      player.Passive += gain;
-      if (player.Passive > 20) player.Passive = 20;
-
-       printf("\n%s gains +%d Battleblood Instinct (%d)\n", player.name, gain, player.Passive);
-    }
-
-    // Heishou Pack - You Branch Adept Heathcliff - Bloodflame
-    if (strcasecmp(player.name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player.skills[2].active > 0) {
-
-      player.skills[2].active--;
-
-       printf("\n%s loses 1 Bloodflame [血炎] (%d)\n", player.name, player.skills[2].active);
-    }
-
-    // -------------------------------------------------------------
-    
-    // Binah - Fairy
-    if (strcasecmp(player.name, "Binah") == 0 && player.skills[0].active > 0) {
-
-      if (!player.Passive) {
-
-      enemy.HP -= player.skills[0].active;
-      if (enemy.HP < 0) enemy.HP = 0;
-
-      printf("\n%s take damage equal to Fairy on self (%d)\n", enemy.name, player.skills[0].active);
-
-      sleep(1);
-
-      } else {
-
-        int fairydamage = 0.5*((enemy.MAX_HP/100) * player.skills[0].active);
-        
-        enemy.HP -= fairydamage;
-        if (enemy.HP < 0) enemy.HP = 0;
-
-        printf("\n%s take (0.5 x Fairy on self (%d))%% Max HP damage (%d)\n", enemy.name, player.skills[0].active, fairydamage);
-
-        sleep(1);
-        
-      }
-
-      player.skills[0].active = player.skills[0].active/2;
-
-       printf("\nhalve the Fairy stack on %s (%d)\n", enemy.name, player.skills[0].active);
-
-      sleep(1);
-    }
-
-    // Dawn Office Fixer Sinclair - Volatile Passion
-    if (strcasecmp(player.name, "Dawn Office Fixer Sinclair") == 0 && player.skills[3].active) {
-
-        updateSanity(&player, -((5 * player.Passive) > 40 ? 40 : (5 * player.Passive)));
-
-      printf("\n%s lose 5 Sanity(%d - Max 40) for every stack (%d) (Sanity %d)\n", player.name, 5 * player.Passive, player.Passive, player.Sanity);
-
-      sleep(1);
-
-    }
-
-    // ------------------------------ Roland -----------------------
-
-    // Fixer grade 9? – heals every 3 turns on 0+ Sanity
-    if (strcasecmp(enemy.name, "Fixer grade 9?") == 0 && enemy.Sanity >= 0 && (TurnCount % 3) == 0) {
-
-      int losevalue = (enemy.Sanity/2);
-
-      updateSanity(&enemy, -losevalue);
-
-       printf("\n%s loses %d Sanity (%d)\n", enemy.name, losevalue, enemy.Sanity);
-
-      sleep(1);
-
-     float missingHPPercent = ((float)(enemy.MAX_HP - enemy.HP) / enemy.MAX_HP) * 100.0f;
-
-      int gainvalue = 3 + (missingHPPercent/10);
-
-      enemy.Passive += gainvalue;
-
-      printf("\n%s gains %d Black Silence (%d)\n", enemy.name, gainvalue, enemy.Passive);
-
-      sleep(1);
-
-    } else if (strcasecmp(enemy.name, "Fixer grade 9?") == 0 && enemy.Sanity < 0 && (TurnCount % 3) == 0) {
-
-        updateSanity(&enemy, -5);
-
-      printf("\n%s loses 5 Sanity (%d)\n", enemy.name, enemy.Sanity);
-
-      sleep(1);
-
-        enemy.DamageUpNextTurn += enemy.Passive * 2;
-
-      printf("\n%s gains +2%% damage (%d%%) for every Black Silence (%d) next turn\n", enemy.name, enemy.Passive * 2, enemy.Passive);
-
-      sleep(1);
-
-      }
-
-    // Roland - Ultimate
-    if (strcasecmp(enemy.name, "Fixer grade 9?") == 0 && enemy.skills[9].active > 0) {
-
-      enemy.skills[9].active -= 1;
-      enemy.ClashPowerNextTurn -= enemy.skills[9].active;
-
-      printf("\n%s loses 1 Sorrow(%d)\n", enemy.name, enemy.skills[9].active);
-
-      sleep(1);
-
-    }
-
-    // Roland - Ultimate
-    if (strcasecmp(enemy.name, "Fixer grade 9?") ==
-            0 &&
-      &enemy.skills[enemySkillIndex] == &enemy.skills[9]) {
-
-      printf("\n%s gains 3 Sorrow, gain 1 Clash Power Down for every 1 Stacks, lose 1 Stacks at Turn End\n", enemy.name);
-
-      enemy.skills[9].active = 3;
-      enemy.ClashPowerNextTurn -= enemy.skills[9].active;
-
-      sleep(1);
-
-    }
-    // -------------------------------------------------------------
-
-      //------------------------ Lobotomy E.G.O::Solemn Lament Yi Sang ---------------------------
-
-    // Lobotomy E.G.O::Solemn Lament Yi Sang - Reload
-    if (strcasecmp(player.name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player.Passive <= 0) {
-
-      updateSanity(&player, -(15));
-      
-       int ShieldGain = (player.skills[0].active * 2) > 40 ? 40 : (player.skills[0].active * 2);
-      int Shield = (ShieldGain/100.0f) * player.MAX_HP;
-
-      player.Shield += Shield; 
-      
-      printf("\n%s use 'Reload', Spends 15 Sanity(%d) to gain 20 The Living & The Departed and gain Shield equal to (Butterfly on the target x 2)%% of Max HP. (%d%% - Max 40%%) (%d - Shield %.2f)\n", player.name, player.Sanity, ShieldGain, Shield, player.Shield);
-
-        player.Passive = 20;
-
-      sleep(1);
-    }
-
-    // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly
-    if (strcasecmp(player.name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player.skills[0].active > 0) {
-      player.skills[0].active = 0;
-        
-      printf("\n%s loses all Butterfly on self\n", enemy.name);
-    
-      sleep(1);
-    }
-
-  //--------------------------------------------------------------
-
-    // Jia Qiu enemy heal sanity
-    if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.skills[15].active > 0) {
-
-      updateSanity(&player, 5);
-
-        printf("\n%s heals 5 Sanity (%d)\n", player.name, player.Sanity);
-        sleep(1);
-
-    }
-
-    // Jia Qiu Phase 2
-    if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP <= enemy.MAX_HP * 0.6 &&
-        enemy.Passive == 2 && enemy.skills[15].active == 0) {
-
-      printf("\n%s: Reflect upon yourself! Exhume your humanity, your righteousness from deep within!\n", enemy.name);
-
-      if (strcasecmp(player.name, "Hong lu:The Lord of Hongyuan") == 0) {
-
-        printf("\n%s: Phew... okay, fine. Then... As the Lord of Hongyuan, I hereby grant you audience.\n", player.name);
-
-        sleep(1);
-
-         printf("\n%s gains 3 Uncompromising Imposition, Turn End heal 5 Sanity, When HP drop to 0 heal up to max HP and gain 1 Final Power; then lose 1 stack\n", player.name);
-      } else {
-        sleep(1);
-
-         printf("\n%s gains 3 Dialogues, Turn End heal 5 Sanity, When HP drop to 0 heal up to max HP; then lose 1 stack\n", player.name);
-      }
-
-      enemy.skills[15].active = 3;
-
-      enemy.Passive = 3;
-
-      // Disable the old
-      for (int i = 0; i < enemy.numSkills; i++) {
-        if (enemy.skills[i].Copies > 0) {
-          enemy.skills[i] = enemy.skills[3];
-          enemy.skills[i].Copies = 0;
-        }
-      }
-
-      // Set copies for the newly mapped primary skills
-       enemy.skills[7].Copies = 3;
-      enemy.skills[8].Copies = 3;
-      enemy.skills[9].Copies = 3;
-       enemy.skills[10].Copies = 2;
-       enemy.skills[11].Copies = 2;
-       enemy.skills[12].Copies = 2;
-       enemy.skills[13].Copies = 2;
-       enemy.skills[14].Copies = 2;
-       enemy.skills[15].Copies = 0;
-       enemy.skills[16].Copies = 0;
-    }
-
-      // ------------------------------ Cap HP --------------------------
-
-      // Don Quixote Phase 2
-      if (strcasecmp(enemy.name, "Don Quixote") == 0 && enemy.HP <= 0 &&
-          enemy.Passive == 0) {
-
-        printf("\n%s: If that's what you really yearn for...\n", enemy.name);
-
-        sleep(1);
-
-        printf("\n%s tranforms to 'Sancho:The Second Kindred of Don Quixote'\n",
-               enemy.name);
-
-        enemy.MAX_HP = 583;
-        enemy.HP = 583;
-        enemy.name = "Sancho:The Second Kindred of Don Quixote";
-        enemy.Sanity = 0;
-        enemy.sanityGainBase = 6;
-        enemy.sanityLossBase = 4;
-        enemy.immuneToPanicSkip = 1;
-        enemy.Passive = 1;
-
-        // Disable the old S0, S1, S2
-        enemy.skills[0] = enemy.skills[3];
-         enemy.skills[1] = enemy.skills[3];
-         enemy.skills[2] = enemy.skills[3];
-        enemy.skills[0].Copies = 0; // in pick skill function copies 0 will auto delete skill from lastused 
-        enemy.skills[1].Copies = 0;
-        enemy.skills[2].Copies = 0;
-
-        // Set copies for the newly mapped primary skills
-        enemy.skills[3].Copies = 4;
-        enemy.skills[4].Copies = 4;
-        enemy.skills[5].Copies = 4;
-
-        enemy.skills[6].Copies = 3;
-        enemy.skills[7].Copies = 3;
-        enemy.skills[8].Copies = 3;
-        enemy.skills[9].Copies = 3;
-        enemy.skills[10].Copies = 3;
-        enemy.skills[11].Copies = 3;
-
-        sleep(1);
-
-        if (strcasecmp(player.name,
-                       "Don Quixote:The Manager of La Manchaland") == 0) {
-          printf(
-              "\n%s: I shall show you. Even if it’s a false dream... I will still "
-              "move forward without hesitation!\n",
-              enemy.name);
-        } else {
-          printf("\n%s: Let wrap it up.\n", enemy.name);
-        }
-      }
-
-      // Sukuna:King of Curse cursed reverse technique
-      if (strcasecmp(enemy.name, "Sukuna:King of Curse") == 0 && enemy.HP <= 0 && enemy.Passive == 0) {
-
-        enemy.Passive = 1;
-
-        enemy.HP = enemy.MAX_HP;
-        updateSanity(&enemy, 30);
-
-        printf("\n%s used 'Cursed Reverse Technique', heal up to Max HP, heal 30 Sanity (Once per Encounter)\n", enemy.name);
-
-        sleep(1);
-
-        printf("\n%s: Arm yourself...\n", enemy.name);
-
-        sleep(1);
-      }
-      
-      // Jia Qiu Anti low
-      if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP <= enemy.MAX_HP * 0.3 &&
-          enemy.Passive == 3) {
-
-        enemy.Passive = 4;
-
-        enemy.HP = (int)(enemy.MAX_HP * 0.3);
-
-        printf("\n%s blocked, cap HP to 30%% for this turn\n", enemy.name);
-      }
-
-      // Jia Qiu LAST
-      if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP <= enemy.MAX_HP * 0.1 &&
-          enemy.Passive == 5) {
-
-        enemy.Passive = 6;
-
-        enemy.HP = (int)(enemy.MAX_HP * 0.1);
-
-        printf("\n%s blocked, cap HP to 10%% for this turn\n", enemy.name);
-      }
-
-      // Erlking Heathcliff Anti low
-      if (strcasecmp(enemy.name, "Erlking Heathcliff") == 0 && enemy.HP <= 50 &&
-          enemy.Passive == 1) {
-
-        enemy.Passive = 2;
-
-        enemy.HP = 50;
-
-        printf("\n%s used 'Withstand', cap HP to 50 for this turn\n", enemy.name);
-
-        sleep(1);
-
-        printf("\n%s: Please, Catherine. Appear before me and tear me asunder. Let me see your eyes as I expire.\n", enemy.name);
-
-        sleep(1);
-      }
-
-
-
-      
-
-    clearTurnEffects(&player);
-    clearTurnEffects(&enemy);
-
-    OLD_SANITYP1 = player.Sanity;
-    OLD_SANITYP2 = enemy.Sanity;
-
-
-    
-    // Lost CutScene
-    if (strcasecmp(enemy.name, "Lei heng") == 0 && enemy.HP <= enemy.MAX_HP*0.2) {
-
-      enemy.HP = 1;
-      
-      printf("\n%s: I'll be frank, y'all. Real impressed that you even pushed me this far.\n", enemy.name);
-
-      sleep(2);
-
-      attackPhase(&enemy, &enemy.skills[0],
-        enemy.skills[0].Offense, enemy.skills[0].Defense,
-        &player, &player.skills[0], player.skills[0].Offense,
-         player.skills[0].Defense, enemy.skills[0].Coins, 0 , 0);
-
-      sleep(2);
-
-      if (strstr(player.name, "Ryoshu") != NULL) {
-        printf("\n%s: But... Yoshihide\n", enemy.name);
-      } else if (strcasecmp(player.name, "Meursault:The Thumb") == 0) {
-        printf("\n%s: But... Chacuihu\n", enemy.name);
-      } else {
-       printf("\n%s: But... %s...\n", enemy.name, player.name);
-      }
-
-      sleep(4);
-
-      attackPhase(&enemy, &enemy.skills[2],
-        enemy.skills[2].Offense, enemy.skills[2].Defense,
-        &player, &player.skills[0], player.skills[0].Offense,
-         player.skills[0].Defense, enemy.skills[2].Coins, 0 , 0);
-
-      printf("\n%s: ... Ya darn sure oughta've harder if ya really wanted to win!\n", enemy.name);
-
-      sleep(3);
-
-      player.HP = 1;
-      enemy.HP = 0;
-
-
-    } else if (strcasecmp(enemy.name, "Jia Qiu") == 0 && enemy.HP <= 0) {
-
-      printf("\n%s: Fine, You win.\n", enemy.name);
-
-      sleep(1);
-
-    } else {
-
-    // ---------------------------
-
-    }
-
       TurnCount++;
     }
-  
+
+}  
   
   printf("\n--- Battle Result ---\n");
   if (player.HP <= 0 && enemy.HP <= 0) {
