@@ -752,7 +752,7 @@ static void kingFirstEffect(Character *player, Character *enemy, int idx) {
           
           KingClashBonus += 1;
               updateSanity(player, 20);
-              printf("\n%s gains Clash Power +1 for this Encounter", player->name);
+              printf("\n%s gains Clash Power +1 for this Encounter\n", player->name);
             printf("\n%s heals 20 Sanity (%d)\n", player->name, player->Sanity);
 
            sleep(1);
@@ -1811,15 +1811,15 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       // Heishou Pack - You Branch Adept Heathcliff Skill 3 burn
       if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && attacker->HP >= attacker->MAX_HP*0.5) {
 
-        if (defender->Shield > 0) {
-          defender->Shield -= attacker->skills[0].active;
-            if (defender->Shield < 0) {
+        if (attacker->Shield > 0) {
+            attacker->Shield -= attacker->skills[0].active;
+            if (attacker->Shield < 0) {
                 // คำนวณส่วนที่ทะลุเกราะ
-                defender->HP += defender->Shield; // เพราะ Shield เป็นค่าลบ
-                defender->Shield = 0;             // เกราะหมดแล้ว
+                  attacker->HP += attacker->Shield; // เพราะ Shield เป็นค่าลบ
+                  attacker->Shield = 0;             // เกราะหมดแล้ว
             }
         } else {
-            defender->HP -= attacker->skills[0].active;
+              attacker->HP -= attacker->skills[0].active;
         }
         
         if (attacker->HP < 1)
@@ -3278,13 +3278,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         if (attacker->skills[4].active <= 0) attacker->skills[3].active = 0;
 
-        if (attacker->skills[6].active > defender->MAX_HP/2 && defender->Stagger <= 0) {
+        if (attacker->skills[6].BasePower > defender->MAX_HP/4 && defender->Stagger <= 0) {
 
-          defender->Stagger += 1;
+          defender->Stagger += 2;
 
           printf(" \tTarget 'Stagger' for one turn");
 
-          attacker->skills[6].active = 0;
+          attacker->skills[6].BasePower = 0;
           
         }
         
@@ -3327,13 +3327,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         if (attacker->skills[4].active <= 0) attacker->skills[3].active = 0;
 
-        if (attacker->skills[6].active > defender->MAX_HP/2 && defender->Stagger <= 0) {
+        if (attacker->skills[6].BasePower > defender->MAX_HP/4 && defender->Stagger <= 0) {
 
-          defender->Stagger += 1;
+          defender->Stagger += 2;
 
           printf(" \tTarget 'Stagger' for one turn");
 
-          attacker->skills[6].active = 0;
+          attacker->skills[6].BasePower = 0;
 
         }
 
@@ -3348,8 +3348,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->skills[6].active = 2;
         
       } else if (attacker->skills[6].active >= 2) {
-        
+
+        if (attacker->skills[6].Unbreakable > 0) { // if stack
+           attacker->skills[6].active = 1;
+          attacker->skills[6].Unbreakable = 0;
+        } else {
       attacker->skills[6].active = 0;
+        }
 
         int deal = attacker->skills[3].active;
 
@@ -3375,27 +3380,29 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         if (attacker->skills[4].active <= 0) attacker->skills[3].active = 0;
 
-        if (attacker->skills[6].active > defender->MAX_HP/2 && defender->Stagger <= 0) {
+        if (attacker->skills[6].BasePower > defender->MAX_HP/4 && defender->Stagger <= 0) {
 
-          defender->Stagger += 1;
+          defender->Stagger += 2;
 
           printf(" \tTarget 'Stagger' for one turn");
 
-          attacker->skills[6].active = 0;
+          attacker->skills[6].BasePower = 0;
 
         }
 
-      attacker->skills[3].active += 2;
+      attacker->skills[3].active += 1;
       if (attacker->skills[3].active > 99) attacker->skills[3].active = 99;
       
-      attacker->skills[4].active += 1;
+      attacker->skills[4].active += 5;
       if (attacker->skills[4].active > 99) attacker->skills[4].active = 99;
 
-        printf(" \tTremor Stack +2 (%d) and Tremor Count +1 (%d) on target", attacker->skills[3].active, attacker->skills[4].active);
+        printf(" \tTremor Stack +2 (%d) and Tremor Count +5 (%d) on target", attacker->skills[3].active, attacker->skills[4].active);
 
       defender->ProtectionNextTurn -= 10;
 
       printf("\n\n%s take +10%% damage next turn\n", defender->name);
+
+    }
 
     }
 
@@ -3464,7 +3471,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     }
-    }
+    
 
 
     // ----------------------------------------------------------
@@ -7167,9 +7174,11 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     if (c->skills[6].active == 0) {
     c->skills[6].active++;
+    } else {
+      c->skills[6].Unbreakable = 1; // in case it stack
     }
 
-    printf("\n%s gains 5 Defense Down, 2 Attack Power Up, Moment of Audience (On Hit with skill: Trigger 'Tremor Burst', target gain +2 Tremor Stack, +1 Tremor Count and take 10%% more damage next turn; then this effect expire) next turn\n", c->name);
+    printf("\n%s gains 5 Defense Down, 2 Attack Power Up, Moment of Audience (On Hit with skill: Trigger 'Tremor Burst', target gain +2 Tremor Stack, +5 Tremor Count and take 10%% more damage next turn; then this effect expire) next turn\n", c->name);
 
     sleep(1);
 
@@ -7817,7 +7826,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   if (s2 == &p2->skills[4]) ReduceValue = 4;
 
   p2->skills[2].active -= ReduceValue;
-  if (p2->skills[2].active <= 0) p2->skills[2].active = 0; p2->skills[1].active = 0;
+  if (p2->skills[2].active <= 0) { p2->skills[2].active = 0; p2->skills[1].active = 0; }
 
   printf("\n%s lost the Clash, reduce Sinking Count on target by %d (%d)\n", p2->name, ReduceValue, p2->skills[2].active);
 
@@ -8221,7 +8230,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       if (Clashpowerbuff > 0) {
 
-          printf("\n%s gains +%d Clash Power\n", p2->name, Clashpowerbuff);
+          printf("%s gains +%d Clash Power\n", p2->name, Clashpowerbuff);
 
       }
 
@@ -8570,7 +8579,10 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
   // printf("Clash result: winner %d Player %d coins, Enemy %d coins\n",
   // result.winner, playerCoins, enemyCoins);
 
-  if (playerUnbreakableLost > 0 && playerCoins <= 0) {
+  int IsplayerStagger = isStaggered(p1);
+  int IsenemyStagger  = isStaggered(p2);
+
+  if (playerUnbreakableLost > 0 && playerCoins <= 0 && !IsplayerStagger) {
     usleep(500000);
     attackPhase(p2, result.enemyskillUsed, result.enemyTempOffense,
                 result.enemyTempDefense, p1, result.playerskillUsed,
@@ -8596,7 +8608,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     result.winner = 99;
   }
 
-  if (enemyUnbreakableLost > 0 && enemyCoins <= 0) {
+  if (enemyUnbreakableLost > 0 && enemyCoins <= 0 && !IsenemyStagger) {
     usleep(500000);
     attackPhase(p1, result.playerskillUsed, result.playerTempOffense,
                 result.playerTempDefense, p2, result.enemyskillUsed,
@@ -9541,17 +9553,16 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
     enemy->skills[5].active = 1;
     *enemySkillIndex = 5; 
-    if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
 
   }
 
-  // King in Binds – skill 6 every 5 turns
-    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 5) && enemy->skills[0].active == 1) {
+  // King in Binds – skill 6 every 4 turns
+    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 4) && enemy->skills[0].active == 1) {
 
       enemy->skills[5].active++; // Turn Count
 
     }
-    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active >= 5) && enemy->skills[0].active == 1) {
+    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active >= 4) && enemy->skills[0].active == 1) {
 
       *enemySkillIndex = 5; 
       enemy->skills[5].active = 1;
@@ -10404,14 +10415,12 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       enemy->skills[2].active += 1; // Sinking Count
       if (enemy->skills[2].active > 99) enemy->skills[2].active = 99;
 
-      enemy->HP = (int)(enemy->MAX_HP * 0.2);
-
       printf("\n%s gain +2 Sinking Stack (%d) and +1 Sinking Count (%d) from 'Bandages of the King in Binds'\n", player->name, enemy->skills[1].active, enemy->skills[2].active);
     }
 
 // King in Binds anti low
 if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
-    enemy->skills[0].active == 0) {
+    enemy->skills[0].active <= 0) {
 
   enemy->skills[0].active = 1;
 
@@ -10922,7 +10931,7 @@ void runKingInBindsBattle(
 
         printf("\n--- Turn %d (King in Binds) ---\n", TurnCount);
 
-      int IsplayerUnableToAct = isPanicked(player);
+      int IsplayerUnableToAct = isPanicked(player) || isStaggered(player);
 
       // Boss เลือก skill
       int eIdx = (rand() % 2 == 0) ? *enemySkill1 : *enemySkill2;
@@ -11145,7 +11154,21 @@ void runKingInBindsBattle(
                               &enemyTempOffense, &enemyTempDefense);
 
         // Combat — เหมือน main() ทุกอย่าง
-        if (!player->skills[playerSkillIndex].Clashable && boss->skills[eIdx].Clashable) {
+     if (IsplayerUnableToAct && !isPanicked(boss)) {
+
+          attackPhase(boss, enemySkillEffective, enemyTempOffense,
+                      enemyTempDefense, player, playerSkillEffective,
+                      playerTempOffense, playerTempDefense,
+                      enemySkillEffective->Coins, 0, 0);
+
+      } else if (!IsplayerUnableToAct && isPanicked(boss)) {
+
+          attackPhase(player, playerSkillEffective, playerTempOffense,
+                      playerTempDefense, boss, enemySkillEffective,
+                      enemyTempOffense, enemyTempDefense,
+                      playerSkillEffective->Coins, 0, 0);
+
+      } else if (!player->skills[playerSkillIndex].Clashable && boss->skills[eIdx].Clashable) {
 
             attackPhase(boss, enemySkillEffective, enemyTempOffense,
                         enemyTempDefense, player, playerSkillEffective,
@@ -11189,20 +11212,6 @@ void runKingInBindsBattle(
                             enemyTempOffense, enemyTempDefense,
                             playerSkillEffective->Coins, 0, 0);
             }
-
-        } else if (IsplayerUnableToAct && !isPanicked(boss)) {
-
-            attackPhase(boss, enemySkillEffective, enemyTempOffense,
-                        enemyTempDefense, player, playerSkillEffective,
-                        playerTempOffense, playerTempDefense,
-                        enemySkillEffective->Coins, 0, 0);
-
-        } else if (!IsplayerUnableToAct && isPanicked(boss)) {
-
-            attackPhase(player, playerSkillEffective, playerTempOffense,
-                        playerTempDefense, boss, enemySkillEffective,
-                        enemyTempOffense, enemyTempDefense,
-                        playerSkillEffective->Coins, 0, 0);
 
         } else {
 
@@ -11337,7 +11346,7 @@ int main() {
           //Passive
           printf("Passive Skills:\n");
           printf(" 1. Swordplay of the Homeland\n In Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn. (Once per Encounter)\n");
-          printf(" 2. Yield My Flesh\n When Clashing with 'Yield My Flesh' does not effects by any Clash Power boost, When Clash loses with 'Yield My Flesh', Use Counter 'To Claim Their Bones' to attack back (Cannot be used if this unit died first)\n");
+          printf(" 2. Yield My Flesh\n When Clashing with 'Yield My Flesh' does not effects by any Clash Power boost, When Clash loses with 'Yield My Flesh', Use Counter 'To Claim Their Bones' to attack back (Cannot be used only if this unit died first)\n");
           printf(" 3. In Memoriam\n At 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0 (Buff base on each Skills)\n");
           printf(" 4. Overthrow\n After got attacked, gain +1 Final Power next turn (Once per enemy's skill)\n");
               } 
@@ -11645,12 +11654,12 @@ int main() {
            printf(" 1. The King Shall Have a Knight Beside\n Start Encounter: This unit Summons 'A Knight' that imitate from 'Enemy'. Turn Start: Start the 'Combat Event'\n");
           printf(" 2. Closing of the Banquet\n When 'A Knight' reaches 0 HP, Turn End: All enemy lose (5 x Turn used) Sanity (Max 45), Turn Start: Start the 'Combat Event'; then this unit joins the Battle\n");
           printf(" 3. Refracted Struggle\n On Clashing: This unit gain (Clash Count/2) in a Clash (Rounded down) (This effect activing repeating on new Clash Round)\n");
-          printf(" 4. Snapping Bandages\n Turn End: at 20%% or less HP, apply 'Bandages of the King in Binds' on all enemies. Turn Start: Use a powerful attack, repeat every 5th turn\n");
+          printf(" 4. Snapping Bandages\n Turn End: at 20%% or less HP, apply 'Bandages of the King in Binds' on all enemies. Turn Start: Use a powerful attack, repeat every 4th turn\n");
           printf(" 5. Bandages of the King in Binds\n Turn End: Gain +2 Sinking Stack and +1 Sinking Count\n");
           printf(" 6. Thou Wilt Sink\n When attack with certain skills, inflict 'Sinking' based on skills used\n");
           printf(" 7. Bound by Guilt\n When attack with certain skills, inflict 'Tremor' or trigger 'Tremor Burst' based on skills used\n");
           printf(" 8. Sinking\n When Inflicted: At 1+ Count, or at 1+ Stack (If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Hit: Lose (Stack) Sanity (if this unit doesn't have Sanity, take (Stack) damage instead). Then reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
-          printf(" 9. Tremor\n When Inflicted: At 1+ Count, or at 1+ Stack (If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Trigger by 'Tremor Burst', Take (Stack) Fixed Damage, if this unit took (Max HP/2) damage from 'Tremor Burst' in this Encounter, enter 'Stagger' State (Cannot act for one turn) and reset this progess. Then reduce 1 Count. Turn End: Lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+          printf(" 9. Tremor\n When Inflicted: At 1+ Count, or at 1+ Stack (If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Trigger by 'Tremor Burst', Take (Stack) Fixed Damage; then reduce 1 Count, if this unit took (Max HP/4) damage from 'Tremor Burst' in this Encounter, enter 'Stagger' State (Cannot act for one turn) and reset this progess. Turn End: Lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
             } else {
           //Taunt
           printf("'That's that, and this is this.'\n\n");
@@ -12088,47 +12097,22 @@ int main() {
                           &enemyTempOffense, &enemyTempDefense);
 
     // Handle different combat scenarios based on who can act
-    if (!player.skills[playerSkillIndex].Clashable && enemy.skills[enemySkillIndex].Clashable) {
-
-      attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
-        enemyTempDefense, &player, playerSkillEffective,
-        playerTempOffense, playerTempDefense,
-        enemySkillEffective->Coins, 0, 0);
-
-      attackPhase(&player, playerSkillEffective, playerTempOffense,
-        playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
-      enemyTempDefense,
-        playerSkillEffective->Coins, 0, 0);
-      
-    } else if (player.skills[playerSkillIndex].Clashable && !enemy.skills[enemySkillIndex].Clashable) {
-
-      attackPhase(&player, playerSkillEffective, playerTempOffense,
-        playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
-      enemyTempDefense,
-        playerSkillEffective->Coins, 0, 0);
-
-      attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
-        enemyTempDefense, &player, playerSkillEffective,
-        playerTempOffense, playerTempDefense,
-        enemySkillEffective->Coins, 0, 0);
-
-      } else if (!player.skills[playerSkillIndex].Clashable && !enemy.skills[enemySkillIndex].Clashable) {
-
-      int randomattack = rand() % 2 + 1;
-
-      if (randomattack == 1) {
-
-      attackPhase(&player, playerSkillEffective, playerTempOffense,
-        playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
-      enemyTempDefense,
-        playerSkillEffective->Coins, 0, 0);
+      if (IsplayerUnableToAct && !IsenemyUnableToAct) {
 
         attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
-          enemyTempDefense, &player, playerSkillEffective,
-          playerTempOffense, playerTempDefense,
-          enemySkillEffective->Coins, 0, 0);
+                    enemyTempDefense, &player, playerSkillEffective,
+                    playerTempOffense, playerTempDefense,
+                    enemySkillEffective->Coins, 0, 0);
 
-      } else {
+      } else if (!IsplayerUnableToAct && IsenemyUnableToAct) {
+        // Enemy is panicked (punching bag), player attacks freely
+
+        attackPhase(&player, playerSkillEffective, playerTempOffense,
+                    playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
+          enemyTempDefense,
+                    playerSkillEffective->Coins, 0, 0);
+
+      } else if (!player.skills[playerSkillIndex].Clashable && enemy.skills[enemySkillIndex].Clashable) {
 
         attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
           enemyTempDefense, &player, playerSkillEffective,
@@ -12139,26 +12123,51 @@ int main() {
           playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
         enemyTempDefense,
           playerSkillEffective->Coins, 0, 0);
-        
-      }
 
-      }
-    else if (IsplayerUnableToAct && !IsenemyUnableToAct) {
+      } else if (player.skills[playerSkillIndex].Clashable && !enemy.skills[enemySkillIndex].Clashable) {
 
-      attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
-                  enemyTempDefense, &player, playerSkillEffective,
-                  playerTempOffense, playerTempDefense,
-                  enemySkillEffective->Coins, 0, 0);
-
-    } else if (!IsplayerUnableToAct && IsenemyUnableToAct) {
-      // Enemy is panicked (punching bag), player attacks freely
-      
-      attackPhase(&player, playerSkillEffective, playerTempOffense,
-                  playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
+        attackPhase(&player, playerSkillEffective, playerTempOffense,
+          playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
         enemyTempDefense,
-                  playerSkillEffective->Coins, 0, 0);
+          playerSkillEffective->Coins, 0, 0);
+
+        attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+          enemyTempDefense, &player, playerSkillEffective,
+          playerTempOffense, playerTempDefense,
+          enemySkillEffective->Coins, 0, 0);
+
+        } else if (!player.skills[playerSkillIndex].Clashable && !enemy.skills[enemySkillIndex].Clashable) {
+
+        int randomattack = rand() % 2 + 1;
+
+        if (randomattack == 1) {
+
+        attackPhase(&player, playerSkillEffective, playerTempOffense,
+          playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
+        enemyTempDefense,
+          playerSkillEffective->Coins, 0, 0);
+
+          attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+            enemyTempDefense, &player, playerSkillEffective,
+            playerTempOffense, playerTempDefense,
+            enemySkillEffective->Coins, 0, 0);
+
+        } else {
+
+          attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
+            enemyTempDefense, &player, playerSkillEffective,
+            playerTempOffense, playerTempDefense,
+            enemySkillEffective->Coins, 0, 0);
+
+          attackPhase(&player, playerSkillEffective, playerTempOffense,
+            playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
+          enemyTempDefense,
+            playerSkillEffective->Coins, 0, 0);
+
+        }
 
     } else {
+        
       // Normal clash - both can act
       ClashResult clash =
           clashPhase(&player, playerSkillEffective, playerTempOffense,
