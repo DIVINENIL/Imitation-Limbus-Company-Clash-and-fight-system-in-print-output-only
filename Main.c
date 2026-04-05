@@ -188,16 +188,6 @@ void clearTurnSkillBuffs(Character *c) {
 // ------------------------ Stagger functions ---------------------
 int isStaggered(Character *c) {
     if (c->Stagger > 0) {
-        printf("\n%s is STAGGERED and cannot act!\n", c->name);
-
-      // Lose Envy Resonance
-        if (isId(c->name, "The Middle Little Brother Sinclair") == 0) {
-
-          c->Passive = 0;
-
-          printf("\n%s loses all Envy Resonance\n", c->name);
-
-        }
   
         return 1;
     }
@@ -238,19 +228,6 @@ int isPanicked(Character *c) {
     return 0; // No sanity = no panic
   if (c->immuneToPanicSkip)
     return 0; // Immune to panic skip
-  if (c->Sanity <= -45) {
-    printf("\n%s is in PANIC and cannot act!\n", c->name);
-
-    // Lose Envy Resonance
-    if (isId(c->name, "The Middle Little Brother Sinclair") == 0) {
-
-      c->Passive = 0;
-
-      printf("\n%s loses all Envy Resonance\n", c->name);
-      
-    }
-  }
-  
   return (c->Sanity <= -45); // Normal panic check
 }
 
@@ -5103,19 +5080,45 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 SkillStats *getEffectiveSkill(Character *c, Character *c2,
                               SkillStats *chosenSkill, int *tempOffense,
                               int *tempDefense) {
-  *tempOffense += chosenSkill->Offense;
-  *tempDefense += chosenSkill->Defense;
+
+  int IsplayerUnableToAct = isPanicked(c) || isStaggered(c);
+
+  if (IsplayerUnableToAct) return 0;
 
 
   // ----------------------- Combat Start --------------------------
 
-
+  *tempOffense += chosenSkill->Offense;
+  *tempDefense += chosenSkill->Defense;
 
 
   // ---------------------------- The Middle Little Brother Sinclair ----------------------------
 
+  // The Middle Little Brother Sinclair - Passive Buff Tattoo
+  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill != &c->skills[0] && c->skills[2].active == 0) {
+
+    c->Passive++;
+
+    printf("\n%s gains 1 Envy Resonance (%d)\n", c->name, c->Passive);
+
+    sleep(1);
+  }
+
+  // The Middle Little Brother Sinclair - Envy Resonance offense buff for skill 2 and 3
+  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->Passive >= 2 && (chosenSkill == &c->skills[1] || chosenSkill == &c->skills[2])) {
+
+    int gain = c->Passive / 2;
+    if (gain > 3) gain = 3;
+
+    *tempOffense += gain;
+
+      printf("\n%s at 2+ Envy Resonance, gains (Envy Resonance / 2) Offense Level (%d - Max 3, Rounded down)\n", c->name, gain);
+
+    sleep(1);
+  }
+
   // The Middle Little Brother Sinclair - Passive Buff Mark
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->skills[0].active > 0) {
+  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->skills[0].active > 0 && c->skills[2].active == 0) {
 
     int takevalue = c->skills[0].active * 2;
     if (takevalue > 20) takevalue = 20;
@@ -5128,7 +5131,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The Middle Little Brother Sinclair - Passive Buff Book
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->skills[1].active > 0) {
+  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->skills[1].active > 0 && c->skills[2].active == 0) {
 
     int dmgvalue = c->skills[1].active;
     if (dmgvalue > 30) dmgvalue = 30;
@@ -5141,9 +5144,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     if (c->skills[1].active >= 10) {
 
-       c->DamageUp += 10;
+       c->DamageUp += 30;
 
-      printf("\n%s at 10+ 'Book of Vengeance [Sinclair]' Stack, gain 10%% Damage Up\n", c->name);
+      printf("\n%s at 10+ 'Book of Vengeance [Sinclair]' Stack, gain 30%% Damage Up\n", c->name);
 
       sleep(1);
     }
@@ -5160,23 +5163,13 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     if (c->skills[1].active >= 30) {
 
-       c->DamageUp += 20;
+       c->DamageUp += 50;
 
-      printf("\n%s at 30 'Book of Vengeance [Sinclair]' Stack, gains 20%% Damage Up\n", c->name);
+      printf("\n%s at 30 'Book of Vengeance [Sinclair]' Stack, gains 50%% Damage Up\n", c->name);
 
       sleep(1);
     }
-    
-  }
 
-  // The Middle Little Brother Sinclair - Passive Buff Tattoo
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill != &c->skills[0]) {
-
-    c->Passive++;
-
-    printf("\n%s gains 1 Envy Resonance (%d)\n", c->name, c->Passive);
-
-    sleep(1);
   }
 
   // The Middle Little Brother Sinclair - Skill 1 Buff
@@ -5244,25 +5237,12 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   }
 
-  // The Middle Little Brother Sinclair - Envy Resonance offense buff for skill 2 and 3
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->Passive >= 2 && (chosenSkill == &c->skills[1] || chosenSkill == &c->skills[2])) {
-
-    int gain = c->Passive / 2;
-    if (gain > 3) gain = 3;
-
-    *tempOffense += gain;
-
-      printf("\n%s at 2+ Envy Resonance, gains (Envy Resonance / 2) Offense Level (%d - Max 3, Rounded down)\n", c->name, gain);
-
-    sleep(1);
-  }
-
   // The Middle Little Brother Sinclair - Skill 4 Buff
   if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[3]) {
 
     c->skills[2].active = 1; // Tell game that using this skill for lose resonance
 
-    int gainvalue = ((c->MAX_HP - c->HP) / c->MAX_HP) * 100; // 0% - 100%
+    int gainvalue = (int)((c->MAX_HP - c->HP) * 0.30f); // 30%% as shield
 
     c->Shield += gainvalue;
 
@@ -5301,7 +5281,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
       chosenSkill->Clashable = 0;
       
-      getEffectiveSkill( c, c2, &c->skills[2], tempOffense, tempDefense);
+      getEffectiveSkill( c, c2, &c->skills[1], tempOffense, tempDefense);
       
      } 
   }
@@ -11007,6 +10987,34 @@ void runKingInBindsBattle(
           continue;
       }
 
+    if (IsplayerUnableToAct) {
+      if (isStaggered(player)) printf("\n%s is STAGGERED and cannot act!\n", player->name);
+      else if (isPanicked(player)) printf("\n%s is in PANIC and cannot act!\n", player->name);
+
+      // Lose Envy Resonance
+        if (isId(player->name, "The Middle Little Brother Sinclair") == 0) {
+
+            player->Passive = 0;
+
+          printf("\n%s loses all Envy Resonance\n", player->name);
+
+        }
+    }
+
+    if (IsenemyUnableToAct) {
+      if (isStaggered(&enemy)) printf("\n%s is STAGGERED and cannot act!\n", enemy.name);
+      else if (isPanicked(&enemy)) printf("\n%s is in PANIC and cannot act!\n", enemy.name);
+
+      // Lose Envy Resonance
+      if (isId(enemy.name, "The Middle Little Brother Sinclair") == 0) {
+
+            enemy.Passive = 0;
+
+        printf("\n%s loses all Envy Resonance\n", enemy.name);
+
+      }
+    }
+
       // แสดง HP
     printf("\nCurrent HP:\n");
     
@@ -11347,6 +11355,20 @@ void runKingInBindsBattle(
       handleTurnStart(player, boss, &eIdx, *playerSkill1, *playerSkill2, *enemySkill1, *enemySkill2);
 
       int IsplayerUnableToAct = isPanicked(player) || isStaggered(player);
+
+      if (IsplayerUnableToAct) {
+        if (isStaggered(player)) printf("\n%s is STAGGERED and cannot act!\n", player->name);
+        else if (isPanicked(player)) printf("\n%s is in PANIC and cannot act!\n", player->name);
+
+        // Lose Envy Resonance
+        if (isId(player->name, "The Middle Little Brother Sinclair") == 0) {
+
+            player->Passive = 0;
+
+          printf("\n%s loses all Envy Resonance\n", player->name);
+
+        }
+      }
 
         if (GrandWelcome == 0) {
           GrandWelcome = 1;
@@ -11886,9 +11908,9 @@ int main() {
                    printf(" 2. Vendetta Mark\n Take 2%% damage for every Stack (Max 20%%) (Max 10 Stack)\n");
                    printf(" 3. Book of Vengeance [Sinclair]\n Gain more damage equal to (Stack)%% (Max 30%%) (Max 30 Stack)\n");
                    printf(" Gain the following effect next turn based on Stack:"
-                      "\n  - At 10+ Stack: Gain 10%% Damage Up"
+                      "\n  - At 10+ Stack: Gain 30%% Damage Up"
                      "\n  - At 20+ Stack: Gain 1 Clash Power Up and 1 Base Power Up"
-                     "\n  - At 30 Stack: Gain 20%% Damage Up\n");
+                     "\n  - At 30 Stack: Gain 50%% Damage Up\n");
                     printf(" 4. The Middle Tattoo\n Combat Start: If this unit using attack skills except for 'Is it You?!', gain 1 Envy Resonance (lose this effect if this unit 'Stagger' or 'Panic'), use for certain skills, lose all when use 'Warmup in the East'\n");
                         }
                    else if (selected_identity - 1 == 11) {
@@ -12369,6 +12391,34 @@ int main() {
             TurnCount++;
             continue;
         }
+
+      if (IsplayerUnableToAct) {
+        if (isStaggered(&player)) printf("\n%s is STAGGERED and cannot act!\n", player.name);
+        else if (isPanicked(&player)) printf("\n%s is in PANIC and cannot act!\n", player.name);
+
+        // Lose Envy Resonance
+        if (isId(player.name, "The Middle Little Brother Sinclair") == 0) {
+
+            player.Passive = 0;
+
+          printf("\n%s loses all Envy Resonance\n", player.name);
+
+        }
+      }
+
+      if (IsenemyUnableToAct) {
+        if (isStaggered(&enemy)) printf("\n%s is STAGGERED and cannot act!\n", enemy.name);
+        else if (isPanicked(&enemy)) printf("\n%s is in PANIC and cannot act!\n", enemy.name);
+
+        // Lose Envy Resonance
+        if (isId(enemy.name, "The Middle Little Brother Sinclair") == 0) {
+
+            enemy.Passive = 0;
+
+          printf("\n%s loses all Envy Resonance\n", enemy.name);
+
+        }
+      }
 
       printf("\nCurrent HP:\n");
 
