@@ -911,50 +911,50 @@ static CombatEvent kingMidEvent = {
 
 
 
-void clearDebuffsOnDeath(Character *c) {
-    if (c == NULL) return;
+void clearDebuffsOnDeath(Character *defender, Character *attacker) {
+    if (defender == NULL) return;
 
-  clearTurnEffects(c); // for this turn effect
-  clearTurnEffects(c); // for next turn effect
+  clearTurnEffects(defender); // for this turn effect
+  clearTurnEffects(defender); // for next turn effect
 
-  c->Shield = 0; 
+  defender->Shield = 0; 
 
   // ------------ Player ------------
 
     // Binah - Fairy
-    if (isId(c->name, "Binah") == 0) {
-        if (c->skills[0].active > 0) {
-            c->skills[0].active = 0;
+    if (isId(attacker->name, "Binah") == 0) {
+        if (attacker->skills[0].active > 0) {
+            attacker->skills[0].active = 0;
         }
     }
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly
-    if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
-        if (c->skills[0].active > 0) {
-            c->skills[0].active = 0;
+    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
+        if (attacker->skills[0].active > 0) {
+            attacker->skills[0].active = 0;
         }
     }
 
   // The Middle Little Brother Sinclair - Marks
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0) {
-      c->skills[0].active = 0; // Vendetta Mark
+  if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0) {
+      attacker->skills[0].active = 0; // Vendetta Mark
   }
 
   // Gregor:Firefist - Burn
-  if (isId(c->name, "Gregor:Firefist") == 0) {
-      c->skills[0].active = 0; // Burn Stack
-    c->skills[1].active = 0; // Burn Count
+  if (isId(attacker->name, "Gregor:Firefist") == 0) {
+      attacker->skills[0].active = 0; // Burn Stack
+    attacker->skills[1].active = 0; // Burn Count
   }
 
 
   // ------------ Boss ------------
 
     // King in Binds - Sinking & Tremor
-    if (isId(c->name, "King in Binds") == 0) {
-        c->skills[1].active = 0; // Sinking Stack
-        c->skills[2].active = 0; // Sinking Count
-        c->skills[3].active = 0; // Tremor Stack
-        c->skills[4].active = 0; // Tremor Count
+    if (isId(attacker->name, "King in Binds") == 0) {
+        attacker->skills[1].active = 0; // Sinking Stack
+        attacker->skills[2].active = 0; // Sinking Count
+        attacker->skills[3].active = 0; // Tremor Stack
+        attacker->skills[4].active = 0; // Tremor Count
     }
 
 }
@@ -5041,7 +5041,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // Clear effect on killed
     if (defender->HP <= 0) {
 
-      clearDebuffsOnDeath(defender);
+      clearDebuffsOnDeath(defender, attacker);
 
     }
 
@@ -5253,11 +5253,27 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
        printf("\nThis %s's Skill behavior changes based on the sum of Envy Resonance.:"
         "\n - At 2+ sum of Envy Resonance., use 'Payback with Interest' as Unclashable Skill"
         "\n - At 4+ sum of Envy Resonance., use 'Write 'em all down' as Unclashable Skill"
+        "\n - At 6+ sum of Envy Resonance., use 'Write 'em all down' as Unclashable Skill and gain 100%% Damage Up"
          "\nEnvy Resonance: %d\n", c->name, c->Passive);
 
        sleep(1);
 
-    if (c->Passive >= 4) {
+    if (c->Passive >= 6) {
+
+      *tempOffense -= chosenSkill->Offense;
+      *tempDefense -= chosenSkill->Defense;
+
+      c->skills[4] = *chosenSkill;
+
+      chosenSkill = &c->skills[2];
+
+      chosenSkill->Clashable = 0;
+
+      c->DamageUp += 100;
+
+      getEffectiveSkill( c, c2, &c->skills[2], tempOffense, tempDefense);
+
+     } else if (c->Passive >= 4) {
 
       *tempOffense -= chosenSkill->Offense;
       *tempDefense -= chosenSkill->Defense;
