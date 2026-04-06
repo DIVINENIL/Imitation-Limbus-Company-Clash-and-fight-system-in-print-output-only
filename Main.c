@@ -2500,16 +2500,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       sleep(1);
         
       }
-      
-    }
-
-    // The Middle Little Brother Sinclair Skill 3 Last coins
-    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins) {
-
-      printf("\n\n%s: Does that sting?\n", attacker->name);
-
-      sleep(1);
-
     }
 
 // --------------------------------------------------------------------------------------
@@ -3819,6 +3809,16 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         sleep(1);
     }
 
+
+    }
+    
+
+    // The Middle Little Brother Sinclair Skill 3 Last coins
+    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins - 1) {
+
+      printf("\n\n%s: Does that sting?\n", attacker->name);
+
+      sleep(1);
 
     }
 
