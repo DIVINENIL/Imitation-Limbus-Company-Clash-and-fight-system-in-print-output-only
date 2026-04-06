@@ -962,6 +962,17 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 // ----------------------Attack phase-------------------------------
 void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
                  int atkTempDefense, Character *defender, SkillStats *defSkill,
@@ -970,7 +981,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   // printf("\n%s attacks %s with %s\n", attacker->name, defender->name,
   // atk->name);
 
-  if (attacker->HP > 0) {
+  if (attacker->HP > 0 && !isStaggered(attacker)) {
 
   if (remainingCoins <= 0) {
     printf("\nNo coins left to attack.\n");
@@ -983,7 +994,20 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
       ClashLostAttack = 1;
     }
 
-  //---------------------------Before Attack Buff----------------------------
+  //--------------------------- Before Attack Buff ----------------------------
+
+    // The Middle Little Brother Sinclair - Passive Buff Mark
+    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && attacker->skills[0].active > 0) {
+
+      int takevalue = attacker->skills[0].active * 2;
+      if (takevalue > 20) takevalue = 20;
+
+       defender->Protection -= takevalue;
+
+      printf("\n%s takes 2%% more damage for every 'Vendtta Mark' on self (%d%% - Max 20%%)\n", defender->name, takevalue);
+
+      sleep(1);
+    }
 
     // Sukuna:King of Curse Chanting
     if (isId(attacker->name, "Sukuna:King of Curse") == 0 && atk == &attacker->skills[4]) {
@@ -1755,6 +1779,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   
 
   printf("\n--- Attack Phase ---\n");
+    
   int totalPower = atk->BasePower + attacker->BasePowerBoost;
   int totalDamage = 0;
 
@@ -2475,6 +2500,16 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       sleep(1);
         
       }
+      
+    }
+
+    // The Middle Little Brother Sinclair Skill 3 Last coins
+    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins) {
+
+      printf("\n\n%s: Does that sting?\n", attacker->name);
+
+      sleep(1);
+
     }
 
 // --------------------------------------------------------------------------------------
@@ -3832,7 +3867,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // The Middle Little Brother Sinclair Passive never forget
     if (isId(defender->name, "The Middle Little Brother Sinclair") == 0 && defender->skills[3].active == 0) {
 
-      defender->skills[3].active = 1; // Check for once per turn
+      defender->skills[3].active = 1; // Check for Once per Turn
 
       defender->skills[0].active += 5;
       if (defender->skills[0].active > 10) defender->skills[0].active = 10;
@@ -5117,19 +5152,6 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     sleep(1);
   }
 
-  // The Middle Little Brother Sinclair - Passive Buff Mark
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->skills[0].active > 0 && c->skills[2].active == 0) {
-
-    int takevalue = c->skills[0].active * 2;
-    if (takevalue > 20) takevalue = 20;
-
-     c2->Protection -= takevalue;
-
-    printf("\n%s takes 2%% more damage for every 'Vendtta Mark' on self (%d%% - Max 20%%)\n", c2->name, takevalue);
-
-    sleep(1);
-  }
-
   // The Middle Little Brother Sinclair - Passive Buff Book
   if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->skills[1].active > 0 && c->skills[2].active == 0) {
 
@@ -5246,7 +5268,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     c->Shield += gainvalue;
 
-    printf("\n%s gains 30%% of missing HP as Shield (%d, Rounded down) (Shield %.2f) (once per turn)\n", c->name, gainvalue, c->Shield);
+    printf("\n%s gains 30%% of missing HP as Shield (%d, Rounded down) (Shield %.2f) (Once per Turn)\n", c->name, gainvalue, c->Shield);
 
     sleep(1);
 
@@ -9540,7 +9562,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
   //------------------- Turn Start ----------------------------
 
-  // The Middle Little Brother Sinclair - Passive once per turn reset
+  // The Middle Little Brother Sinclair - Passive Once per Turn reset
   if (isId(player->name, "The Middle Little Brother Sinclair") == 0) {
 
     player->skills[3].active = 0;
@@ -11918,7 +11940,7 @@ int main() {
 
                     //Passive
                     printf("Passive Skills:\n");
-                    printf(" 1. The Middle Never Forgets\n When hit by an enemy, inflict 5 'Vendetta Mark' against the attacker (once per turn)\n");
+                    printf(" 1. The Middle Never Forgets\n When hit by an enemy, inflict 5 'Vendetta Mark' against the attacker (Once per Turn)\n");
                    printf(" Attack End, consume all 'Vendetta Mark' on the target"
                      "\n  - Every time the target consumes 'Vendetta Mark', gain Book of 'Book of Vengeance [Sinclair]' equal to the amount consumed\n");
                    printf(" 2. Vendetta Mark\n Take 2%% damage for every Stack (Max 20%%) (Max 10 Stack)\n");
@@ -11927,7 +11949,7 @@ int main() {
                       "\n  - At 10+ Stack: Gain 30%% Damage Up"
                      "\n  - At 20+ Stack: Gain 1 Clash Power Up and 1 Base Power Up"
                      "\n  - At 30 Stack: Gain 50%% Damage Up\n");
-                    printf(" 4. The Middle Tattoo\n Combat Start: If this unit using attack skills except for 'Is it You?!', gain 1 Envy Resonance (lose this effect if this unit 'Stagger' or 'Panic'), use for certain skills, lose all when use 'Warmup in the East'\n");
+                    printf(" 4. The Middle Tattoo\n Combat Start: If this unit using attack skills except for 'Is it You?!', gain 1 Envy Resonance (Once per Turn; lose this effect if this unit 'Stagger' or 'Panic'), use for certain skills, lose all when use 'Warmup in the East'\n");
                         }
                    else if (selected_identity - 1 == 11) {
                      //Taunt
@@ -11944,7 +11966,7 @@ int main() {
                        " - Apply Mark of the Prescript to Base Attack Skills on this unit's Dashboard"
                        " · At Unlock - II+, the effect above prioritizes Skill 3 (prioritizes empowered Skill)"
                       " - All of the effects above and Prescript execution checks do not trigger when this unit is Staggered, or in Panic\n");
-                    printf(" 2. The Oracle's Proxy / Unlock\n Turn End: If Prescript was executed this turn at below Unlock - II, heal 4 SP and gain 1 Grace of the Prescript (once per turn)\n"
+                    printf(" 2. The Oracle's Proxy / Unlock\n Turn End: If Prescript was executed this turn at below Unlock - II, heal 4 SP and gain 1 Grace of the Prescript (Once per Turn)\n"
                      " - When executing Prescript, if the main target has The Prescript's Target, heal 8 SP and gain 3 Grace of the Prescript instead\n\n"
                      " Turn End: If this unit is at Unlock - II and Prescript was executed this turn, heal 4 SP\n"
                      " - When executing Prescript, if Procuration Procuration [Hermes] has reached 9 Stacks, heal 8 SP and gain 3 Grace of the Grace of the Prescript\n\n"
