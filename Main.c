@@ -921,6 +921,13 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
 
   // ------------ Player ------------
 
+  // The House of Spiders: The Index Nursefather Yi Sang - Tremor Burst
+  if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+      if (attacker->skills[12].active > 0) {
+          attacker->skills[12].active = 0;
+      }
+  }
+
     // Binah - Fairy
     if (isId(attacker->name, "Binah") == 0) {
         if (attacker->skills[0].active > 0) {
@@ -1774,8 +1781,8 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     // --- [เพิ่ม] การลดดาเมจเมื่อ Yi Sang เป็นฝ่ายรับ (เหรียญแตก) ---
     if (isId(defender->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
         if (Unbreakable > 0) { // ถ้าโดนโจมตีด้วยเหรียญที่แพ้ Clash มา (Cracking Coins)
-            if (defender->skills[3].active == 1) { defender->Protection += 10; printf("%s takes -10%% damage from Cracking Unbreakable Coins", defender->name); } // ลดดาเมจ 10%
-            if (defender->skills[3].active == 2) { defender->Protection += 25; printf("%s takes -25%% damage from Cracking Unbreakable Coins", defender->name); } // ลดดาเมจ 25%
+            if (defender->skills[3].active == 1) { defender->Protection += 10; printf("\n%s takes -10%% damage from Cracking Unbreakable Coins\n", defender->name); } // ลดดาเมจ 10%
+            if (defender->skills[3].active == 2) { defender->Protection += 25; printf("\n%s takes -25%% damage from Cracking Unbreakable Coins\n", defender->name); } // ลดดาเมจ 25%
         }
     }
 
@@ -1797,32 +1804,32 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     // Condition 1: Some breakable and some unbreakable coins remaining
     if (Unbreakable > 0) {
         // Output with Cracking Coins details
-        printf("Tossing %d coins for attack (from remaining clash %d breakable "
-               "coins and %d Unbreakable coins (%d Cracking Coins, Halve those coins's Damage)):\n",
+        printf("Tossing %d Coins for attack (from remaining clash %d Breakable "
+               "Coins and %d Unbreakable Coins (%d Cracking Coins, Halve those Coins's Damage)):\n",
                remainingCoins, remainingCoins - atk->Unbreakable, atk->Unbreakable, Unbreakable);
     } else {
         // Output without Cracking Coins details
-        printf("Tossing %d coins for attack (from remaining clash %d breakable "
-               "coins and %d Unbreakable coins):\n",
+        printf("Tossing %d Coins for attack (from remaining clash %d Breakable "
+               "Coins and %d Unbreakable Coins):\n",
                remainingCoins, remainingCoins - atk->Unbreakable, atk->Unbreakable);
     }
   } else if (atk->Unbreakable > 0 && atk->Coins == atk->Unbreakable) {
     // Condition 2: Only unbreakable coins remaining
     if (Unbreakable > 0) {
         // Output with Cracking Coins details
-        printf("Tossing %d coins for attack (from remaining clash %d Unbreakable "
-               "coins (%d Cracking Coins, Halve those coins's Damage)):\n",
+        printf("Tossing %d Coins for attack (from remaining clash %d Unbreakable "
+               "Coins (%d Cracking Coins, Halve those Coins's Damage)):\n",
                remainingCoins, atk->Unbreakable, Unbreakable);
     } else {
         // Output without Cracking Coins details
-        printf("Tossing %d coins for attack (from remaining clash %d Unbreakable "
-               "coins):\n",
+        printf("Tossing %d Coins for attack (from remaining clash %d Unbreakable "
+               "Coins):\n",
                remainingCoins, atk->Unbreakable);
     }
   } else {
     // Condition 3: Only breakable coins remaining (atk->Unbreakable is 0 or less)
-    printf("Tossing %d coins for attack (from remaining clash %d Breakable "
-           "coins):\n",
+    printf("Tossing %d Coins for attack (from remaining clash %d Breakable "
+           "Coins):\n",
            remainingCoins, remainingCoins);
   }
   
@@ -2636,7 +2643,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                     attacker->skills[10].active += 3;
                     if (attacker->skills[10].active > 99) attacker->skills[10].active = 99;
                     int deal = attacker->skills[10].active;
-                    attacker->skills[12].active += deal;
+                    attacker->skills[12].active += deal; // Store tremor burse damage
 
                     if (defender->Shield > 0) {
                         defender->Shield -= deal;
@@ -2644,12 +2651,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                     } else { defender->HP -= deal; }
                     if (defender->HP < 0) defender->HP = 0;
                     totalDamage += deal;
-                    printf("Trigger 'Tremor Burst' (Stack %d) ", deal);
+                    printf("Trigger 'Tremor Burst' (Stack %d Count 0) ", deal);
 
-                    if (attacker->skills[12].active > defender->MAX_HP/5 && defender->Stagger <= 0) {
+                    if (attacker->skills[12].active > 20 && defender->Stagger <= 0) {
                         defender->Stagger += 1;
                         printf("\n\tTarget 'Stagger' for one turn");
-                        attacker->skills[12].active = 0;
+                        attacker->skills[12].active = 0; // Reset
                     }
                     attacker->skills[10].active = 0;
                 }
@@ -2667,10 +2674,15 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         // --- 3. กฎการรับแต้ม Hermes ---
         // เงื่อนไข: (ไม่ได้ใช้ Furioso)
-            int RedCoinStartIndex = atk->Coins - atk->Unbreakable;
-            int isRedCoin = (i >= RedCoinStartIndex); // เช็คว่าเป็นลำดับเหรียญทองไหม
+              // คำนวณลำดับเหรียญที่แท้จริง: (เหรียญทั้งหมด - เหรียญที่เหลืออยู่ตอนนี้) + ลำดับเหรียญใน Loop ปัจจุบัน
+              int realCoinIndex = (atk->Coins - remainingCoins) + i; 
 
-            if (attacker->skills[8].active == 0 && isRedCoin) {
+              int RedCoinStartIndex = atk->Coins - atk->Unbreakable;
+
+              // ใช้ realCoinIndex ในการเช็คว่าเป็นเหรียญแดงหรือไม่
+              int isRedCoin = (realCoinIndex >= RedCoinStartIndex); 
+
+              if (attacker->skills[8].active == 0 && isRedCoin) {
                 int hermesHardCap = (attacker->Passive < 2) ? 8 : 9;
                 int maxGainThisTurn = attacker->Passive + 2;
 
@@ -4103,7 +4115,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         defender->DefenseBoostNextTurn -= 3;
         defender->ProtectionNextTurn -= 30; //Fragile: รับดาเมจแรงขึ้น 30%
 
-        printf("\n%s deals 5 Sanity damage and inflict 3 Defense Down, target takes +30%% damage next turn.\n", attacker->name);
+        printf("\n%s deals 5 Sanity damage, inflict 3 Defense Down next turn and target takes +30%% damage next turn.\n", attacker->name);
     }
 
     // -------------------------------------------------------------------------
@@ -10125,6 +10137,17 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
       printf("\n%s loses 1 HP due to Sizzling Wound\n", player->name);
     }
 
+    if (player->skills[7].active > 0) {
+
+      player->skills[1].active += player->skills[7].active;
+      player->skills[13].active += player->skills[7].active; // Maximum per turn
+
+      printf("\n%s gains +%d 'Procuration [Hermes]'\n", player->name, player->skills[7].active);
+
+      player->skills[7].active = 0;
+      
+    }
+
     // จัดการเรื่อง Device Level ตาม Unlock Stage (Passive)
     // Passive 0 = I, 1 = II, 2 = III, 3 = IV
     const char* deviceLevels[] = {"I", "II", "III", "IV"};
@@ -10162,14 +10185,14 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
     // 5. เช็คแต้ม Hermes เพื่อใช้ท่าไม้ตาย (ตรรกะเดิม)
     if (player->skills[1].active >= 9) {
 
-        printf("%s Procuration [Hermes] at 9! 'Furioso-Replica' is ready.\n", player->name);
+        printf("\n%s Procuration [Hermes] at 9! 'Furioso-Replica' is ready.\n", player->name);
         
       sleep(1);
 
         // --- ส่วน Skill Conversion Logic ---
         // เช็คว่าในมือ (Dashboard) มี Furioso หรือยัง
         if (*playerSkill1 != 3 && *playerSkill2 != 3) {
-            printf("%s [Imitation of a Life] No Furioso on Dashboard! Converting top slot...\n", player->name);
+            printf("\n%s [Imitation of a Life] No Furioso on Dashboard! Converting top slot next turn\n", player->name);
             // หมายเหตุ: การเปลี่ยนค่า playerSkill1 ตรงๆ ในนี้จะไม่มีผลต่อ main 
             // เพราะ C รับค่า playerSkill1 แบบ Value (สำเนา) ไม่ใช่ Pointer
             // วิธีแก้: คุณต้องไปเพิ่มบรรทัด conversion ใน main() ตามที่อธิบายด้านล่าง
@@ -10619,7 +10642,30 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
   //-------------------------------------------------------------------------
 
+  // Jia Qiu enemy heal
+  if (isId(player->name, "Jia Qiu") == 0 && (player->skills[15].active > 0) && enemy->HP <= 0) {
+
+    if (isId(enemy->name, "Hong lu:The Lord of Hongyuan") == 0) {
+
+      player->skills[15].active -= 1;
+
+    enemy->HP = enemy->MAX_HP;
+      enemy->FinalPowerBoostNextTurn += 1;
+      printf("\n%s's Uncompromising Imposition activated! Heal up to max HP and gain 1 Final Power, lose 1 stack(%d)", enemy->name, player->skills[15].active);
+      sleep(1);
+  } else {
+
+      player->skills[15].active -= 1;
+
+      enemy->HP = enemy->MAX_HP;
+      printf("\n%s's Dialogues activated! Heal up to max HP, lose 1 stack(%d)", enemy->name, player->skills[15].active);
+      sleep(1);
+  }
+
+  }
+
 }
+
 
 
 
@@ -10724,10 +10770,10 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
     player->BasePowerBoost += 1;
     player->DamageUp += 30;
-    updateSanity(player, 20);
+    player->ClashPower += 2;
 
-    printf("\n%s gains 'Indulgence in Prescripts' (Sanity %d)\n",
-      player->name, player->Sanity);
+    printf("\n%s gains 'Indulgence in Prescripts'\n",
+      player->name);
 
     sleep(1);
 
@@ -11139,6 +11185,9 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
         if (player->skills[0].active > maxGrace) {
             player->skills[0].active = maxGrace;
         }
+
+        printf("\n%s's [Prescript: [Device]]: Clear...\n", 
+           player->name);
 
         printf("\n%s gains 3 'Grace of the Prescript' (%d) and heals 8 Sanity (%d)\n", 
                player->name, player->skills[0].active, player->Sanity);
@@ -11633,6 +11682,28 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
 }
 
     // --------------------------------------------------
+
+    // Jia Qiu enemy heal
+    if (isId(player->name, "Jia Qiu") == 0 && (player->skills[15].active > 0) && enemy->HP <= 0) {
+
+      if (isId(enemy->name, "Hong lu:The Lord of Hongyuan") == 0) {
+
+        player->skills[15].active -= 1;
+
+      enemy->HP = enemy->MAX_HP;
+        enemy->FinalPowerBoostNextTurn += 1;
+        printf("\n%s's Uncompromising Imposition activated! Heal up to max HP and gain 1 Final Power, lose 1 stack(%d)", enemy->name, player->skills[15].active);
+        sleep(1);
+    } else {
+
+        player->skills[15].active -= 1;
+
+        enemy->HP = enemy->MAX_HP;
+        printf("\n%s's Dialogues activated! Heal up to max HP, lose 1 stack(%d)\n", enemy->name, player->skills[15].active);
+        sleep(1);
+    }
+
+    }
 
 
       
@@ -12162,6 +12233,20 @@ void runKingInBindsBattle(
 
         printf("\n--- Turn %d (King in Binds) ---\n", TurnCount);
 
+      if (GrandWelcome == 0) {
+        GrandWelcome = 1;
+          runCombatEvent(player, boss, &kingMidEvent, playerSkill1, playerSkill2, playerSkill3);
+        if (KingDmgBonus > 0.0f) {
+          for (int i = 0; i < player->numSkills; i++)
+              player->skills[i].DmgMutiplier += KingDmgBonus;
+          KingDmgBonus = 0.0f;
+        }
+
+        if (KingClashBonus > 0) {
+          player->ClashPower += KingClashBonus;
+        }
+      }
+
       // Boss เลือก skill
       int eIdx = (rand() % 2 == 0) ? *enemySkill1 : *enemySkill2;
       *enemyLastUnused = (eIdx == *enemySkill1) ? *enemySkill2 : *enemySkill1;
@@ -12184,21 +12269,9 @@ void runKingInBindsBattle(
           printf("\n%s loses all Envy Resonance\n", player->name);
 
         }
+
       }
-
-        if (GrandWelcome == 0) {
-          GrandWelcome = 1;
-            runCombatEvent(player, boss, &kingMidEvent, playerSkill1, playerSkill2, playerSkill3);
-          if (KingDmgBonus > 0.0f) {
-            for (int i = 0; i < player->numSkills; i++)
-                player->skills[i].DmgMutiplier += KingDmgBonus;
-            KingDmgBonus = 0.0f;
-          }
-
-          if (KingClashBonus > 0) {
-            player->ClashPower += KingClashBonus;
-          }
-        }
+      
 
         // แสดง HP
       printf("\nCurrent HP:\n");
@@ -12780,15 +12853,15 @@ int main() {
                       "\n - When penetrating the lungs with a stiletto... (Skill 2 deal +15%% damage for this Coin, On Hit without Cracking: Deals 2 Sanity damage to the target)"
                       "\n - When cleaving through the shoulder and the skull with a bastard sword... (Skill 3 deal +25%% damage for this Coin, This coin deal +5%% damage, On Hit without Cracking: Gain +1 Offense next turn (2 times per turn))"
                       "\n - When punching 10 or more holes in the torso with a rapier... (Skill 2 deal +15%% damage for this Coin, This Coin deal +5%% damage, On Hit without Cracking: Inflict 1 Defense Down (2 times per turn))"
-                      "\n - When caving in the back of the skull with a hammer... (Skill 1 deal +15%% damage for this Coin, This Coin deal +5%% damage, On Hit without Cracking: Trigger 'Tremor Burst' with 3 Tremor Stacks, if target took (Max HP/5) damage from 'Tremor Burst' in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess)"
+                      "\n - When caving in the back of the skull with a hammer... (Skill 1 deal +15%% damage for this Coin, This Coin deal +5%% damage, On Hit without Cracking: Trigger 'Tremor Burst' with 3 Tremor Stacks, if target took 20 damage from 'Tremor Burst' in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess)"
                      "\n - When rending the body with a great sword... (Skill 3 deal +25%% damage for this Coin, This Coin deal +15%% damage, On Hit without Cracking: Target takes +10%% damage next turn (2 times per turn))"
                      "\n - When boring a 20-inch hole with a lance... (Skill 2 deal +15%% damage for this Coin, This Coin deal +15%% damage, On Hit without Cracking: Target takes +10%% damage next turn (2 times per turn))"
                      "\n - When ripping the flesh to ten thousand strips with a whip... (Skill 1 deal +15%% damage for this Coin, This Coin deal +15%% damage, On Hit without Cracking: Target takes +10%% damage next turn (2 times per turn))"
                      "\n - When lacerating through space itself with a scythe, like a certain someone... (Skill 3 deal +25%% damage for this Coin, This Coin deal +30%% damage, On Hit without Cracking: Deals +20%% damage"
                       "\n\nGain 1 'Procuration [Hermes]' when using Skills with Mark of the Prescript"
-                       "\n\nConvert Wound-casing Mask to 'Sizzling Wound' at the end of the turn this unit used 'Furioso-Replica' for the first time in this Encounter"
+                       "\n\nConvert 'Wound-casing Mask' to 'Sizzling Wound' after this unit used 'Furioso-Replica' for the first time in this Encounter"
                        "\n\nTurn Start: If this unit has 'Sizzling Wound' and has 'Furioso-Replica' on the Dashboard, gain 'Indulgence in Prescripts'\n");
-                      printf(" 14. Indulgence in Prescripts \n Base Power +1, Damage +30%%, Sanity +20\n");
+                      printf(" 14. Indulgence in Prescripts \n Base Power +1, Damage +30%%, Clash Power +2\n");
                       printf(" 15. Imitation of a Life\n Deal +2%% damage with Skills marked with 'Mark of the Prescript' for every 'Grace of the Prescript' on self (Max 16%%)"
                        "\n - At 9 'Grace of the Prescript', deal +20%% damage with Base Skills instead\n\n"
                         "On Hit with Base Attack Skill's Unbreakable Coins, gain 1 'Procuration [Hermes]'"
