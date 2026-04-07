@@ -1771,6 +1771,14 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     sleep(1);
   }
 
+    // --- [เพิ่ม] การลดดาเมจเมื่อ Yi Sang เป็นฝ่ายรับ (เหรียญแตก) ---
+    if (isId(defender->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+        if (Unbreakable > 0) { // ถ้าโดนโจมตีด้วยเหรียญที่แพ้ Clash มา (Cracking Coins)
+            if (defender->skills[3].active == 1) { defender->Protection += 10; printf("%s takes -10%% damage from Cracking Unbreakable Coins", defender->name); } // ลดดาเมจ 10%
+            if (defender->skills[3].active == 2) { defender->Protection += 25; printf("%s takes -25%% damage from Cracking Unbreakable Coins", defender->name); } // ลดดาเมจ 25%
+        }
+    }
+
   //----------------------------------------------------------------
 
 
@@ -2529,12 +2537,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         }
     }
 
-    // --- [เพิ่ม] การลดดาเมจเมื่อ Yi Sang เป็นฝ่ายรับ (เหรียญแตก) ---
-    if (isId(defender->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
-        if (Unbreakable > 0) { // ถ้าโดนโจมตีด้วยเหรียญที่แพ้ Clash มา (Cracking Coins)
-            if (defender->skills[3].active == 1) defender->Protection += 10; // ลดดาเมจ 10%
-            if (defender->skills[3].active == 2) defender->Protection += 25; // ลดดาเมจ 25%
-        }
+    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3] && i == remainingCoins - 1) {
+      
+          attacker->DamageUp += 90.0f;
+
+        printf("\nWeapon assigned to this Coin is fixed as Scythe and Deal +90%% damage");
+
     }
 
 
@@ -2559,13 +2567,18 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         // --- 1. คำนวณความเสียหายตามชนิดอาวุธ ---
         if (weapon == 0 && atk == &attacker->skills[0]) Damage *= 1.15;
         if (weapon == 1 && atk == &attacker->skills[1]) Damage *= 1.15;
-        if (weapon == 2 && atk == &attacker->skills[2]) Damage *= 1.30;
-        if (weapon == 3 && atk == &attacker->skills[1]) Damage *= 1.20;
-        if (weapon == 4 && atk == &attacker->skills[0]) Damage *= 1.20; // Hammer Bonus
-        if (weapon == 5 && atk == &attacker->skills[2]) Damage *= 1.40;
-        if (weapon == 6 && atk == &attacker->skills[1]) Damage *= 1.30;
-        if (weapon == 7 && atk == &attacker->skills[0]) Damage *= 1.30;
-        if (weapon == 8 && atk == &attacker->skills[2]) Damage *= 1.75;
+        if (weapon == 2 && atk == &attacker->skills[2]) Damage *= 1.25;
+        if (weapon == 3 && atk == &attacker->skills[1]) Damage *= 1.15;
+        if (weapon == 4 && atk == &attacker->skills[0]) Damage *= 1.15; // Hammer Bonus
+        if (weapon == 5 && atk == &attacker->skills[2]) Damage *= 1.25;
+        if (weapon == 6 && atk == &attacker->skills[1]) Damage *= 1.15;
+        if (weapon == 7 && atk == &attacker->skills[0]) Damage *= 1.15;
+        if (weapon == 8 && atk == &attacker->skills[2]) Damage *= 1.25;
+
+        
+      if (weapon == 2 || weapon == 3 || weapon == 4) { Damage *= 1.05; }
+        if (weapon == 5 || weapon == 6 || weapon == 7) { Damage *= 1.15; }
+      if (weapon == 8) { Damage *= 1.30; }
 
     }
 
@@ -2609,84 +2622,66 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 // The Index Nursefather Yi Sang: Oracle Device [Caduceus] Weapon Name + Other
       if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
-        printf(" [%s] ", wName[weapon]); 
+            printf(" [%s] ", wName[weapon]); 
 
-        // --- 2. เอฟเฟกต์ On Hit (ถ้าเหรียญไม่แตก) ---
-        if (Unbreakable <= 0) {
-            // [Hammer: Tremor Burst System]
-            if (weapon == 4) {
-                // เพิ่ม 3 Tremor Stack (ฝากไว้ที่ skills[10])
-                attacker->skills[10].active += 3;
-                if (attacker->skills[10].active > 99) attacker->skills[10].active = 99;
+            // 1. ตรวจสอบสถานะเหรียญปัจจุบัน
+            // isCracked = เหรียญนี้แพ้ Clash มา (แตก) จึงไม่แสดงผลพิเศษ
+            // isRedCoin = เหรียญนี้เป็นเหรียญทอง (Unbreakable Coin ของ Yi Sang)
+            int isCracked = (Unbreakable > 0);
 
-                int deal = attacker->skills[10].active;
-                attacker->skills[12].active += deal; // เก็บสะสมดาเมจ Burst เพื่อเช็ค Stagger
+            // 2. เอฟเฟกต์ On Hit (ทำงานเฉพาะเหรียญที่ไม่แตก)
+            if (!isCracked) {
+                // [Hammer: Tremor Burst System]
+                if (weapon == 4) {
+                    attacker->skills[10].active += 3;
+                    if (attacker->skills[10].active > 99) attacker->skills[10].active = 99;
+                    int deal = attacker->skills[10].active;
+                    attacker->skills[12].active += deal;
 
-                // หักเลือด/เกราะ (Tremor Burst Damage)
-                if (defender->Shield > 0) {
-                    defender->Shield -= deal;
-                    if (defender->Shield < 0) {
-                        defender->HP += defender->Shield;
-                        defender->Shield = 0;
+                    if (defender->Shield > 0) {
+                        defender->Shield -= deal;
+                        if (defender->Shield < 0) { defender->HP += defender->Shield; defender->Shield = 0; }
+                    } else { defender->HP -= deal; }
+                    if (defender->HP < 0) defender->HP = 0;
+                    totalDamage += deal;
+                    printf("Trigger 'Tremor Burst' (Stack %d) ", deal);
+
+                    if (attacker->skills[12].active > defender->MAX_HP/5 && defender->Stagger <= 0) {
+                        defender->Stagger += 1;
+                        printf("\n\tTarget 'Stagger' for one turn");
+                        attacker->skills[12].active = 0;
                     }
-                } else {
-                    defender->HP -= deal;
-                }
-                if (defender->HP < 0) defender->HP = 0;
-                totalDamage += deal;
-
-                printf("Trigger 'Tremor Burst' on target (Stack %d Count 0)", deal);
-
-                // ตรวจสอบเงื่อนไข Stagger (ถ้าดาเมจ Burst สะสม > 1/4 ของ Max HP)
-                if (attacker->skills[12].active > defender->MAX_HP/5 && defender->Stagger <= 0) {
-                    defender->Stagger += 1;
-                    printf("\n\tTarget 'Stagger' for one turn");
-                    attacker->skills[12].active = 0; // Reset ตัวนับเมื่อ Stagger แล้ว
+                    attacker->skills[10].active = 0;
                 }
 
-                // จบการ Burst: ล้าง Stack (ตามกฎสั้นๆ ของ Yi Sang คือ Burst 3 แต้มที่เพิ่งใส่เข้าไป)
-                attacker->skills[10].active = 0;
+                // เอฟเฟกต์อาวุธอื่นๆ (จำกัด 2 ครั้งต่อเทิร์น)
+                if (weapon == 0 && attacker->skills[15].active < 2) { attacker->skills[15].active++; attacker->DamageUpNextTurn += 10; printf("(Gain +10%% damage next turn) "); }
+                if (weapon == 1 && attacker->skills[16].active < 2) { attacker->skills[16].active++; updateSanity(defender, -2); printf("(Target loses 2 Sanity (%d)) ", defender->Sanity); }
+                if (weapon == 2 && attacker->skills[17].active < 2) { attacker->skills[17].active++; attacker->OffenseBoostNextTurn += 1; printf("(Offense +1 next turn) "); }
+                if (weapon == 3 && attacker->skills[18].active < 2) { attacker->skills[18].active++; defender->DefenseBoostNextTurn -= 1; printf("(Target gains 1 Defense Down Next Turn) "); }
+                if (weapon >= 5 && weapon <= 7 && attacker->skills[6].active < 2) { attacker->skills[6].active++; defender->ProtectionNextTurn -= 10; printf("(Target takes +10%% damage Next Turn) "); }
+
+
             }
+              
 
-            // เอฟเฟกต์อาวุธอื่นๆ (ที่มีจำกัด 2 ครั้งต่อเทิร์น)
-                if (weapon == 0) { if (attacker->skills[15].active < 2) {  attacker->skills[15].active++; attacker->DamageUpNextTurn += 10; } }
-                if (weapon == 1) { if (attacker->skills[16].active < 2) {  attacker->skills[16].active++; updateSanity(defender, -2); } }
-                if (weapon == 2) { if (attacker->skills[17].active < 2) { attacker->OffenseBoost += 1; attacker->skills[17].active++; printf("(Offense +1) "); } }
-                if (weapon == 3) { if (attacker->skills[18].active < 2) { defender->DefenseBoostNextTurn -= 1; attacker->skills[18].active++; printf("(Def Down Next Turn) ");} }
-                if (weapon >= 5 && weapon <= 7 && attacker->skills[6].active < 2) {
-                    defender->ProtectionNextTurn -= 10; 
-                    attacker->skills[6].active++; 
-                    printf("(Target Damage Taken +10%% Next Turn) "); 
-                }
-        }
+        // --- 3. กฎการรับแต้ม Hermes ---
+        // เงื่อนไข: (ไม่ได้ใช้ Furioso)
+            int RedCoinStartIndex = atk->Coins - atk->Unbreakable;
+            int isRedCoin = (i >= RedCoinStartIndex); // เช็คว่าเป็นลำดับเหรียญทองไหม
 
-        // กฎ: ได้แต้มเมื่อตีโดนด้วย Unbreakable Coin (และต้องไม่ใช่เทิร์นที่ใช้ Furioso [skills[8]])
-        if (attacker->skills[8].active == 0) { // เช็คว่าไม่ได้ใช้ Furioso (ที่ล็อคการรับ Hermes ไว้)
-
-            // เงื่อนไข: เป็นเหรียญทอง (Unbreakable) และเหรียญไม่แตก (Unbreakable <= 0)
-            if (i < atk->Unbreakable && Unbreakable <= 0) { 
-
-                // 1. คำนวณเพดานสูงสุด (Hard Cap) ตาม Stage: ต่ำกว่า Stage II ตัน 8, ตั้งแต่ Stage II ขึ้นไปตัน 9
+            if (attacker->skills[8].active == 0 && isRedCoin) {
                 int hermesHardCap = (attacker->Passive < 2) ? 8 : 9;
-
-                // 2. คำนวณโควต้าที่รับได้ในเทิร์นนี้: Unlock Stage + 2
                 int maxGainThisTurn = attacker->Passive + 2;
 
-                // 3. ตรวจสอบเงื่อนไขก่อนบวกแต้ม:
-                // - แต้มรวมต้องไม่เกิน Hard Cap (8 หรือ 9)
-                // - แต้มที่ได้รับในเทิร์นนี้ (ใช้ skills[13].active นับ) ต้องไม่เกินโควต้า (Stage + 2)
                 if (attacker->skills[1].active < hermesHardCap && attacker->skills[13].active < maxGainThisTurn) {
-
-                    attacker->skills[1].active++;    // บวกแต้มสะสมจริง
-                    attacker->skills[13].active++;   // บวกตัวนับโควต้าประจำเทิร์น
-
-                    printf(" Procuration [Hermes] +1 (%d) ", 
-                           attacker->skills[1].active);
+                    attacker->skills[1].active++;
+                    attacker->skills[13].active++;
+                    printf(" Procuration [Hermes] +1 (%d) ", attacker->skills[1].active);
                 }
             }
+        
         }
-
-    }
 
     // -----------------------------------------------------------------------------------
 
@@ -4108,7 +4103,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         defender->DefenseBoostNextTurn -= 3;
         defender->ProtectionNextTurn -= 30; //Fragile: รับดาเมจแรงขึ้น 30%
 
-        printf("\n%s deal 5 Sanity damage and inflict 3 Defense Down, target takes +30%% damage next turn.", attacker->name);
+        printf("\n%s deals 5 Sanity damage and inflict 3 Defense Down, target takes +30%% damage next turn.\n", attacker->name);
     }
 
     // -------------------------------------------------------------------------
@@ -5386,11 +5381,15 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       *tempOffense += 2;
       *tempDefense -= 2;
       printf("\n%s has 'Wound-casing Mask' Offense +2, Defense -2\n", c->name);
+
+      sleep(1);
     } 
     else if (c->skills[3].active == 2) { // Sizzling Wound
       *tempOffense += 3;
       *tempDefense -= 3;
       printf("\n%s has 'Sizzling Wound' Offense +3, Defense -3\n", c->name);
+
+      sleep(1);
     }
 
     // [Unlock Stage Defense Buffs]
@@ -5414,10 +5413,10 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
         // 2. Final Power +1 for every 10% Missing HP (Self + Target) (Max 3)
         float missP = ((c->MAX_HP - c->HP)/c->MAX_HP + (c2->MAX_HP - c2->HP)/c2->MAX_HP) * 10.0f;
-        int fpBoost = (int)missP; 
-        if (fpBoost > 3) fpBoost = 3;
-        c->FinalPowerBoost += fpBoost;
-        if (fpBoost > 0) {printf("\n%s has 'Shin (心) - Fate', gains +1 Final Power for every 10%% (missing HP percentage on target + missing HP percentage on self; rounded down) (%d - Max 3)", c->name, fpBoost); sleep(1);}
+        int Boost = (int)missP; 
+        if (Boost > 5) Boost = 5;
+        *tempOffense += Boost;
+        if (Boost > 0) {printf("\n%s has 'Shin (心) - Fate', gains +1 Offense for every 10%% (missing HP percentage on target + missing HP percentage on self; rounded down) (%d - Max 5)", c->name, Boost); sleep(1);}
 
         // 3. Deal +1% damage for every 3 Sanity higher than target (Max 15%)
         if (c->Sanity > c2->Sanity) {
@@ -5472,14 +5471,14 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
       float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
 
-      int gain = (missingSelf + missingEnemy) / 6;
+      int gain = (missingSelf + missingEnemy) / 10;
       if (gain > 2) gain = 2;
 
     if (gain > 0) {
 
       c->CoinPowerBoost += gain;
 
-        printf("\n%s gains +1 Coin Power (%d - Max 2) for every 6%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
+        printf("\n%s gains +1 Coin Power (%d - Max 2) for every 10%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
 
       sleep(1);
 
@@ -5487,9 +5486,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     int convertvalue = c->Passive - 1;
 
-    if (convertvalue > 0) {
+    if (convertvalue > 0 && c->skills[0].Unbreakable <= c->skills[0].Coins) {
 
-       c->skills[0].Unbreakable += convertvalue;
+       c->skills[0].Unbreakable = convertvalue;
 
     printf("\n%s converts Coins equal to (%d - [Unlock stage - 1]) into Unbreakable Coins, beginning with the final Coin\n", c->name, convertvalue);
 
@@ -5515,14 +5514,14 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
       float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
 
-      int gain = (missingSelf + missingEnemy) / 6;
+      int gain = (missingSelf + missingEnemy) / 10;
       if (gain > 2) gain = 2;
 
     if (gain > 0) {
 
       c->CoinPowerBoost += gain;
 
-        printf("\n%s gains +1 Coin Power (%d - Max 2) for every 6%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
+        printf("\n%s gains +1 Coin Power (%d - Max 2) for every 10%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
 
       sleep(1);
 
@@ -5530,9 +5529,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     int convertvalue = c->Passive;
 
-    if (convertvalue > 0) {
+    if (convertvalue > 0 && c->skills[1].Unbreakable <= c->skills[1].Coins) {
 
-       c->skills[1].Unbreakable += convertvalue;
+       c->skills[1].Unbreakable = convertvalue;
 
     printf("\n%s converts Coins equal to (%d - [Unlock stage]) into Unbreakable Coins, beginning with the final Coin\n", c->name, convertvalue);
 
@@ -5558,14 +5557,14 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
       float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
 
-      int gain = (missingSelf + missingEnemy) / 6;
+      int gain = (missingSelf + missingEnemy) / 10;
       if (gain > 2) gain = 2;
 
     if (gain > 0) {
 
       c->CoinPowerBoost += gain;
 
-        printf("\n%s gains +1 Coin Power (%d - Max 2) for every 6%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
+        printf("\n%s gains +1 Coin Power (%d - Max 2) for every 10%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
 
       sleep(1);
 
@@ -5573,9 +5572,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     int convertvalue = c->Passive + 1;
 
-    if (convertvalue > 0) {
+    if (convertvalue > 0 && c->skills[2].Unbreakable <= c->skills[2].Coins) {
 
-       c->skills[2].Unbreakable += convertvalue;
+       c->skills[2].Unbreakable = convertvalue;
 
     printf("\n%s converts Coins equal to (%d - [Unlock stage + 1]) into Unbreakable Coins, beginning with the final Coin\n", c->name, convertvalue);
 
@@ -5600,9 +5599,12 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
         // ยกเลิกค่า Coin Power Boost เดิม เพื่อไม่ให้เหรียญมีค่าพลังเพิ่มขึ้นจริงๆ
         c->CoinPowerBoost = 0;
-        printf("\n%s Converting %d Coin Power to +%d Final Power, +%d%% Damage (this Skill is not affected by Paralyze)", c->name, netCoinPower, netCoinPower * 5, netCoinPower * 25);
+        printf("\n%s Converting %d Coin Power to +%d Final Power, +%d%% Damage", c->name, netCoinPower, netCoinPower * 5, netCoinPower * 25);
 
+      sleep(1);
     }
+
+    printf("\n%s's this Skill is not affected by Paralyze\n", c->name);
 
       sleep(1);
 
@@ -5624,12 +5626,12 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
       float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
 
-      int gain = (missingSelf + missingEnemy) / 6;
+      int gain = (missingSelf + missingEnemy) / 15;
       if (gain > 2) gain = 2;
 
       c->FinalPowerBoost += gain;
 
-        printf("\n%s gains +1 Final Power (%d - Max 2) for every 6%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
+        printf("\n%s gains +1 Final Power (%d - Max 2) for every 15%% (missing HP percentage on target + missing HP percentage on self)\n", c->name, gain);
 
     sleep(1);
 
@@ -9825,7 +9827,8 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->numSkills = 4; // <-- important
   } else if (pIndex == 11) {
     player->name = "The House of Spiders: The Index Nursefather Yi Sang";
-      player->HP = 98; player->MAX_HP = 98;
+      player->HP = 82; 
+    player->MAX_HP = 82;
       player->Passive = 0;          // Stage
       player->skills[0].active = 0; // Grace
       player->skills[1].active = 0; // Hermes
@@ -9834,7 +9837,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
       player->skills[0] = (SkillStats){"'Enwrap 330 times...'", 3, 4, 2, 2, 2, 1, 0, 0, 3, 1};
       player->skills[1] = (SkillStats){"'Revel with Soundless Applause...'", 4, 4, 3, 3, 2, 1, 0, 0, 2, 1};
       player->skills[2] = (SkillStats){"'Raise and Laugh the Blade...'", 4, 3, 4, 4, 2, 1, 0, 0, 1, 1};
-      player->skills[3] = (SkillStats){"Furioso-Replica", 3, 3, 9, 5, 2, 1, 0, 9, 0, 1}; 
+      player->skills[3] = (SkillStats){"Furioso-Replica", 2, 2, 9, 5, 2, 1, 0, 9, 0, 1}; 
       player->numSkills = 4;
     } else { // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable
     player->name = "Binah";
@@ -10116,7 +10119,13 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // --- The House of Spiders: The Index Nursefather Yi Sang - Turn Start ---
   if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
 
-    // 1. จัดการเรื่อง Device Level ตาม Unlock Stage (Passive)
+    // (ตรรกะเดิมของคุณ) จัดการเรื่อง Sizzling Wound และ Flags ต่างๆ
+    if (player->skills[3].active == 2) {
+      player->HP -= 1; 
+      printf("\n%s loses 1 HP due to Sizzling Wound\n", player->name);
+    }
+
+    // จัดการเรื่อง Device Level ตาม Unlock Stage (Passive)
     // Passive 0 = I, 1 = II, 2 = III, 3 = IV
     const char* deviceLevels[] = {"I", "II", "III", "IV"};
     int currentStage = player->Passive;
@@ -10125,15 +10134,14 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
     printf("\n%s gains 'Prescript: [Device] %s'\n", player->name, deviceLevels[currentStage]);
     sleep(1);
 
-    // 3. (ตรรกะเดิมของคุณ) จัดการเรื่อง Sizzling Wound และ Flags ต่างๆ
-    if (player->skills[3].active == 2) {
-      player->HP -= 1; 
-      printf("%s loses 1 HP due to Sizzling Wound\n", player->name);
-    }
-    player->skills[5].active = 0; 
-    player->skills[6].active = 0; 
+    player->skills[5].active = 0; // Prescript Checked reset
+    player->skills[6].active = 0; // Two time per time reset
+    player->skills[15].active = 0; // Two time per time reset
+    player->skills[16].active = 0; // Two time per time reset
+    player->skills[17].active = 0; // Two time per time reset
+    player->skills[18].active = 0; // Two time per time reset
 
-    // 4. (ตรรกะเดิมของคุณ) การสุ่มเลือกสกิลตาม Prescript
+    // (ตรรกะเดิมของคุณ) การสุ่มเลือกสกิลตาม Prescript
     if (player->Passive >= 2) { 
       if (*playerSkill1 == 2 || *playerSkill2 == 2 || *playerSkill1 == 3 || *playerSkill2 == 3) {
           if (*playerSkill1 == 2 || *playerSkill1 == 3) player->skills[4].active = *playerSkill1;
@@ -10153,7 +10161,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
     // 5. เช็คแต้ม Hermes เพื่อใช้ท่าไม้ตาย (ตรรกะเดิม)
     if (player->skills[1].active >= 9) {
-        player->skills[3].Copies = 1;
+
         printf("%s Procuration [Hermes] at 9! 'Furioso-Replica' is ready.\n", player->name);
         
       sleep(1);
@@ -10167,8 +10175,6 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
             // วิธีแก้: คุณต้องไปเพิ่มบรรทัด conversion ใน main() ตามที่อธิบายด้านล่าง
            sleep(1);
         }
-    } else { 
-        player->skills[3].Copies = 0; 
     }
 
     // 5. บทลงโทษ Karma และ บัฟ Shin - Fate
@@ -10716,6 +10722,15 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       (&player->skills[playerSkill1] == &player->skills[3] ||
        (&player->skills[playerSkill2] == &player->skills[3])) && player->skills[3].active == 2) {
 
+    player->BasePowerBoost += 1;
+    player->DamageUp += 30;
+    updateSanity(player, 20);
+
+    printf("\n%s gains 'Indulgence in Prescripts' (Sanity %d)\n",
+      player->name, player->Sanity);
+
+    sleep(1);
+
       printf("\n%s: *beep* The will of Hermes.\n",
         player->name);
 
@@ -11063,6 +11078,8 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 // The House of Spiders: The Index Nursefather Yi Sang Passive
     if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
 
+      if (player->skills[3].active == 2) {player->HP -= 1; printf("\n%s loses 1 HP due to Sizzling Wound\n", player->name);} // Sizzling Wound DOT
+
       // [Unlock Stage Sanity Heal]
       // stage 1 = 5, stage 2 = 10, stage 3 = 15
       if (player->Passive == 1) {
@@ -11137,7 +11154,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
       // 3. ปรับ Stage ตาม Grace
       int grace = player->skills[0].active;
-      if (grace >= 9) {
+      if (grace >= 9 && player->Passive < 3) {
         player->Passive = 3; 
         
         printf("\n%s gains 'Unlock - III'\n", player->name); 
@@ -11148,7 +11165,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
         sleep(1);
       }
-      else if (grace >= 6) {
+      else if (grace >= 6 && player->Passive < 2) {
         player->Passive = 2; 
         
         printf("\n%s gains 'Unlock - II'\n", player->name);
@@ -11159,7 +11176,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
         sleep(1);
       }
-      else if (grace >= 3) {
+      else if (grace >= 3 && player->Passive < 1) {
         player->Passive = 1; 
         
         printf("\n%s gains 'Unlock - I'\n", player->name);
@@ -11171,7 +11188,6 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
         sleep(1);
       }
 
-      if (player->skills[3].active == 2) {player->HP -= 1; printf("\n%s loses 1 HP due to Sizzling Wound\n", player->name);} // Sizzling Wound DOT
     }
 
 
@@ -12753,7 +12769,7 @@ int main() {
                        "\n · Takes +10 Damage for every 20 Stack"
                        "\n - Max Stack: 100\n");
                      printf(" 9. Shin (心) - Fate \n - Gain +1 Offense and +1 Defense"
-                        "\n - Gain 1 Final Power for every 10%% (missing HP percentage on target + missing HP percentage on self; rounded down) (Max 3)"
+                        "\n - Gain +1 Offense for every 10%% (missing HP percentage on target + missing HP percentage on self; rounded down) (Max 5)"
                         "\n - If this unit's Sanity higher than the target's, deal +1%% damage for every 3 Sanity different (Max 15%%; units without Sanity considered to be 0 Sanity)\n");
                     printf(" 10. The Index Nursefather\n Upon entering the Encounter for the first time, gain 'Wound-casing Mask'"
                       " - Turn End: If this unit was Staggered for the first time, or at 65%% or less HP, in this Encounter while under this effect, recover from Stagger (excluding forced Stagger) and convert 'Wound-casing Mask' to 'Sizzling Wound'\n");
@@ -12762,7 +12778,7 @@ int main() {
                      printf(" 13. Oracle Device [Caduceus]\n A random weapon is assigned to every Coin for Base Attack Skills. Each weapon has a unique effect."
                       "\n - When hacking through the ribs with a hatchet... (Skill 1 deal +15%% damage for this Coin, On Hit without Cracking: Gain +10%% damage next turn)"
                       "\n - When penetrating the lungs with a stiletto... (Skill 2 deal +15%% damage for this Coin, On Hit without Cracking: Deals 2 Sanity damage to the target)"
-                      "\n - When cleaving through the shoulder and the skull with a bastard sword... (Skill 3 deal +25%% damage for this Coin, This coin deal +5%% damage, On Hit without Cracking: Gain +1 Offense (2 times per turn))"
+                      "\n - When cleaving through the shoulder and the skull with a bastard sword... (Skill 3 deal +25%% damage for this Coin, This coin deal +5%% damage, On Hit without Cracking: Gain +1 Offense next turn (2 times per turn))"
                       "\n - When punching 10 or more holes in the torso with a rapier... (Skill 2 deal +15%% damage for this Coin, This Coin deal +5%% damage, On Hit without Cracking: Inflict 1 Defense Down (2 times per turn))"
                       "\n - When caving in the back of the skull with a hammer... (Skill 1 deal +15%% damage for this Coin, This Coin deal +5%% damage, On Hit without Cracking: Trigger 'Tremor Burst' with 3 Tremor Stacks, if target took (Max HP/5) damage from 'Tremor Burst' in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess)"
                      "\n - When rending the body with a great sword... (Skill 3 deal +25%% damage for this Coin, This Coin deal +15%% damage, On Hit without Cracking: Target takes +10%% damage next turn (2 times per turn))"
@@ -12771,13 +12787,14 @@ int main() {
                      "\n - When lacerating through space itself with a scythe, like a certain someone... (Skill 3 deal +25%% damage for this Coin, This Coin deal +30%% damage, On Hit without Cracking: Deals +20%% damage"
                       "\n\nGain 1 'Procuration [Hermes]' when using Skills with Mark of the Prescript"
                        "\n\nConvert Wound-casing Mask to 'Sizzling Wound' at the end of the turn this unit used 'Furioso-Replica' for the first time in this Encounter"
-                       "\n\nTurn Start: If this unit has 'Sizzling Wound' and has 'Furioso-Replica' on the Dashboard, gain Indulgence in Prescripts\n");
-                      printf(" 14. Imitation of a Life\n Deal +2%% damage with Skills marked with 'Mark of the Prescript' for every 'Grace of the Prescript' on self (Max 16%%)"
+                       "\n\nTurn Start: If this unit has 'Sizzling Wound' and has 'Furioso-Replica' on the Dashboard, gain 'Indulgence in Prescripts'\n");
+                      printf(" 14. Indulgence in Prescripts \n Base Power +1, Damage +30%%, Sanity +20\n");
+                      printf(" 15. Imitation of a Life\n Deal +2%% damage with Skills marked with 'Mark of the Prescript' for every 'Grace of the Prescript' on self (Max 16%%)"
                        "\n - At 9 'Grace of the Prescript', deal +20%% damage with Base Skills instead\n\n"
                         "On Hit with Base Attack Skill's Unbreakable Coins, gain 1 'Procuration [Hermes]'"
                        "\n - Attack End: Gain 'Procuration [Hermes]' equal to (# of remaining Unbreakable Coins)"
                        "\n - 'Furioso-Replica' Attack End: Gain 'Procuration [Hermes]' next turn equal to (# of this Skill's remaining Unbreakable Coins / 2) (rounded down)"
-                        "\n\nIf 'Procuration [Hermes]' reached 9 Stacks this turn at Turn End, and if this unit does not have a Skill 3 on the Dashboard at the start of the next turn, convert a Base Skill to Skill 3 (prioritizes the Skill on the top Slot's row)\n");
+                        "\n\nIf 'Procuration [Hermes]' reached 9 Stacks this turn at Turn End, and if this unit does not have a Skill 3 on the Dashboard at the start of the next turn, convert a Base Skill to Skill 3 (prioritizes the Skill on the top Slot's row; Only 1 copy of this Skill can exist on the Dashboard\n");
                          }
            else {
         //Taunt
