@@ -2534,7 +2534,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (Unbreakable > 0) { // ถ้าโดนโจมตีด้วยเหรียญที่แพ้ Clash มา (Cracking Coins)
             if (defender->skills[3].active == 1) defender->Protection += 10; // ลดดาเมจ 10%
             if (defender->skills[3].active == 2) defender->Protection += 25; // ลดดาเมจ 25%
-            printf("\n[%s] Mask reduces Cracking Coin damage!", defender->name);
         }
     }
 
@@ -2650,17 +2649,15 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
             }
 
             // เอฟเฟกต์อาวุธอื่นๆ (ที่มีจำกัด 2 ครั้งต่อเทิร์น)
-            if (attacker->skills[6].active < 2) {
-                if (weapon == 0) attacker->DamageUpNextTurn += 10;
-                if (weapon == 1) updateSanity(defender, -2);
-                if (weapon == 2) { attacker->OffenseBoost += 1; attacker->skills[6].active++; printf("(Offense +1) "); }
-                if (weapon == 3) { defender->DefenseBoostNextTurn -= 1; attacker->skills[6].active++; printf("(Def Down Next Turn) "); }
-                if (weapon >= 5 && weapon <= 7) { 
+                if (weapon == 0) { if (attacker->skills[15].active < 2) {  attacker->skills[15].active++; attacker->DamageUpNextTurn += 10; } }
+                if (weapon == 1) { if (attacker->skills[16].active < 2) {  attacker->skills[16].active++; updateSanity(defender, -2); } }
+                if (weapon == 2) { if (attacker->skills[17].active < 2) { attacker->OffenseBoost += 1; attacker->skills[17].active++; printf("(Offense +1) "); } }
+                if (weapon == 3) { if (attacker->skills[18].active < 2) { defender->DefenseBoostNextTurn -= 1; attacker->skills[18].active++; printf("(Def Down Next Turn) ");} }
+                if (weapon >= 5 && weapon <= 7 && attacker->skills[6].active < 2) {
                     defender->ProtectionNextTurn -= 10; 
                     attacker->skills[6].active++; 
                     printf("(Target Damage Taken +10%% Next Turn) "); 
                 }
-            }
         }
 
         // กฎ: ได้แต้มเมื่อตีโดนด้วย Unbreakable Coin (และต้องไม่ใช่เทิร์นที่ใช้ Furioso [skills[8]])
