@@ -988,7 +988,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     return;
   }
 
-    int ClashLostAttack = 0; // ← Character's clash lost coins in after attack
+    int ClashLostAttack = 0; // ← Character's Cracking Coins in after attack
 
     if (atk->Unbreakable > 0 && Unbreakable == atk->Unbreakable) {
       ClashLostAttack = 1;
@@ -1114,7 +1114,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
     defender->Shield += shieldGain;
 
-    printf("\n%s getting attack by Full Clash Lost Coins, take -80%% damage and gain (50 + Missing HP/3) (%d - Max 100) Shield HP (%.2f)\n", defender->name, shieldGain, defender->Shield);
+    printf("\n%s getting attack by Full Cracking Coins, take -80%% damage and gain (50 + Missing HP/3) (%d - Max 100) Shield HP (%.2f)\n", defender->name, shieldGain, defender->Shield);
   }
     else if (isId(defender->name, "Binah") == 0 && defender->Passive && defender->Sanity >= 0) {
 
@@ -1788,12 +1788,12 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   if (atk->Unbreakable > 0 && atk->Coins != atk->Unbreakable) {
     // Condition 1: Some breakable and some unbreakable coins remaining
     if (Unbreakable > 0) {
-        // Output with Clash lost coins details
+        // Output with Cracking Coins details
         printf("Tossing %d coins for attack (from remaining clash %d breakable "
-               "coins and %d Unbreakable coins (%d Clash lost coins, Halve those coins's Damage)):\n",
+               "coins and %d Unbreakable coins (%d Cracking Coins, Halve those coins's Damage)):\n",
                remainingCoins, remainingCoins - atk->Unbreakable, atk->Unbreakable, Unbreakable);
     } else {
-        // Output without Clash lost coins details
+        // Output without Cracking Coins details
         printf("Tossing %d coins for attack (from remaining clash %d breakable "
                "coins and %d Unbreakable coins):\n",
                remainingCoins, remainingCoins - atk->Unbreakable, atk->Unbreakable);
@@ -1801,12 +1801,12 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   } else if (atk->Unbreakable > 0 && atk->Coins == atk->Unbreakable) {
     // Condition 2: Only unbreakable coins remaining
     if (Unbreakable > 0) {
-        // Output with Clash lost coins details
+        // Output with Cracking Coins details
         printf("Tossing %d coins for attack (from remaining clash %d Unbreakable "
-               "coins (%d Clash lost coins, Halve those coins's Damage)):\n",
+               "coins (%d Cracking Coins, Halve those coins's Damage)):\n",
                remainingCoins, atk->Unbreakable, Unbreakable);
     } else {
-        // Output without Clash lost coins details
+        // Output without Cracking Coins details
         printf("Tossing %d coins for attack (from remaining clash %d Unbreakable "
                "coins):\n",
                remainingCoins, atk->Unbreakable);
@@ -3829,7 +3829,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
              atk->DmgMutiplier);
     }
 
-    if (Unbreakable > 0) Unbreakable--; // ← Character's clash lost coins
+    if (Unbreakable > 0) Unbreakable--; // ← Character's Cracking Coins
 
     sleep(1);
   }
@@ -4277,7 +4277,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     updateSanity(attacker, 10);
     if (attacker->Sanity > 45) attacker->Sanity = 45;
 
-    printf("\n%s used Black Flash without Clash Lost Coin, HP +25 (%.2f), Sanity +10 (%d)\n", attacker->name, attacker->HP, attacker->Sanity);
+    printf("\n%s used Black Flash without Cracking Coin, HP +25 (%.2f), Sanity +10 (%d)\n", attacker->name, attacker->HP, attacker->Sanity);
 
     sleep(1);
   }
@@ -5275,7 +5275,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
        printf("\nThis %s's Skill behavior changes based on the sum of Envy Resonance.:"
         "\n - At 2+ sum of Envy Resonance., use 'Payback with Interest' as Unclashable Skill"
         "\n - At 4+ sum of Envy Resonance., use 'Write 'em all down' as Unclashable Skill"
-        "\n - At 6+ sum of Envy Resonance., use 'Write 'em all down' as Unclashable Skill and gain 100%% Damage Up"
+        "\n - At 6+ sum of Envy Resonance., use 'Write 'em all down' as Unclashable Skill and gain (100%% + 10%% for every excess Envy Resonance) Damage Up"
          "\nEnvy Resonance: %d\n", c->name, c->Passive);
 
        sleep(1);
@@ -5291,7 +5291,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
       chosenSkill->Clashable = 0;
 
-      c->DamageUp += 100;
+      c->DamageUp += 100 + 10*(c->Passive - 6);
 
       getEffectiveSkill( c, c2, &c->skills[2], tempOffense, tempDefense);
 
@@ -8987,7 +8987,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       , clashCount);
     usleep(500000);
     if (p1->HP > 0) {
-      printf("\n%s lost the Clash with Unbreakable Coins (Halve the Damage)\n", p1->name);
+      printf("\n%s lost the Clash with Cracking Unbreakable Coins (Halve the Damage)\n", p1->name);
       usleep(500000);
       attackPhase(p1, result.playerskillUsed, result.playerTempOffense,
                   result.playerTempDefense, p2, result.enemyskillUsed,
@@ -9013,7 +9013,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       , clashCount);
     usleep(500000);
     if (p2->HP > 0) {
-      printf("\n%s lost the Clash with Unbreakable Coins (Halve the Damage)\n", p2->name);
+      printf("\n%s lost the Clash with Cracking Unbreakable Coins (Halve the Damage)\n", p2->name);
       usleep(500000);
       attackPhase(p2, result.enemyskillUsed, result.enemyTempOffense,
                   result.enemyTempDefense, p1, result.playerskillUsed,
@@ -9318,7 +9318,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[1] =
         (SkillStats){"'Revel with Soundless Applause, Impale in Voiceless Sorrow'", 4, 4, 3, 3, 2, 1, 1, 0, 2, 1};
     player->skills[2] = (SkillStats){"'Raise and Laugh the Blade, Cry the Waterfall Like the Scent of Fallen Leaves'", 4, 3, 4, 4, 2, 1, 1, 0, 1, 1};
-    player->skills[3] = (SkillStats){"Furioso-Replica", 3, 3, 9, 5, 2, 1, 1, 0, 0, 1};
+    player->skills[3] = (SkillStats){"Furioso-Replica", 3, 3, 9, 5, 2, 1, 1, 9, 0, 1};
     player->numSkills = 4; // <-- important
   } else { // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable
     player->name = "Binah";
@@ -11961,41 +11961,61 @@ int main() {
                      //Passive
                      printf("Passive Skills:\n");
                      printf(" 1. Prescript Delivered on a Device\n Turn Start:\n"
-                       " - Gain Prescript: [Device] I / Prescript: [Device] II / Prescript: [Device] III / Prescript: [Device] IV based on Unlock stage on self"
-                       " - Inflict The The Prescript's Target to the enemy"
-                       " - Apply Mark of the Prescript to Base Attack Skills on this unit's Dashboard"
-                       " · At Unlock - II+, the effect above prioritizes Skill 3 (prioritizes empowered Skill)"
-                      " - All of the effects above and Prescript execution checks do not trigger when this unit is Staggered, or in Panic\n");
-                    printf(" 2. The Oracle's Proxy / Unlock\n Turn End: If Prescript was executed this turn at below Unlock - II, heal 4 SP and gain 1 Grace of the Prescript (Once per Turn)\n"
-                     " - When executing Prescript, if the main target has The Prescript's Target, heal 8 SP and gain 3 Grace of the Prescript instead\n\n"
-                     " Turn End: If this unit is at Unlock - II and Prescript was executed this turn, heal 4 SP\n"
-                     " - When executing Prescript, if Procuration Procuration [Hermes] has reached 9 Stacks, heal 8 SP and gain 3 Grace of the Grace of the Prescript\n\n"
-                      "Turn End: If Prescript was not executed this turn, gain 5 Karmic Consequence\n"
-                      " - At Unlock - III, does not gain Karmic Consequence"
-                     " - If this unit attempted to execute Prescript at Combat Start, but could not target the enemy during the combat phase, does not gain Karmic Consequence at Turn End (applies below Unlock - II)\n\n"
-                      "Turn End: At 3/6/9 Grace of the Prescript, gain Unlock - I / Unlock - II / Unlock - III\n\n"
-                     "Turn Start: At Unlock - III, gain Shin (心) - Fate\n");
-                    printf(" 3. The Index Nursefather\n Upon entering the Encounter for the first time, gain Wound-casing Mask"
-                      " - Turn End: If this unit was Staggered for the first time in this Encounter while under this effect, recover from Stagger (excluding forced Stagger) and convert Wound-casing Mask to Sizzling Wound\n");
-                     printf(" 4. Oracle Device [Caduceus]\n A random weapon is assigned to every Coin for Base Attack Skills. Each weapon has a unique effect."
-                      "\n - When hacking through the ribs with a hatchet..."
-                      "\n - When penetrating the lungs with a stiletto..."
-                      "\n - When cleaving through the shoulder and the skull with a bastard sword..."
-                      "\n - When punching 10 or more holes in the torso with a rapier..."
-                      "\n - When caving in the back of the skull with a hammer..."
-                     "\n - When rending the body with a great sword..."
-                     "\n - When boring a 20-inch hole with a lance..."
-                     "\n - When ripping the flesh to ten thousand strips with a whip..."
-                     "\n - When lacerating through space itself with a scythe, like a certain someone..."
-                      "\n\nGain 1 Procuration [Hermes] when using Skills with Mark of the Prescript"
-                       "\n\nConvert Wound-casing Mask to Sizzling Wound at the end of the turn this unit used 'Furioso-Replica' for the first time in this Encounter"
-                       "\n\nTurn Start: If this unit has Sizzling Wound and has 'Furioso-Replica' on the Dashboard, gain Indulgence in Prescripts\n");
-                      printf(" 1. Imitation of a Life\n Deal +2%% damage with Skills marked with Mark of the Prescript for every Grace of the Prescript on self (max 16%%)"
-                       "\n - At 9 Grace of the Prescript, deal +20%% damage with Base Skills instead\n\n"
-                        "On Hit with Base Attack Skill's Unbreakable Coins, gain 1 Procuration [Hermes]"
-                       "\n - Attack End: Gain Procuration [Hermes] equal to (# of remaining Unbreakable Coins)"
-                       "\n - 'Furioso-Replica' Attack End: Gain Procuration [Hermes] next turn equal to (# of this Skill's remaining Unbreakable Coins / 2) (rounded down)"
-                        "\n\nIf Procuration [Hermes] reached 9 Stacks this turn at Turn End, and if this unit does not have a Skill 3 on the Dashboard at the start of the next turn, convert a Base Skill to Skill 3 (prioritizes the Skill on the top Slot's row)\n");
+                       " - Gain 'Prescript: [Device] I' / 'Prescript: [Device] II' / 'Prescript: [Device] III' / 'Prescript: [Device] IV' based on 'Unlock' stage on self"
+                       " - Inflict 'The Prescript's Target' to the enemy"
+                       " - Apply 'Mark of the Prescript' to Base Attack Skills on this unit's Dashboard"
+                       " · At 'Unlock - II'+, the effect above prioritizes Skill 3 (prioritizes empowered Skill)"
+                      " - All of the effects above and Prescript execution checks do not trigger when this unit is 'Staggered', or in 'Panic'\n");
+                     printf(" 2. Prescript: [Device] I / II / III / IV \n Maximum Stackable 'Grace of the Prescript' to 3 / 6 / 9 / 9 sequently\n");
+                     printf(" 3. The Prescript's Target \n Take +10%% damage from Index units\n");
+                    printf(" 4. The Oracle's Proxy / Unlock\n Turn End: If Prescript was executed this turn at below 'Unlock - II'"
+                     " - When executing Prescript, if the main target has 'The Prescript's Target', heal 8 SP and gain 3 'Grace of the Prescript' instead\n\n"
+                     " Turn End: If this unit is at 'Unlock - II' and Prescript was executed this turn, heal 4 SP\n"
+                     " - When executing Prescript, if 'Procuration [Hermes]' has reached 9 Stacks, heal 8 SP and gain 3 'Grace of the Prescript'\n\n"
+                      "Turn End: If Prescript was not executed this turn, gain 5 'Karmic Consequence'\n"
+                      " - At 'Unlock - III', does not gain 'Karmic Consequence'"
+                     " - If this unit attempted to execute Prescript at Combat Start, but could not target the enemy during the combat phase, does not gain 'Karmic Consequence' at Turn End (applies below 'Unlock - II')\n\n"
+                      "Turn End: At 3/6/9 'Grace of the Prescript', gain 'Unlock - I' / 'Unlock - II' / 'Unlock - III'\n\n"
+                     "Turn Start: At 'Unlock - III', gain 'Shin (心) - Fate'\n");
+                     printf(" 5. Unlock stage - I / II / III \n " 
+                       "\n Unlock stage I - Defense +1, Combat End: Heal 5 Sanity"
+                       "\n Unlock stage II - Defense +2, Combat End: Heal 10 Sanity"
+                      "\n Unlock stage III - Defense +3, Combat End: Heal 15 Sanity\n");
+                     printf(" 6. Grace of the Prescript \n Offense +1 for every 3 Stack (Max 9 Stack)\n");
+                      printf(" 7. Procuration [Hermes] \n - Turn Start: at 9 Stack, a Powerful Skill become available\n"
+                        "\n - Can be gained up to (Unlock Stage + 2) Stack per turn"
+                        "\n - Max Stack: 9"
+                        "\n · At below 'Unlock - II', this effect's maximum stack is limited to 8\n");
+                     printf(" 8. Karmic Consequence \n Turn Start:\n"
+                       "\n · Gain 1 Defense Down for every 10 Stack"
+                       "\n · Takes +10 Damage for every 20 Stack"
+                       "\n - Max Stack: 100\n");
+                     printf(" 9. Shin (心) - Fate \n - Gain +1 Offense and +1 Defense\n"
+                        "\n - Gain 1 Final Power for every 10%% (missing HP percentage on target + missing HP percentage on self; rounded down) (Max 3)"
+                        "\n - If this unit's Sanity higher than the target's, deal +1%% damage for every 3 Sanity different (Max 15%%; units without Sanity considered to be 0 Sanity)\n");
+                    printf(" 10. The Index Nursefather\n Upon entering the Encounter for the first time, gain 'Wound-casing Mask'"
+                      " - Turn End: If this unit was Staggered for the first time, or at 65%% or less HP, in this Encounter while under this effect, recover from Stagger (excluding forced Stagger) and convert 'Wound-casing Mask' to 'Sizzling Wound'\n");
+                     printf(" 11. Wound-casing Mask \n Offense +2 and Defense -2, take -10%% damage from Cracking Unbreakable Coins\n");
+                     printf(" 12. Sizzling Wound \n Offense +3 and Defense -3, take -25%% damage from Cracking Unbreakable Coins, deal +15%% damage with Attack Skill's Unbreakable Coins. Turn Start and Turn End: Lose 1 HP\n");
+                     printf(" 13. Oracle Device [Caduceus]\n A random weapon is assigned to every Coin for Base Attack Skills. Each weapon has a unique effect."
+                      "\n - When hacking through the ribs with a hatchet... (Skill 1 deal +15%% damage for this Coin, On Hit without Cracking: Gain +10%% damage next turn)"
+                      "\n - When penetrating the lungs with a stiletto... (Skill 2 deal +15%% damage for this Coin, On Hit without Cracking: Deals 2 Sanity damage to the target)"
+                      "\n - When cleaving through the shoulder and the skull with a bastard sword... (Skill 3 deal +25%% damage for this Coin, This coin deal +5%% damage, On Hit without Cracking: Gain +1 Offense (2 times per turn))"
+                      "\n - When punching 10 or more holes in the torso with a rapier... (Skill 2 deal +15%% damage for this Coin, This Coin deal +5%% damage, On Hit without Cracking: Inflict 1 Defense Down (2 times per turn))"
+                      "\n - When caving in the back of the skull with a hammer... (Skill 1 deal +15%% damage for this Coin, This Coin deal +5%% damage, On Hit without Cracking: Trigger 'Tremor Burst' with 3 Tremor Stacks)"
+                     "\n - When rending the body with a great sword... (Skill 3 deal +25%% damage for this Coin, This Coin deal +15%% damage, On Hit without Cracking: Target takes +10%% damage next turn (2 times per turn))"
+                     "\n - When boring a 20-inch hole with a lance... (Skill 2 deal +15%% damage for this Coin, This Coin deal +15%% damage, On Hit without Cracking: Target takes +10%% damage next turn (2 times per turn))"
+                     "\n - When ripping the flesh to ten thousand strips with a whip... (Skill 1 deal +15%% damage for this Coin, This Coin deal +15%% damage, On Hit without Cracking: Target takes +10%% damage next turn (2 times per turn))"
+                     "\n - When lacerating through space itself with a scythe, like a certain someone... (Skill 3 deal +25%% damage for this Coin, This Coin deal +30%% damage, On Hit without Cracking: Deals +20%% damage"
+                      "\n\nGain 1 'Procuration [Hermes]' when using Skills with Mark of the Prescript"
+                       "\n\nConvert Wound-casing Mask to 'Sizzling Wound' at the end of the turn this unit used 'Furioso-Replica' for the first time in this Encounter"
+                       "\n\nTurn Start: If this unit has 'Sizzling Wound' and has 'Furioso-Replica' on the Dashboard, gain Indulgence in Prescripts\n");
+                      printf(" 14. Imitation of a Life\n Deal +2%% damage with Skills marked with 'Mark of the Prescript' for every 'Grace of the Prescript' on self (max 16%%)"
+                       "\n - At 9 'Grace of the Prescript', deal +20%% damage with Base Skills instead\n\n"
+                        "On Hit with Base Attack Skill's Unbreakable Coins, gain 1 'Procuration [Hermes]'"
+                       "\n - Attack End: Gain 'Procuration [Hermes]' equal to (# of remaining Unbreakable Coins)"
+                       "\n - 'Furioso-Replica' Attack End: Gain 'Procuration [Hermes]' next turn equal to (# of this Skill's remaining Unbreakable Coins / 2) (rounded down)"
+                        "\n\nIf 'Procuration [Hermes]' reached 9 Stacks this turn at Turn End, and if this unit does not have a Skill 3 on the Dashboard at the start of the next turn, convert a Base Skill to Skill 3 (prioritizes the Skill on the top Slot's row)\n");
                          }
            else {
         //Taunt
@@ -12009,7 +12029,7 @@ int main() {
         printf(" 1. The Final Reception\n At 50%% or less HP, activate 'Serious', increase HP and Max HP to 1150, gains +100%% damage and 5 Final Power for one turn; then gain new Skills set (Once per Encounter) (Cannot be defeat until this effect activated)\n");
              printf(" 2. Fairy\n Inflict by certain Skills, Take (Fairy Stack) fixed damage addition for every hit, if this unit's in activated 'An Arbiter', Take (0.5 x Fairy Stack)%% Max HP fixed damage addition for every hit instead. Turn End: Take (Fairy Stack) fixed true damage (true damage ignore Shield HP); then halve stack (Round down), if this unit's in activated 'An Arbiter', Take (0.5 x Fairy Stack)%% Max HP true fixed damage (true damage ignore Shield HP); then halve stack (Round down) instead\n");
              printf(" 3. Incomplete Arbiter\n In this Encounter, deals -20%% damage, Final Power -1. When activation 'Serious', activate 'An Arbiter' instead\n");
-        printf(" 4. An Arbiter\n Gains +50%% damage, Final Power +2, Deal +20%% damage and +10 Base Power for every Fairy on enemy, when getting attack by Full Clash Lost Coin, Take -80%% damage and gain (50 + Missing HP/3) Shield HP (Max 100 per attacked), when getting attack and at 0+ Sanity, consumes 10 Sanity to gain (100 + Missing HP/2) Shield HP (Max 300 per attacked)\n");
+        printf(" 4. An Arbiter\n Gains +50%% damage, Final Power +2, Deal +20%% damage and +10 Base Power for every Fairy on enemy, when getting attack by Full Cracking Coin, Take -80%% damage and gain (50 + Missing HP/3) Shield HP (Max 100 per attacked), when getting attack and at 0+ Sanity, consumes 10 Sanity to gain (100 + Missing HP/2) Shield HP (Max 300 per attacked)\n");
             } 
         
           printf("\nSkills (%d total):\n", tempPlayer.numSkills);
@@ -12037,7 +12057,7 @@ int main() {
               break;
           } else {
               printf("\nReturning to identity list... \nIdentity:\n");
-              for (int i = 0; i < 10; i++)
+              for (int i = 0; i < 12; i++)
                   printf("%d. %s\n", i + 1, identity[i]);
               continue;
           }
@@ -12202,7 +12222,7 @@ int main() {
 
           //Passive
            printf("Passive Skills:\n");
-          printf(" 1. Agony\n At 50%% or less HP, Gain 10 Offense and lose 5 Defense \n");
+          printf(" 1. Agony\n Before Start Encounter: Lose 40 Offense and Lose 45 Defense, At 50%% or less HP, Gain 10 Offense and lose 5 Defense \n");
           printf(" 2. Black Heart\n If this unit is Panicked still can act, when lose clash heal Sanity instead, when win clash lose Sanity instead\n");
            printf(" 3. Vengeance For Nothing\n Every end of Turn 3rd, at 0+ Sanity, loses (Further from 0 Sanity/2) Sanity (Rounded down) and gain (3 + (1 for every 10%% missing HP)) Black Silence, at less than 0 Sanity, loses 5 Sanity and gain +2%% damage for every Black Silence next ture\n");
           printf(" 4. Black Silence\n When win clash with Skills gain 5 Black Silence and gain 1 when lose clash, use for certain Skills (Max 60)\n");
@@ -12234,7 +12254,7 @@ int main() {
               break;
           } else {
               printf("\nReturning to enemy list...\nEnemy Options:\n");
-              for (int i = 0; i < 7; i++)
+              for (int i = 0; i < 8; i++)
                   printf("%d. %s\n", i + 1, enemyNames[i]);
               continue;
           }
@@ -12367,7 +12387,51 @@ int main() {
            player.name, enemy.name);
 
     sleep(2);
+  } else if (strcmp(player.name, "The Middle Little Brother Sinclair") == 0 &&
+             strcmp(enemy.name, "Lei heng") == 0) {
+
+    printf("\n%s: The Thumb... still acting as the fist of the hierarchy, as always.\n",
+           player.name);
+
+    sleep(1);
+
+    printf("\n%s: Hah! Seems the Middle’s got a lot to learn about shuttin' folks up. You’re still waggin' that tongue like they never even touched ya! Guess I’ll have to be the one to pay the 'fee' to close that mouth for good!\n",
+           enemy.name);
+
+    sleep(2);
+  } else if (strcmp(player.name, "Dawn Office Fixer Sinclair") == 0 &&
+     strcmp(enemy.name, "Fixer grade 9?") == 0) {
+
+  printf("\n%s: Hope you realize your stigma.\n",
+   player.name);
+
+  sleep(1);
+
+  printf("\n%s: I used to know someone... from your office\n",
+   enemy.name);
+
+  sleep(2);
+  } else if (strcmp(player.name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 &&
+     strcmp(enemy.name, "Lei heng") == 0) {
+
+  printf("\n%s: ... *beep* A familiar face. Is it written in the Prescript that we should meet?\n",
+   player.name);
+
+  sleep(1);
+
+  printf("\n%s: *smoking* I could tell from that mask... You're just another puppet of those orders.\n",
+   enemy.name);
+
+  sleep(2);
+  } else if (strcmp(player.name, "Hong lu:The Lord of Hongyuan") == 0 &&
+     strcmp(enemy.name, "King in Binds") == 0) {
+
+  printf("\n%s: A King in Binds? What a pathetic!\n",
+   player.name);
+
+  sleep(2);
   }
+
 
   printf("\n%s HP %.2f / %.2f\n", player.name, player.HP, player.MAX_HP);
   printf("%s HP %.2f / %.2f\n", enemy.name, enemy.HP, enemy.MAX_HP);
