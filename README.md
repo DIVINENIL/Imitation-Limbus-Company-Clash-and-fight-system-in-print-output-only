@@ -5,7 +5,7 @@ Trying to Imitate my favorite game for Testing my skill and for fun in C.
 
 # 🇺🇸 English Version
 ## Imitation Limbus Company - Text RPG
-A C-based console simulation of the combat mechanics inspired by Limbus Company. This project features turn-based combat, a Sanity system, Skill Clashes, and unique passives for various Identities and Enemies.
+A C-based console simulation of the combat mechanics inspired by Limbus Company. This project features turn-based combat, a Sanity system, Skill Clashes, and unique passives for various Identities and Enemies. (Not all the stuff same as Limbus Company, there might be a bit change for my own fun)
 
 ### Features
 * **Core Mechanics:**
@@ -61,7 +61,7 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
 
 # 🇹🇭 Thai Version
 ## Imitation Limbus Company - เกมจำลองการต่อสู้แบบ Text RPG
-โปรแกรมภาษา C ที่จำลองระบบการต่อสู้จากเกม Limbus Company โปรเจกต์นี้มีระบบต่อสู้แบบผลัดกันเล่น (Turn-based), ระบบ Sanity, ระบบการดวล (Clash), และสกิลพิเศษ (Passive)
+โปรแกรมภาษา C ที่จำลองระบบการต่อสู้จากเกม Limbus Company โปรเจกต์นี้มีระบบต่อสู้แบบผลัดกันเล่น (Turn-based), ระบบ Sanity, ระบบการดวล (Clash), และสกิลพิเศษ (Passive) (ไม่ใช่ทุกอย่างจะเหมือนกับ Limbus Company อาจมีการเปลี่ยนแปลงเล็กน้อยเพื่อความสนุกส่วนตัวของผม)
 
 ### ฟีเจอร์หลัก (Features)
 * **กลไกหลัก:**
