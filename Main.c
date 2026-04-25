@@ -11386,13 +11386,13 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[1] = (SkillStats){
         "Tarnished Blood's Absolute Cleaver of Ambitions [汚血絕志竟成]", 3, 3, 4, 2, -2, 1, 1, 2, 2, 1};
     player->skills[2] =
-        (SkillStats){"Answer Me, Heishou Packs", 10, 12, 1, 3, -2, 1, 1, 1, 11111, 1};
+        (SkillStats){"Answer Me, Heishou Packs", 10, 12, 1, 3, -2, 1, 1, 1, 1, 1};
     player->skills[3] = (SkillStats){
         "Lonesome Stand: Sacrifice to Claim The Garden [孑孑單身，捨生取园]", 6, 4, 3, 3, -2, 1, 1, 0, 0, 1};
     player->skills[4] =
         (SkillStats){"I Carve the Path of a Lord", 6, 4, 2, 3, -2, 1, 1, 0, 0, 1};
     player->skills[5] = (SkillStats){
-        "Embrace the Tarnished Blood and Exsanguinate Others For the Cause.",0,0,0,0, 0, 0, 1, 0, 0, 0};                // Mao, Si, Wu, You, 0, 0, active, 0, Copies, Clashable
+        "Embrace the Tarnished Blood and Exsanguinate Others For the Cause.",1, 1, 1, 1, 0, 0, 1, 0, 0, 0};                // Mao, Si, Wu, You, 0, 0, active, 0, Copies, Clashable
   player->skills[6] = (SkillStats){
     "Traceless to Sight and Sound Alike.", 5, 4, 3, 3, 3, 1.2, 1, 0, 0, 1}; // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable
   player->skills[7] = (SkillStats){
