@@ -49,7 +49,7 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **Offense:** Compares with the target's Offense Level. Every 3 levels of difference grant +1 Clash Power and increase Final Damage contrast with target's Defense.
     * **Defense:** Reduces incoming damage based on the difference with the attacker’s Offense Level.
     * **Copies:** The rate at which Skill will appear or skill list. More Copies mean more chance.
-    * **Unclashable:** This attack will land after the opponent lands their attack first.
+    * **Unclashable:** Skip the Clash and This attack will land baseed on Speed if the opponent has more Speed, they land their attack first, if not this attack land first.
     * **Unbreakable:** Even if these coins lose a duel, they will still attack after the opponent, but damage is reduced by 50%.
 * **Buffs:**
     * **Damage Up:** Increases final damage dealt.
@@ -104,7 +104,7 @@ A C-based console simulation of the combat mechanics inspired by Limbus Company.
     * **Offense (ระดับการโจมตี):** ระดับการโจมตีที่ใช้เทียบกับเป้าหมาย โดยทุกๆ 3 เลเวลที่ต่างกันจะมอบโบนัสพลังปะทะ +1 และเพิ่มความเสียหายสุดท้ายเมื่อเทียบกับระดับการป้องกันของศัตรู
     * **Defense (ระดับป้องกัน):** ระดับการป้องกันที่ช่วยลดความเสียหายที่ได้รับ โดยคำนวณจากส่วนต่างระหว่างระดับการป้องกันของเรากับระดับการโจมตีของผู้ที่บุกเข้ามา
     * **Copies (จำนวนก๊อปปี้):** อัตราส่วนหรือจำนวนที่สกิลนั้นๆ จะปรากฏในรายการสกิล ยิ่งมีจำนวนสำเนามาก ยิ่งมีโอกาสสุ่มได้สกิลนั้นมาใช้งานสูงขึ้น
-    * **Unclashable (ปะทะไม่ได้):** ข้ามการดวลและโจมตีเข้าเป้าแน่นอน หลังจากที่ศัตรูโจมตีใส่เราเสร็จแล้ว
+    * **Unclashable (ปะทะไม่ได้):** ข้ามการดวลและการโจมตีนี้ตัดสินผลตาม Speed หากคู่ต่อสู้มี Speed มากกว่า จะได้โจมตีก่อน แต่ถ้าไม่เป็นเช่นนั้น การโจมตีนี้จะเข้าเป้าก่อนเสมอ
     * **Unbreakable (เหรียญที่แตกไม่ได้):** แม้จะแพ้การดวล เหรียญจะยังคงอยู่และโจมตีสวนกลับหลังจากถูกโจมตี (ดาเมจลดลง 50%)
 * **Buffs (สถานะเสริม):**
     * **Damage Up:** เพิ่มความเสียหายสุดท้าย
