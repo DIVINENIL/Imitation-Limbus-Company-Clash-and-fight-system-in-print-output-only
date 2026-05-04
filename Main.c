@@ -118,6 +118,9 @@ int enemyUnbreakableLost;
   int playerTempDefense;
   int enemyTempDefense;
   int ClashCount;
+
+  int playerFinalPower; 
+  int enemyFinalPower;
 } ClashResult;
 
 // --- เพิ่มบรรทัดเหล่านี้ไว้ด้านบน เพื่อให้คอมไพเลอร์รู้จักฟังก์ชันล่วงหน้า for clash / clashable counter ---
@@ -1259,6 +1262,45 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
       ClashLostAttack = 1;
     }
 
+    // Clashable Guard
+    int powerReduction = 0;
+    if (defSkill->skillType == 4 && !isStaggered(defender)) {
+        printf("\n--- Defense Phase ---\n");
+        printf("%s prepare to mitigate damage with %s: %s\n", defender->name, getSkillTypeName(defSkill->skillType), defSkill->name);
+
+        // 1. คำนวณพลังพื้นฐาน (Base + Level Bonus + Buff)
+        powerReduction = defSkill->BasePower + defender->BasePowerBoost + defender->DefensePowerBoost;
+
+        int defenseDiff = defTempDefense - atkTempOffense;
+        if (defenseDiff > 0) {
+            powerReduction += (defenseDiff / 3);
+        }
+
+        // 2. ช่วง Tossing Coins (Visual Part)
+        printf("Tossing %d Coins (Fixed Coin Power: 1):\n", defSkill->Coins);
+        printf("%-10s %-10s %-10s", "Coin", "Result", "Power");
+
+        for (int j = 0; j < defSkill->Coins; j++) {
+            int isHead = tossCoinWithSanity(defender);
+            if (isHead) {
+                powerReduction += 1; // Fixed Coin Power เป็น 1 ตามเงื่อนไข
+                // Check paralyze
+                if (attacker->Paralyze > 0) { // ← Character's paralyze
+                    powerReduction += 0;
+                    defender->Paralyze--;
+                  }
+                } else {
+                    powerReduction += 1 + defender->CoinPowerBoost;
+                  if (powerReduction <= 0) powerReduction = 0;
+                }
+          
+            printf("\n%-10d %-10s %-10d", j + 1, (isHead ? "Heads" : "Tails"), powerReduction);
+            usleep(400000); 
+        }
+        printf("\n(%d bonus) %s total Defense power: %d\n", defenseDiff / 3, defender->name, powerReduction);
+        sleep(1);
+    }
+
   //--------------------------- Before Attack Buff ----------------------------
 
     // Heishou Pack - You Branch Adept Heathcliff - Battleblood Instinct buff
@@ -1919,10 +1961,21 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     int IsStillEvaded = 0;
     int evadePower = 0;
 
+    // Evade Skill
+    if (defSkill->skillType == 2) {
+        Evaded = 1;
+      IsStillEvaded = 1;
+
+      printf("\n%s uses 'Evade Skill' (%s)\n", defender->name, defSkill->name);
+
+      sleep(1);
+
+    }
+
     int fanaticUsed = 0;
     
     // เช็คว่า Faust เป็นฝ่ายรับ และมี Fanatic (Passive) หรือไม่
-    if (isId(defender->name, "The One Who Grips Faust") == 0 && defender->Passive > 0) {
+    if (isId(defender->name, "The One Who Grips Faust") == 0 && defender->Passive > 0 && Evaded == 0) {
         Evaded = 1;
       IsStillEvaded = 1;
         fanaticUsed = defender->Passive;
@@ -2156,6 +2209,12 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     // Last coin power bonus (from character buffs only)
     if (i == remainingCoins - 1) {
         bonus = attacker->FinalPowerBoost + attacker->AttackPowerBoost;
+      
+      if (defSkill->skillType == 4 && powerReduction > 0) {
+            bonus -= powerReduction;
+          if (currentPower < 0) currentPower = 0;
+      }
+      
         currentPower += bonus;
       if (currentPower <= 0) currentPower = 0;
     }
@@ -3467,14 +3526,30 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // Evaded
     if (Evaded) {
 
-      if (isId(defender->name, "The One Who Grips Faust") == 0) {
+      if (isId(defender->name, "The One Who Grips Faust") == 0 && fanaticUsed > 0) {
 
         // คำนวณพลังหลบตามสูตร: Base 4 + (โยนเหรียญที่มีพลัง 10 + Fanatic)
-        evadePower = 4;
+        evadePower = 4 + defender->BasePowerBoost;
         if (tossCoinWithSanity(defender)) {
-            evadePower += (10 + fanaticUsed);
+            evadePower += (10 + fanaticUsed) + defender->CoinPowerBoost;
         }
 
+      } else {
+        evadePower = defSkill->BasePower + defender->BasePowerBoost;
+
+        int IsHeadHit = tossCoinWithSanity(attacker);
+
+        if (IsHeadHit) {
+          // Check paralyze
+          if (attacker->Paralyze > 0) { // ← Character's paralyze
+                evadePower += 0; // สกิลอื่นโดน Paralyze ปกติ
+                defender->Paralyze--;
+            }
+          } else {
+              evadePower += CoinBuff + defSkill->CoinPower + defender->CoinPowerBoost + defender->DefensePowerBoost;
+            if (evadePower <= 0) evadePower = 0;
+          }
+        
       }
 
       if (evadePower >= currentPower) { // ถ้าพลังหลบมากกว่าหรือเท่ากับพลังโจมตี
@@ -9336,10 +9411,20 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
     //-----------------------------------------------------------------------------------------
 
+  // -------------------- Lobotomy E.G.O::Solemn Lament Yi Sang --------------------
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - Clash power
   if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
-          0 && (chosenSkill != &c->skills[2])) {
+          0 && (chosenSkill == &c->defenseSkill[0])) {
+
+    c->defenseSkill[0].active = 1;
+    
+    }
+
+
+  // Lobotomy E.G.O::Solemn Lament Yi Sang - Clash power
+  if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+          0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
     if (c->Passive >= 10) {
     c->ClashPower += 1;
@@ -9390,6 +9475,8 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
     
     }
+
+    // ------------------------------------------------------------
 
   // ------------------------ Dawn Office Fixer Sinclair ----------------------------
   
@@ -10880,7 +10967,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
   SkillStats *LoserSkill = NULL;
 
   
-  
+  int playerTotal = 0;
+  int enemyTotal = 0;
 
   while (playerCoins > 0 && enemyCoins > 0) {
 
@@ -10905,8 +10993,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
     int maxToss = (playerCoins > enemyCoins) ? playerCoins : enemyCoins;
 
-    int playerTotal = s1->BasePower + p1->BasePowerBoost;
-    int enemyTotal = s2->BasePower + p2->BasePowerBoost;
+    playerTotal = s1->BasePower + p1->BasePowerBoost;
+    enemyTotal = s2->BasePower + p2->BasePowerBoost;
 
     // ใช้การคูณลดทอน
     double roundDelay = 0.15;
@@ -10998,11 +11086,18 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
            p1->FinalPowerBoost != 0)) {
 
         // Calculate player's clash bonus
-        int offenseBonus = ((playerTempOffense - enemyTempOffense) / 3);
-        if (offenseBonus < 0)
-          offenseBonus = 0; // Only positive bonuses
-          
-        bonus = p1->ClashPower + p1->FinalPowerBoost + offenseBonus;
+        if (s1->skillType == 4) { // ถ้าเป็น Clashable Guard
+          // ทุกๆ 3 Defense Level ที่สูงกว่า Offense ศัตรู ได้ +1 Power
+          int defenseDiff = playerTempDefense - enemyTempOffense;
+          if (defenseDiff > 0) bonus += (defenseDiff / 3);
+
+          // บวกโบนัสจาก DefensePowerBoost และ ClashPower/FinalPower ตามปกติ
+          bonus += p1->DefensePowerBoost + p1->ClashPower + p1->FinalPowerBoost;
+        } else { // ถ้าเป็น Attack ปกติ (โค้ดเดิมของคุณ)
+          int offenseBonus = ((playerTempOffense - enemyTempOffense) / 3);
+          if (offenseBonus < 0) offenseBonus = 0;
+          bonus = p1->ClashPower + p1->FinalPowerBoost + offenseBonus;
+        }
 
         if (bonus != 0) {
           playerTotal += bonus;
@@ -11028,11 +11123,15 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
                 p2->FinalPowerBoost != 0 || kingPassiveP2 > 0)) {
 
         // Calculate enemy's clash bonus
-        int offenseBonus = ((enemyTempOffense - playerTempOffense) / 3);
-        if (offenseBonus < 0)
-          offenseBonus = 0; // Only positive bonuses
-        
-        bonus = p2->ClashPower + p2->FinalPowerBoost + offenseBonus + kingPassiveP2;
+        if (s2->skillType == 4) { // ถ้าเป็น Clashable Guard
+          int defenseDiff = enemyTempDefense - playerTempOffense;
+          if (defenseDiff > 0) bonus += (defenseDiff / 3);
+          bonus += p2->DefensePowerBoost + p2->ClashPower + p2->FinalPowerBoost;
+        } else { // ถ้าเป็น Attack ปกติ (โค้ดเดิมของคุณ)
+          int offenseBonus = ((enemyTempOffense - playerTempOffense) / 3);
+          if (offenseBonus < 0) offenseBonus = 0;
+          bonus = p2->ClashPower + p2->FinalPowerBoost + offenseBonus + kingPassiveP2;
+        }
 
         if (bonus != 0) {
           enemyTotal += bonus;
@@ -11360,6 +11459,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
   result.playerTempDefense = playerTempDefense;
   result.enemyTempDefense = enemyTempDefense;
   result.ClashCount = clashCount;
+  result.playerFinalPower = playerTotal; 
+  result.enemyFinalPower = enemyTotal;
 
   // printf("Clash result: winner %d Player %d coins, Enemy %d coins\n",
   // result.winner, playerCoins, enemyCoins);
@@ -11699,6 +11800,13 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
         (SkillStats){"Laughters Will Subside", 5, 4, 2, 3, 5, 1, 1, 0, 0, 1};
     player->skills[7] =
         (SkillStats){"Variant Sancho Hardblood Arts 15 - Buildup to Finale",6,5,2,3,10,1,1,1,0, 1};
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"Laughters Will Subside", 5, 4, 2, 3, 5, 1, 1, 0, 0, 1, 5};
+    player->defenseSkill[1] = (SkillStats){"Variant Sancho Hardblood Arts 15 - Buildup to Finale",6,5,2,3,10,1,1,1,0, 1, 5};
+
+    player->numDefenseSkills = 2; // <-- important
+    
     player->numSkills = 8; // <-- important
   } else if (pIndex == 6) {
     player->name = "Lobotomy E.G.O::Solemn Lament Yi Sang";
@@ -11714,6 +11822,12 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[2] =
         (SkillStats){"Goodbye Now, A Sorrow In You", 4, 3, 4, 5, 2, 1, 1, 0, 1, 1};
       player->skills[3].active = 0; // Count consumed Living and depart
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"FromTheCoffinAButterflyTakesFlight", 10, 4, 1, 0, 3, 1, 0, 0, 0, 0, 1};
+
+    player->numDefenseSkills = 1; // <-- important
+    
     player->numSkills = 3; // <-- important
   } else if (pIndex == 7) {
     player->name = "Dawn Office Fixer Sinclair";
@@ -13687,16 +13801,20 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       //------------------------ Lobotomy E.G.O::Solemn Lament Yi Sang ---------------------------
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Reload
-    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player->Passive <= 0) {
+    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player->Passive <= 0 || player->defenseSkill[0].active == 1) {
 
-      updateSanity(player, -(15));
+      int Spend = (30 - player->Passive)/2;
+
+      player->defenseSkill[0].active = 0;
+
+      updateSanity(player, -(Spend));
       
        int ShieldGain = (player->skills[0].active * 2) > 40 ? 40 : (player->skills[0].active * 2);
       int Shield = (ShieldGain/100.0f) * player->MAX_HP;
 
       player->Shield += Shield; 
       
-      printf("\n%s use 'Reload', Spends 15 Sanity(%d) to gain 20 The Living & The Departed and gain Shield equal to (Butterfly on the target x 2)%% of Max HP. (%d%% - Max 40%%) (%d - Shield %.2f)\n", player->name, player->Sanity, ShieldGain, Shield, player->Shield);
+      printf("\n%s use 'Reload', Spends %d Sanity (%d) to gain 20 The Living & The Departed and gain Shield equal to (Butterfly on the target x 2)%% of Max HP. (%d%% - Max 40%%) (%d - Shield %.2f)\n", player->name, Spend, player->Sanity, ShieldGain, Shield, player->Shield);
 
         player->Passive = 20;
 
@@ -14708,9 +14826,9 @@ void runKingInBindsBattle(
 
     int playerGoesFirst = 0;
 
-      if ((player->Speed > enemy.Speed) || enemySkillEffective->skillType == 3) {
+      if ((player->Speed > enemy.Speed) || enemySkillEffective->skillType != 0) {
         playerGoesFirst = 1;
-      } else if ((enemy.Speed > player->Speed) || playerSkillEffective->skillType == 3) {
+      } else if ((enemy.Speed > player->Speed) || playerSkillEffective->skillType != 0) {
         playerGoesFirst = 0;
       } else {
         // ถ้า Speed เท่ากัน ให้สุ่ม
@@ -14724,24 +14842,32 @@ void runKingInBindsBattle(
 
            if (!willClash) {
              
-      if (playerGoesFirst == 1 && playerSkillEffective->skillType == 0) {
+      if (playerGoesFirst == 1) {
+        if (playerSkillEffective->skillType == 0) {
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, &enemy, enemySkillEffective,
                       enemyTempOffense, enemyTempDefense,
                       playerSkillEffective->Coins, 0, 0);
+        }
+        if (enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
                       enemySkillEffective->Coins, 0, 0);
-      } else if (playerGoesFirst == 0 && enemySkillEffective->skillType == 0) {
+        }
+      } else if (playerGoesFirst == 0) {
+        if (enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
                       enemySkillEffective->Coins, 0, 0);
+        }
+        if (playerSkillEffective->skillType == 0) {
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, &enemy, enemySkillEffective,
                       enemyTempOffense, enemyTempDefense,
                       playerSkillEffective->Coins, 0, 0);
+        }
       }
 
     } else if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective->skillType == 0)) {
@@ -14762,7 +14888,18 @@ void runKingInBindsBattle(
                      playerTempDefense, &enemy, enemySkillEffective,
                      enemyTempOffense, enemyTempDefense, player, 0, 0);
 
-      if (clash.winner == 1)
+      if (clash.winner == 1) {
+        if (clash.playerskillUsed->skillType == 4) {
+          // --- [Clashable Guard Win Effect] ---
+          enemy.Tremor[2] += clash.playerFinalPower;
+          printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+                  player->name, player->name, enemy.name, clash.playerFinalPower);
+          if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
+            enemy.Stagger += 2;
+            printf("\n%s Staggered for one turn\n", enemy.name);
+          }
+          enemy.Tremor[2] = 0;
+        } else {
           attackPhase(
               player, clash.playerskillUsed,
               clash.playerTempOffense, clash.playerTempDefense,
@@ -14770,11 +14907,22 @@ void runKingInBindsBattle(
               clash.enemyTempOffense, clash.enemyTempDefense,
               (clash.playerskillUsed->Unbreakable > 0)
                   ? ((clash.playerCoins > clash.playerskillUsed->Unbreakable)
-                         ? clash.playerCoins
-                         : clash.playerskillUsed->Unbreakable)
+                         ? clash.playerCoins : clash.playerskillUsed->Unbreakable)
                   : clash.playerCoins,
               clash.playerUnbreakableLost, clash.ClashCount);
-      else if (clash.winner == 2)
+        }
+      } else if (clash.winner == 2) {
+        if (clash.enemyskillUsed->skillType == 4) {
+          // --- [Clashable Guard Win Effect] ---
+          player->Tremor[2] += clash.enemyFinalPower;
+          printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+                  enemy.name, enemy.name, player->name, clash.enemyFinalPower);
+          if (player->Tremor[2] > 50 && player->Stagger <= 0) {
+            player->Stagger += 2;
+            printf("\n%s Staggered for one turn\n", player->name);
+          }
+          player->Tremor[2] = 0;
+        } else {
           attackPhase(
               &enemy, clash.enemyskillUsed,
               clash.enemyTempOffense, clash.enemyTempDefense,
@@ -14782,10 +14930,11 @@ void runKingInBindsBattle(
               clash.playerTempOffense, clash.playerTempDefense,
               (clash.enemyskillUsed->Unbreakable > 0)
                   ? ((clash.enemyCoins > clash.enemyskillUsed->Unbreakable)
-                         ? clash.enemyCoins
-                         : clash.enemyskillUsed->Unbreakable)
+                         ? clash.enemyCoins : clash.enemyskillUsed->Unbreakable)
                   : clash.enemyCoins,
               clash.enemyUnbreakableLost, clash.ClashCount);
+        }
+      }
     }
       // -------------------------------------------------------
       // คืนชื่อ knight กลับก่อน handleTurnEnd
@@ -15164,9 +15313,9 @@ void runKingInBindsBattle(
 
       int playerGoesFirst = 0;
 
-        if ((player->Speed > boss->Speed) || enemySkillEffective->skillType == 3) {
+        if ((player->Speed > boss->Speed) || enemySkillEffective->skillType != 0) {
           playerGoesFirst = 1;
-        } else if ((boss->Speed > player->Speed) || playerSkillEffective->skillType == 3) {
+        } else if ((boss->Speed > player->Speed) || playerSkillEffective->skillType != 0) {
           playerGoesFirst = 0;
         } else {
           // ถ้า Speed เท่ากัน ให้สุ่ม
@@ -15197,24 +15346,32 @@ void runKingInBindsBattle(
 
            if (!willClash) {
 
-              if (playerGoesFirst == 1 && playerSkillEffective->skillType == 0) {
+              if (playerGoesFirst == 1) {
+                if (playerSkillEffective->skillType == 0) {
                 attackPhase(player, playerSkillEffective, playerTempOffense,
                             playerTempDefense, boss, enemySkillEffective,
                             enemyTempOffense, enemyTempDefense,
                             playerSkillEffective->Coins, 0, 0);
+                }
+                if (enemySkillEffective->skillType == 0) {
                 attackPhase(boss, enemySkillEffective, enemyTempOffense,
                             enemyTempDefense, player, playerSkillEffective,
                             playerTempOffense, playerTempDefense,
                             enemySkillEffective->Coins, 0, 0);
-            } else if (playerGoesFirst == 0 && enemySkillEffective->skillType == 0) {
+                }
+            } else if (playerGoesFirst == 0) {
+                  if (enemySkillEffective->skillType == 0) {
                 attackPhase(boss, enemySkillEffective, enemyTempOffense,
                             enemyTempDefense, player, playerSkillEffective,
                             playerTempOffense, playerTempDefense,
                             enemySkillEffective->Coins, 0, 0);
+                  }
+                  if (playerSkillEffective->skillType == 0) {
                 attackPhase(player, playerSkillEffective, playerTempOffense,
                             playerTempDefense, boss, enemySkillEffective,
                             enemyTempOffense, enemyTempDefense,
                             playerSkillEffective->Coins, 0, 0);
+                  }
             }
 
         } else {
@@ -15224,7 +15381,18 @@ void runKingInBindsBattle(
                            playerTempDefense, boss, enemySkillEffective,
                            enemyTempOffense, enemyTempDefense, player, 0, 0);
 
-            if (clash.winner == 1)
+            if (clash.winner == 1) {
+              if (clash.playerskillUsed->skillType == 4) {
+                // --- [Clashable Guard Win Effect] ---
+                boss->Tremor[2] += clash.playerFinalPower;
+                printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+                        player->name, player->name, boss->name, clash.playerFinalPower);
+                if (boss->Tremor[2] > 50 && boss->Stagger <= 0) {
+                  boss->Stagger += 2;
+                  printf("\n%s Staggered for one turn\n", boss->name);
+                }
+                boss->Tremor[2] = 0;
+              } else {
                 attackPhase(
                     player, clash.playerskillUsed,
                     clash.playerTempOffense, clash.playerTempDefense,
@@ -15232,11 +15400,22 @@ void runKingInBindsBattle(
                     clash.enemyTempOffense, clash.enemyTempDefense,
                     (clash.playerskillUsed->Unbreakable > 0)
                         ? ((clash.playerCoins > clash.playerskillUsed->Unbreakable)
-                               ? clash.playerCoins
-                               : clash.playerskillUsed->Unbreakable)
+                               ? clash.playerCoins : clash.playerskillUsed->Unbreakable)
                         : clash.playerCoins,
                     clash.playerUnbreakableLost, clash.ClashCount);
-            else if (clash.winner == 2)
+              }
+            } else if (clash.winner == 2) {
+              if (clash.enemyskillUsed->skillType == 4) {
+                // --- [Clashable Guard Win Effect] ---
+                player->Tremor[2] += clash.enemyFinalPower;
+                printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+                        boss->name, boss->name, player->name, clash.enemyFinalPower);
+                if (player->Tremor[2] > 50 && player->Stagger <= 0) {
+                  player->Stagger += 2;
+                  printf("\n%s Staggered for one turn\n", player->name);
+                }
+                player->Tremor[2] = 0;
+              } else {
                 attackPhase(
                     boss, clash.enemyskillUsed,
                     clash.enemyTempOffense, clash.enemyTempDefense,
@@ -15244,11 +15423,11 @@ void runKingInBindsBattle(
                     clash.playerTempOffense, clash.playerTempDefense,
                     (clash.enemyskillUsed->Unbreakable > 0)
                         ? ((clash.enemyCoins > clash.enemyskillUsed->Unbreakable)
-                               ? clash.enemyCoins
-                               : clash.enemyskillUsed->Unbreakable)
+                               ? clash.enemyCoins : clash.enemyskillUsed->Unbreakable)
                         : clash.enemyCoins,
                     clash.enemyUnbreakableLost, clash.ClashCount);
-        }
+              }
+            }
         }
 
       printf("\n--- Turn End ---\n");
@@ -15258,7 +15437,8 @@ void runKingInBindsBattle(
         handleTurnEnd(boss, player, eIdx, playerSkillIndex);
 
         TurnCount++;
-}
+    }
+  }
 }
 }
 
@@ -16264,7 +16444,7 @@ int main() {
                enemy.skills[enemySkillIndex].Offense + enemy.OffenseBoost,
                enemy.skills[enemySkillIndex].Defense + enemy.DefenseBoost,
                enemy.skills[enemySkillIndex].Unbreakable);
-      } else if (enemy.skills[enemySkillIndex].Unbreakable <= 0 && !enemy.skills[enemySkillIndex].Clashable && enemy.skills[enemySkillIndex].skillType == 0)) {
+      } else if (enemy.skills[enemySkillIndex].Unbreakable <= 0 && (!enemy.skills[enemySkillIndex].Clashable && enemy.skills[enemySkillIndex].skillType == 0)) {
         printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d "
                "Defense %d Breakable)\n",
           getSkillTypeName(enemy.skills[enemySkillIndex].skillType),
@@ -16486,9 +16666,9 @@ int main() {
 
       int playerGoesFirst = 0;
 
-        if ((player.Speed > enemy.Speed) || enemySkillEffective->skillType == 3) {
+        if ((player.Speed > enemy.Speed) || enemySkillEffective->skillType != 0) {
           playerGoesFirst = 1;
-        } else if ((enemy.Speed > player.Speed) || playerSkillEffective->skillType == 3) {
+        } else if ((enemy.Speed > player.Speed) || playerSkillEffective->skillType != 0) {
           playerGoesFirst = 0;
         } else {
           // ถ้า Speed เท่ากัน ให้สุ่ม
@@ -16520,29 +16700,37 @@ int main() {
 
          if (!willClash) {
 
-          if (playerGoesFirst == 1 && playerSkillEffective->skillType == 0) {
-
+          if (playerGoesFirst == 1) {
+            
+            if (playerSkillEffective->skillType == 0) {
         attackPhase(&player, playerSkillEffective, playerTempOffense,
           playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
         enemyTempDefense,
           playerSkillEffective->Coins, 0, 0);
+            }
 
+            if (enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
             enemyTempDefense, &player, playerSkillEffective,
             playerTempOffense, playerTempDefense,
             enemySkillEffective->Coins, 0, 0);
+            }
 
         } else if (playerGoesFirst == 0 && enemySkillEffective->skillType == 0) {
 
+            if (enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
             enemyTempDefense, &player, playerSkillEffective,
             playerTempOffense, playerTempDefense,
             enemySkillEffective->Coins, 0, 0);
+            }
 
+            if (playerSkillEffective->skillType == 0) {
           attackPhase(&player, playerSkillEffective, playerTempOffense,
             playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
           enemyTempDefense,
             playerSkillEffective->Coins, 0, 0);
+            }
 
         }
 
@@ -16558,27 +16746,61 @@ int main() {
        //int atkTempDefense, Character *defender, SkillStats *defSkill,
        //int defTempOffense, int defTempDefense, int remainingCoins,
        //int Unbreakable, int clashCount)
-      if (clash.winner == 1)
-        attackPhase(
-            &player, clash.playerskillUsed, clash.playerTempOffense,
-            clash.playerTempDefense, &enemy, clash.enemyskillUsed,
-            clash.enemyTempOffense, clash.enemyTempDefense,
-            (clash.playerskillUsed->Unbreakable > 0)
-                ? ((clash.playerCoins > clash.playerskillUsed->Unbreakable) ? 
-          clash.playerCoins : clash.playerskillUsed->Unbreakable) : clash.playerCoins,
-          clash.playerUnbreakableLost,
-            clash.ClashCount);       
-      else if (clash.winner == 2)
-        attackPhase(
-            &enemy, clash.enemyskillUsed, clash.enemyTempOffense,
-            clash.enemyTempDefense, &player, clash.playerskillUsed,
-            clash.playerTempOffense, clash.playerTempDefense,
-            (clash.enemyskillUsed->Unbreakable > 0)
-                ? ((clash.enemyCoins > clash.enemyskillUsed->Unbreakable) ? 
-          clash.enemyCoins : clash.enemyskillUsed->Unbreakable) : clash.enemyCoins,
-          clash.enemyUnbreakableLost,
-          clash.ClashCount);
-    }
+      if (clash.winner == 1) {
+        if (clash.playerskillUsed->skillType == 4) {
+          // --- [Clashable Guard Win Effect] ---
+          enemy.Tremor[2] += clash.playerFinalPower;
+          printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+                  player.name, player.name, enemy.name, clash.playerFinalPower);
+
+          if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
+            enemy.Stagger += 2;
+            printf("\n%s Staggered for one turn\n", enemy.name);
+          }
+
+          enemy.Tremor[2] = 0;
+
+          // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
+        } else {
+          attackPhase(
+              &player, clash.playerskillUsed, clash.playerTempOffense,
+              clash.playerTempDefense, &enemy, clash.enemyskillUsed,
+              clash.enemyTempOffense, clash.enemyTempDefense,
+              (clash.playerskillUsed->Unbreakable > 0)
+                  ? ((clash.playerCoins > clash.playerskillUsed->Unbreakable)
+                         ? clash.playerCoins : clash.playerskillUsed->Unbreakable)
+                  : clash.playerCoins,
+              clash.playerUnbreakableLost,
+              clash.ClashCount);
+        }
+      } else if (clash.winner == 2) {
+        if (clash.enemyskillUsed->skillType == 4) {
+          // --- [Clashable Guard Win Effect] ---
+          player.Tremor[2] += clash.enemyFinalPower;
+          printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+                  enemy.name, enemy.name, player.name, clash.enemyFinalPower);
+
+          if (player.Tremor[2] > 50 && player.Stagger <= 0) {
+            player.Stagger += 2;
+            printf("\n%s Staggered for one turn\n", player.name);
+          }
+
+          player.Tremor[2] = 0;
+
+          // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
+        } else {
+          attackPhase(
+              &enemy, clash.enemyskillUsed, clash.enemyTempOffense,
+              clash.enemyTempDefense, &player, clash.playerskillUsed,
+              clash.playerTempOffense, clash.playerTempDefense,
+              (clash.enemyskillUsed->Unbreakable > 0)
+                  ? ((clash.enemyCoins > clash.enemyskillUsed->Unbreakable)
+                         ? clash.enemyCoins : clash.enemyskillUsed->Unbreakable)
+                  : clash.enemyCoins,
+              clash.enemyUnbreakableLost,
+              clash.ClashCount);
+        }
+      }
 
       }
 
@@ -16606,5 +16828,6 @@ int main() {
   }
 
   return 0;
+}
 }
 }
