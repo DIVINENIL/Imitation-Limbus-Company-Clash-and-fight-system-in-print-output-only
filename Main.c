@@ -617,6 +617,41 @@ int calculateSanityLoss(Character *c, int clashCount) {
   return loss;
 }
 
+// ฟังก์ชันสุ่มเลือกใบที่จะใช้ โดยคำนวณจาก Copies ของ Atk1, Atk2 และ Defense Skills ทั้งหมด
+int pickEnemyActionWeighted(Character *c, int s1_idx, int s2_idx) {
+    int totalWeight = 0;
+
+    // 1. รวมน้ำหนักท่าโจมตีในมือ 2 ใบ
+    if (s1_idx >= 0) totalWeight += c->skills[s1_idx].Copies;
+    if (s2_idx >= 0) totalWeight += c->skills[s2_idx].Copies;
+
+    // 2. รวมน้ำหนักท่าป้องกันที่มีทั้งหมด
+    for (int i = 0; i < c->numDefenseSkills; i++) {
+        totalWeight += c->defenseSkill[i].Copies;
+    }
+
+    if (totalWeight <= 0) return 1; // Fallback ไป Atk 1
+
+    int r = rand() % totalWeight;
+    int cum = 0;
+
+    // ตรวจสอบ Atk 1
+    cum += c->skills[s1_idx].Copies;
+    if (r < cum) return 1; 
+
+    // ตรวจสอบ Atk 2
+    cum += c->skills[s2_idx].Copies;
+    if (r < cum) return 2;
+
+    // ตรวจสอบ Defense Skills (ส่งค่า 100 + index กลับไปเพื่อแยกแยะ)
+    for (int i = 0; i < c->numDefenseSkills; i++) {
+        cum += c->defenseSkill[i].Copies;
+        if (r < cum) return 100 + i; 
+    }
+
+    return 1;
+}
+
 // Weighted pick helper for skills 0..2
 int pickSkill(int *pool, int count, Character *c) {
 
@@ -1266,7 +1301,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
     // Clashable Guard
     int powerReduction = 0;
-    if (defSkill->skillType == 4 && !isStaggered(defender)) {
+    if (defSkill->skillType == 4 && !isStaggered(defender) && !ClashLostAttack) {
         printf("\n--- Defense Phase ---\n");
         printf("%s prepare to mitigate damage with %s: %s (Cracking Coin fixed Coin Power to 1)\n", defender->name, getSkillTypeName(defSkill->skillType), defSkill->name);
 
@@ -2206,6 +2241,13 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     int currentPower = totalPower;
 
     int bonus = 0;
+
+    // Last coin power bonus (from character buffs only)
+    if (i == remainingCoins - 1) {
+        bonus = attacker->FinalPowerBoost + attacker->AttackPowerBoost;
+        currentPower += bonus;
+      if (currentPower <= 0) currentPower = 0;
+    }
     
     // Calculate offense difference modifier: (Off - Def) / (|Off - Def| + 25) × 100
     int offenseDiff = atkTempOffense - defTempDefense;
@@ -3867,7 +3909,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         }
 
     // Bleed // 0 Stack 1 Count
-    if ((attacker->Bleed[0] > 0 || attacker->Bleed[1] > 0)) {
+    if ((attacker->Bleed[0] > 0 || attacker->Bleed[1] > 0) && atk->skillType == 0) {
 
       int damage = attacker->Bleed[0] > 0 ? attacker->Bleed[0] : 1;
 
@@ -3894,6 +3936,20 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // ----------------------- Inflict Status -----------------------
 
     // ---------------------- Yi sang:Fell Bullet ----------------------
+
+    // Yi sang:Fell Bullet - DefSkill 1 Gain / Inflict
+    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 && atk == &attacker->defenseSkill[0] && !Evaded) {
+
+      if (i == remainingCoins - 1) {
+          attacker->Poise[0] += 2;
+        if (attacker->Poise[0] > 99) attacker->Poise[0] = 99;
+        printf("\t [On Hit] Poise Stack +2 (%d)", attacker->Poise[0]);
+        attacker->Poise[1] += 2;
+        if (attacker->Poise[1] > 99) attacker->Poise[1] = 99;
+        printf("\t [On Hit] Poise Count +2 (%d)", attacker->Poise[1]);
+      }
+
+    }
 
     // Yi sang:Fell Bullet - Skill 1 Gain / Inflict
     if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[0] && !Evaded) {
@@ -8783,6 +8839,24 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       
     }
 
+  // Yi sang:Fell Bullet - Buff defenseskill 1
+  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+      chosenSkill == &c->defenseSkill[0]) {
+
+    int gain = c->Poise[0] / 2;
+    if (gain > 3) gain = 3;
+
+    if (gain > 0) {
+
+      c->CoinPowerBoost += gain;
+
+      printf("\n%s gains +1 Coin Power for every 2 Poise Stack (%d) on self (%d - Max 3)\n", c->name, c->Poise[0], gain);
+
+    sleep(1);
+    }
+
+  }
+
   // Yi sang:Fell Bullet - Poise s1
   if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[0]) {
@@ -8831,6 +8905,23 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       printf("\n%s gains +1 Poise Stack (%d) for every Torn Memory on self (%d)\n", c->name, c->Poise[0], c->Passive);
 
     sleep(1);
+
+  }
+
+  // Yi sang:Fell Bullet - Poise s1
+  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+      chosenSkill == &c->defenseSkill[0]) {
+
+    if (c->Passive < 7) {
+
+      c->Passive += 2;
+      if (c->Passive >= 7) {
+        c->Passive = 7;
+      }
+
+      printf("\n%s gains 2 Torn Memory (%d/7)\n", c->name, c->Passive);
+      sleep(1);
+    }
 
   }
 
@@ -8901,12 +8992,32 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     sleep(1);
 
   }
+
+  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+    0 &&
+  c->Passive >= 15 && chosenSkill == &c->defenseSkill[0]) {
+
+  printf("\n%s has 15+ Hardblood(%d), The Princess of La Manchaland "
+  "Rodion: Empower Defense Skill\n",
+  c->name, c->Passive);
+
+  c->Passive -= (c->Passive) / 2;
+
+    chosenSkill = &c->defenseSkill[1];
+
+  sleep(1);
+
+  printf(
+  "\n%s consumes half of Hardblood(%d left) on self to use %s\n",
+  c->name, c->Passive, c->defenseSkill[1].name);
+
+  }
   
   // Don Quixote:The Manager of La Manchaland - Hardblood gains 2-4
   if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] ||
-    chosenSkill == &c->skills[2])) {
+    chosenSkill == &c->skills[2] || chosenSkill == &c->defenseSkill[0])) {
 
     c->HP -= (int)(c->MAX_HP * 0.03);
     if (c->HP < 1) c->HP = 1;
@@ -8925,7 +9036,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // Don Quixote:The Manager of La Manchaland - Hardblood heal for counter-2 won
   if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
-      (chosenSkill == &c->skills[7])) {
+      (chosenSkill == &c->defenseSkill[1])) {
 
     c->Shield += 5 * (c->Passive);
 
@@ -11103,7 +11214,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
           if (playerTotal <= 0) playerTotal = 0;
           printf("Player Clash Power bonus applied: %d\n", bonus);
         }
-      } 
+      }
 
     }
 
@@ -11471,7 +11582,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     usleep(500000);
 
     // ถ้าเป็นสกิลโจมตีปกติ ให้ศัตรูตีเราก่อน แล้วเราค่อยสวนด้วยเหรียญที่เหลือ (Cracking)
-    if (s1->skillType != 4) {
+    if (s2->skillType != 4) {
         attackPhase(p2, result.enemyskillUsed, result.enemyTempOffense,
                     result.enemyTempDefense, p1, result.playerskillUsed,
                     result.playerTempOffense, result.playerTempDefense,
@@ -11480,6 +11591,20 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
                         : result.enemyskillUsed->Unbreakable,
           result.enemyUnbreakableLost
           , clashCount);
+
+      } else {
+        // --- [Clashable Guard Win Effect] ---
+        p1->Tremor[2] += result.enemyFinalPower;
+        printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+                p2->name, p2->name, p1->name, result.enemyFinalPower);
+        sleep(1);
+        if (p1->Tremor[2] > 50 && p1->Stagger <= 0) {
+              p1->Stagger += 2;
+          printf("\n%s Staggered for one turn\n", p1->name);
+          sleep(1);
+              p1->Tremor[2] = 0;
+        }
+       }
 
         usleep(500000);
         if (p1->HP > 0 && s1->skillType == 0) {
@@ -11492,20 +11617,19 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
                           : result.playerskillUsed->Unbreakable,
                       result.playerskillUsed->Unbreakable, clashCount);
         }
-    } else {
-        // ถ้าเป็น Guard (Type 4) แล้วแพ้ (เหรียญหมด) 
-        // ไม่ต้อง Print ว่าชนะ และไม่ต้องเพิ่ม Stagger Threshold ให้ศัตรู
-        // ปล่อยให้ result.winner เป็น 2 เพื่อให้ศัตรูโจมตีเข้ามาตามปกติ
-        result.winner = 2; 
-        return result; 
-    }
-    result.winner = 99;
-  }
 
+    result.winner = 99;
+    
+    }
+
+
+
+
+  
   if (enemyUnbreakableLost > 0 && enemyCoins <= 0 && !IsplayerStagger) {
     usleep(500000);
     
-     if (s2->skillType != 4) {
+     if (s1->skillType != 4) {
        
     attackPhase(p1, result.playerskillUsed, result.playerTempOffense,
                 result.playerTempDefense, p2, result.enemyskillUsed,
@@ -11515,6 +11639,21 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
                     : result.playerskillUsed->Unbreakable,
       result.playerUnbreakableLost
       , clashCount);
+
+     } else {
+      // --- [Clashable Guard Win Effect] ---
+      p2->Tremor[2] += result.playerFinalPower;
+      printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+              p1->name, p1->name, p2->name, result.playerFinalPower);
+      sleep(1);
+      if (p2->Tremor[2] > 50 && p2->Stagger <= 0) {
+          p2->Stagger += 2;
+        printf("\n%s Staggered for one turn\n", p2->name);
+        sleep(1);
+          p2->Tremor[2] = 0;
+      }
+
+     }
     
     usleep(500000);
     if (p2->HP > 0 && s2->skillType == 0) {
@@ -11529,14 +11668,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
                   s2->Unbreakable, clashCount);
     }
 
-     } else {
-         // ถ้าเป็น Guard (Type 4) แล้วแพ้ (เหรียญหมด) 
-         // ไม่ต้อง Print ว่าชนะ และไม่ต้องเพิ่ม Stagger Threshold ให้ศัตรู
-         // ปล่อยให้ result.winner เป็น 2 เพื่อให้ศัตรูโจมตีเข้ามาตามปกติ
-         result.winner = 1; 
-         return result; 
-       }
-       result.winner = 99;
+    result.winner = 99;
+
   }
 
   // Yield my flesh mechanic
@@ -11809,7 +11942,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
         (SkillStats){"Target Readjustment Fire", 4, 7, 2, 5, 2, 1, 0, 2, 1, 1};
 
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
-    player->defenseSkill[0] = (SkillStats){"Front Line Support", 5, 7, 1, 2, 0, 1, 0, 0, 0, 1, 5};
+    player->defenseSkill[0] = (SkillStats){"Front Line Support", 5, 7, 1, 2, 2, 1, 0, 0, 0, 1, 5};
 
     player->numDefenseSkills = 1; // <-- important
     
@@ -12049,8 +12182,13 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
         (SkillStats){"Tanglecleaver [快刀亂麻]", 8, 12, 1, 6, 3, 1.25, 0, 1, 0, 1};
     enemy->skills[3] = (SkillStats){
         "Blasting Shatterslash [爆碎斬]", 4, 3, 3, 4, 3, 1, 0, 3, 0, 1};
-    enemy->skills[4] = (SkillStats){
-        "Reloading Tiantui Star's Blade", 4, 4, 2, 1, 3, 1, 0, 0, 0, 1};
+    
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    enemy->defenseSkill[0] = (SkillStats){
+        "Reloading Tiantui Star's Blade", 4, 4, 2, 1, 3, 1, 0, 0, 0, 1, 5};
+
+    enemy->numDefenseSkills = 1;
+    
     enemy->skills[5] = (SkillStats){
         "Savage Tigerslayer's Perfected Flurry of Blades [超絕猛虎殺擊亂斬]", 3, 3, 6, 6, 3, 1, 0, 6, 0, 1};
     enemy->numSkills = 6; // <-- important
@@ -13757,7 +13895,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
 
       //enemy->skills[2].Copies = 1;
       enemy->skills[3].Copies = 4;
-      enemy->skills[4].Copies = 2;
+      enemy->defenseSkill[0].Copies = 2;
 
       sleep(1);
     }
@@ -14513,6 +14651,7 @@ void runKingInBindsBattle(
   getSkills(&enemy, &kSkill1, &kSkill2, &kSkill3, kLastUnused, enemy.numSkills);
 
   SkillStats *playerSkillEffective = NULL; 
+  SkillStats *enemySkillEffective = NULL; 
 
   /*
   player->MAX_HP = 3000;
@@ -15081,6 +15220,8 @@ void runKingInBindsBattle(
 
         printf("\n--- Turn %d (King in Binds) ---\n", TurnCount);
 
+      int eIdx = -1;
+
       if (GrandWelcome == 0) {
         GrandWelcome = 1;
           runCombatEvent(player, boss, &kingMidEvent, playerSkill1, playerSkill2, playerSkill3);
@@ -15096,11 +15237,30 @@ void runKingInBindsBattle(
         player->ClashPower += KingClashBonus;
       }
 
-      // Boss เลือก skill
-      int eIdx = (rand() % 2 == 0) ? *enemySkill1 : *enemySkill2;
-      *enemyLastUnused = (eIdx == *enemySkill1) ? *enemySkill2 : *enemySkill1;
+      // ใช้ฟังก์ชันใหม่ที่เราสร้างเพื่อเลือกว่าจะ "โจมตี" หรือ "ป้องกัน" ตามค่า Copies
+      int decision = pickEnemyActionWeighted(&enemy, *enemySkill1, *enemySkill2);
+
+      if (decision >= 100) {
+          // --- กรณีเลือก Defense Skill ---
+          int defIdx = decision - 100;
+          enemySkillEffective = &enemy.defenseSkill[defIdx];
+            eIdx = *enemySkill1; // เก็บ index ไว้หลอกระบบเผื่อใช้เลื่อนคิวสกิล (แต่มักจะไม่ขยับ)
+
+          // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
+          if (enemySkillEffective->skillType == 1) {
+              defensePhase(&enemy, enemySkillEffective);
+          }
+      } else {
+          // --- กรณีเลือกท่าโจมตีปกติ ---
+          eIdx = (decision == 1 ? *enemySkill1 : *enemySkill2);
+          *enemyLastUnused = (eIdx == *enemySkill1 ? *enemySkill2 : *enemySkill1);
+          enemySkillEffective = &enemy.skills[eIdx];
+
+      }
+
+      // For enemy
       getSkills(boss, enemySkill1, enemySkill2, enemySkill3,
-                *enemyLastUnused, boss->numSkills);
+      *enemyLastUnused, boss->numSkills);
 
       handleTurnStart(player, boss, &eIdx, playerSkill1, playerSkill2, enemySkill1, enemySkill2);
 
@@ -15685,7 +15845,7 @@ int main() {
           printf("Passive Skills:\n");
           printf(" 1. Embrace the Tarnished Blood and Exsanguinate Others For the Cause\n In Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn, after that apply 'Lordsguard' to the left Heishou Pack (Once per Encounter)\n");
           printf(" 2. The Heishou Pack\n The Heishou Pack will heed you as their lord, you have 4 Heishou Packs(Mao, Si, Wu and You) as your follower, when using 'Answer Me, Heishou Packs', command one of the remaining Heishou Pack members to attack alongside this unit with 'I Carve the Path of a Lord' Skill; then gain buff from Heishou Pack after that 'Retreat' that Heishou Pack make them unable to use entire Encounter. If there is no Heishou Pack left use 'Lonesome Stand: Sacrifice to Claim The Garden [孑孑單身，捨生取园]' instead\n");
-          printf(" 3. The Heishou Lord\n After 'Embrace the Tarnished Blood and Exsanguinate Others For the Cause' activated, when this unit takes damage from attack skills that can bring their HP down to 0, one of left Heishou Pack use 'Lordsgurad' to defense this unit after that 'Retreat' that Heishou Pack make them unable to use entire Encounter, if the damage can't bring their HP down to 0, do not use 'Retreat'\n");
+          printf(" 3. The Heishou Lord\n After 'Embrace the Tarnished Blood and Exsanguinate Others For the Cause' activated, when this unit takes damage from any damage skills that can bring their HP down to 0, one of left Heishou Pack use 'Lordsgurad' to defense this unit after that 'Retreat' that Heishou Pack make them unable to use entire Encounter, if the damage can't bring their HP down to 0, do not use 'Retreat'\n");
           printf(" 4. Rupture\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Hit: Take (Stack) fixed Damage. Then reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
           printf(" 5. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (If at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
               } 
@@ -15715,7 +15875,7 @@ int main() {
           printf("Passive Skills:\n");
           printf(" 1. Variant Sancho Hardblood Arts\n Turn Start: When at 15+ 'Hardblood' using Variant Sancho Hardblood Arts instead for each skills\n");
           printf(" 2. Bearer of the Blood Kin\n When at 50%% or less HP, 'Responsibility' activate, Clash Power +1, Deal +20%% damage, Take +20%% damage and gain 3 Hardblood\n");
-          printf(" 3. Blood... is flowing...\n If this unit lost the Clash and equipped Skill isn't 'Variant Sancho Hardblood' empowered, consumes 5 'Hardblood' to use 'Laughters Will Subside' to continue clashing (Once per Turn), if win the Clash with 'Laughters Will Subside' gain 5 'Hardblood'. At 10+ use 'Variant Sancho Hardblood Arts 15 - Buildup to Finale' instead\n");
+          printf(" 3. Blood... is flowing...\n If this unit lost the Clash and equipped Attack Skill that isn't 'Variant Sancho Hardblood' empowered, consumes 5 'Hardblood' to use 'Laughters Will Subside' to continue clashing (Once per Turn), if win the Clash with 'Laughters Will Subside' gain 5 'Hardblood'. At 10+ use 'Variant Sancho Hardblood Arts 15 - Buildup to Finale' instead\n");
           printf(" 4. Armadura de Sangre\n Gain 10%% Damage Up next turn for every 15%% missing HP at Turn End (Max 30%%)\n");
           printf(" 5. Hardblood\n When use certain skills gain randomly 2-4 Hardblood. When hit by enemy gain 2 Hardblood (Max 30; 'Hardblood' cannot drop below 1)"
             "\n - at 10+ 'Hardblood': Gain +1 Offense for every 5 Hardblood"
@@ -15787,7 +15947,7 @@ int main() {
                  printf(" 5. Bloodflame [血炎]\n Gain by using certain Skills (Max 3 Stack), when attack heal 3 Sanity. At 45+ Sanity, gain 1 Offense for next turn instead (Max 3 times per turn), Turn End: lose 1 Stack\n");
                  printf(" 6. Battleblood Instinct\n Deal 0.75%% damage for every Stack (Max 20 Stack). At 20+ Stack,  activate 'Rooster's Rampaging Blades Under the Ensanguined Heaven' instead of 'Bloodflame Massacre [血炎亂舞]'\n Gain 'Battleblood Instinct' when meeting one of the following\n");
                  printf(" -  Gain 3 at Clash Start\n"); 
-                 printf(" -  Gain 1 when this unit hits with a Attack Skill or when this unit takes Burn damage (At less than 50%% HP, gain 1 more Battleblood Instinct)\n");
+                 printf(" -  Gain 1 when this unit hits with a Base Skill or when this unit takes Burn damage (At less than 50%% HP, gain 1 more Battleblood Instinct)\n");
                      }
                  else if (selected_identity - 1 == 10) {
                     //Taunt
@@ -15821,7 +15981,7 @@ int main() {
                      printf(" 1. Prescript Delivered on a Device\n Turn Start:\n"
                        " - Gain 'Prescript: [Device] I' / 'Prescript: [Device] II' / 'Prescript: [Device] III' / 'Prescript: [Device] IV' based on 'Unlock' stage on self"
                        "\n - Inflict 'The Prescript's Target' to the enemy"
-                       "\n - Apply 'Mark of the Prescript' to Base Attack Skills on this unit's Dashboard"
+                       "\n - Apply 'Mark of the Prescript' to Attack Skills on this unit's Dashboard"
                        "\n · At 'Unlock - II'+, the effect above prioritizes Skill 3 (prioritizes empowered Skill)"
                       "\n - All of the effects above and Prescript execution checks do not trigger when this unit is 'Staggered', or in 'Panic'\n");
                      printf(" 2. Prescript: [Device] \n "
@@ -16401,6 +16561,7 @@ int main() {
   int enemySkill1 = -1, enemySkill2 = -1, enemySkill3 = -1, enemyLastUnused = -1;
 
   SkillStats *playerSkillEffective = NULL;  // For effective skill stats 
+  SkillStats *enemySkillEffective = NULL; 
 
   // First turn: roll both skills
   getSkills(&player, &playerSkill1, &playerSkill2, &playerSkill3, playerLastUnused,
@@ -16428,10 +16589,28 @@ int main() {
 
     printf("\n--- Turn %d ---\n", TurnCount);
 
-      // Enemy picks one skill (only if can act)
-      int enemySkillIndex = (rand() % 2 == 0 ? enemySkill1 : enemySkill2);
-      enemyLastUnused =
-          (enemySkillIndex == enemySkill1 ? enemySkill2 : enemySkill1);
+      int enemySkillIndex = -1;
+
+      // ใช้ฟังก์ชันใหม่ที่เราสร้างเพื่อเลือกว่าจะ "โจมตี" หรือ "ป้องกัน" ตามค่า Copies
+      int decision = pickEnemyActionWeighted(&enemy, enemySkill1, enemySkill2);
+
+      if (decision >= 100) {
+          // --- กรณีเลือก Defense Skill ---
+          int defIdx = decision - 100;
+          enemySkillEffective = &enemy.defenseSkill[defIdx];
+          enemySkillIndex = enemySkill1; // เก็บ index ไว้หลอกระบบเผื่อใช้เลื่อนคิวสกิล (แต่มักจะไม่ขยับ)
+
+          // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
+          if (enemySkillEffective->skillType == 1) {
+              defensePhase(&enemy, enemySkillEffective);
+          }
+      } else {
+          // --- กรณีเลือกท่าโจมตีปกติ ---
+          enemySkillIndex = (decision == 1 ? enemySkill1 : enemySkill2);
+          enemyLastUnused = (enemySkillIndex == enemySkill1 ? enemySkill2 : enemySkill1);
+          enemySkillEffective = &enemy.skills[enemySkillIndex];
+
+      }
 
       // For enemy
       getSkills(&enemy, &enemySkill1, &enemySkill2, &enemySkill3, enemyLastUnused,
@@ -16760,7 +16939,7 @@ int main() {
         getEffectiveSkill(&player, &enemy, playerSkillEffective,
                           &playerTempOffense, &playerTempDefense);
 
-    SkillStats *enemySkillEffective =
+    enemySkillEffective =
         getEffectiveSkill(&enemy, &player, &enemy.skills[enemySkillIndex],
                           &enemyTempOffense, &enemyTempDefense);
 
