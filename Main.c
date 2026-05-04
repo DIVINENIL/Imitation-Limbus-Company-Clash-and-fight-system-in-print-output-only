@@ -11568,11 +11568,11 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       Winner->Tremor[2] += result.playerFinalPower;
       printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
         Winner->name, Winner->name, Loser->name, result.playerFinalPower);
-
+        sleep(1);
       if (Loser->Tremor[2] > 50 && p1->Stagger <= 0) {
             Loser->Stagger += 2;
         printf("\n%s Staggered for one turn\n", p2->name);
-
+        sleep(1);
           Loser->Tremor[2] = 0;
       }
 
@@ -14900,43 +14900,51 @@ void runKingInBindsBattle(
 
     int playerGoesFirst = 0;
 
-      if ((player->Speed > enemy.Speed) || enemySkillEffective->skillType != 0) {
+  int pType = (playerSkillEffective != NULL) ? playerSkillEffective->skillType : -1;
+  int eType = (enemySkillEffective != NULL) ? enemySkillEffective->skillType : -1;
+
+      if ((player->Speed > enemy.Speed) || eType != 0) {
         playerGoesFirst = 1;
-      } else if ((enemy.Speed > player->Speed) || playerSkillEffective->skillType != 0) {
+      } else if ((enemy.Speed > player->Speed) || pType != 0) {
         playerGoesFirst = 0;
       } else {
         // ถ้า Speed เท่ากัน ให้สุ่ม
     playerGoesFirst = (rand() % 2 == 0);
       }
 
-         int canPlayerClash = (playerSkillEffective->skillType == 0 || playerSkillEffective->skillType == 4 || playerSkillEffective->skillType == 5);
-          int canEnemyClash = (enemySkillEffective->skillType == 0 || enemySkillEffective->skillType == 4 || enemySkillEffective->skillType == 5);
+  int canPlayerClash = (playerSkillEffective != NULL) && 
+                       (pType == 0 || pType == 4 || pType == 5);
+  int canEnemyClash  = (enemySkillEffective != NULL) && 
+                       (eType == 0 || eType == 4 || eType == 5);
 
-          int willClash = playerSkillEffective->Clashable && enemySkillEffective->Clashable && canPlayerClash && canEnemyClash;
+  int willClash = (playerSkillEffective != NULL && enemySkillEffective != NULL) &&
+                  playerSkillEffective->Clashable && 
+                  enemySkillEffective->Clashable && 
+                  canPlayerClash && canEnemyClash;
 
            if (!willClash) {
              
       if (playerGoesFirst == 1) {
-        if (playerSkillEffective->skillType == 0) {
+        if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, &enemy, enemySkillEffective,
                       enemyTempOffense, enemyTempDefense,
                       playerSkillEffective->Coins, 0, 0);
         }
-        if (enemySkillEffective->skillType == 0) {
+        if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
                       enemySkillEffective->Coins, 0, 0);
         }
       } else if (playerGoesFirst == 0) {
-        if (enemySkillEffective->skillType == 0) {
+        if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
                       enemySkillEffective->Coins, 0, 0);
         }
-        if (playerSkillEffective->skillType == 0) {
+        if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, &enemy, enemySkillEffective,
                       enemyTempOffense, enemyTempDefense,
@@ -14944,19 +14952,19 @@ void runKingInBindsBattle(
         }
       }
 
-    } else if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective->skillType == 0)) {
+    } else if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective != NULL && enemySkillEffective->skillType == 0)) {
       attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                   enemyTempDefense, player, playerSkillEffective,
                   playerTempOffense, playerTempDefense,
                   enemySkillEffective->Coins, 0, 0);
 
-    } else if ((!IsplayerUnableToAct && playerSkillEffective->skillType == 0) && IsenemyUnableToAct) {
+    } else if ((!IsplayerUnableToAct && playerSkillEffective != NULL && playerSkillEffective->skillType == 0) && IsenemyUnableToAct) {
       attackPhase(player, playerSkillEffective, playerTempOffense,
                   playerTempDefense, &enemy, enemySkillEffective,
                   enemyTempOffense, enemyTempDefense,
                   playerSkillEffective->Coins, 0, 0);
 
-    } else {
+    } else if (playerSkillEffective->skillType == 0 || enemySkillEffective->skillType == 0) {
       ClashResult clash =
           clashPhase(player, playerSkillEffective, playerTempOffense,
                      playerTempDefense, &enemy, enemySkillEffective,
@@ -14968,10 +14976,12 @@ void runKingInBindsBattle(
           enemy.Tremor[2] += clash.playerFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   player->name, player->name, enemy.name, clash.playerFinalPower);
+
+          sleep(1);
           if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
             enemy.Stagger += 2;
             printf("\n%s Staggered for one turn\n", enemy.name);
-
+            sleep(1);
              enemy.Tremor[2] = 0;
           }
 
@@ -14993,10 +15003,11 @@ void runKingInBindsBattle(
           player->Tremor[2] += clash.enemyFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   enemy.name, enemy.name, player->name, clash.enemyFinalPower);
+          sleep(1);
           if (player->Tremor[2] > 50 && player->Stagger <= 0) {
             player->Stagger += 2;
             printf("\n%s Staggered for one turn\n", player->name);
-
+            sleep(1);
             player->Tremor[2] = 0;
           }
         } else {
@@ -15390,9 +15401,12 @@ void runKingInBindsBattle(
 
       int playerGoesFirst = 0;
 
-        if ((player->Speed > boss->Speed) || enemySkillEffective->skillType != 0) {
+          int pType = (playerSkillEffective != NULL) ? playerSkillEffective->skillType : -1;
+          int eType = (enemySkillEffective != NULL) ? enemySkillEffective->skillType : -1;
+
+        if ((player->Speed > boss->Speed) || eType != 0) {
           playerGoesFirst = 1;
-        } else if ((boss->Speed > player->Speed) || playerSkillEffective->skillType != 0) {
+        } else if ((boss->Speed > player->Speed) || pType != 0) {
           playerGoesFirst = 0;
         } else {
           // ถ้า Speed เท่ากัน ให้สุ่ม
@@ -15400,14 +15414,14 @@ void runKingInBindsBattle(
         }
 
         // Combat — เหมือน main() ทุกอย่าง
-     if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective->skillType == 0)) {
+     if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective != NULL && enemySkillEffective->skillType == 0)) {
 
           attackPhase(boss, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
                       enemySkillEffective->Coins, 0, 0);
 
-      } else if ((!IsplayerUnableToAct && playerSkillEffective->skillType == 0) && IsenemyUnableToAct) {
+      } else if ((!IsplayerUnableToAct && playerSkillEffective != NULL && playerSkillEffective->skillType == 0) && IsenemyUnableToAct) {
 
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, boss, enemySkillEffective,
@@ -15416,34 +15430,39 @@ void runKingInBindsBattle(
 
       } else {
           
-          int canPlayerClash = (playerSkillEffective->skillType == 0 || playerSkillEffective->skillType == 4 || playerSkillEffective->skillType == 5);
-         int canEnemyClash = (enemySkillEffective->skillType == 0 || enemySkillEffective->skillType == 4 || enemySkillEffective->skillType == 5);
+       int canPlayerClash = (playerSkillEffective != NULL) && 
+                            (pType == 0 || pType == 4 || pType == 5);
+       int canEnemyClash  = (enemySkillEffective != NULL) && 
+                            (eType == 0 || eType == 4 || eType == 5);
 
-         int willClash = playerSkillEffective->Clashable && enemySkillEffective->Clashable && canPlayerClash && canEnemyClash;
+       int willClash = (playerSkillEffective != NULL && enemySkillEffective != NULL) &&
+                       playerSkillEffective->Clashable && 
+                       enemySkillEffective->Clashable && 
+                       canPlayerClash && canEnemyClash;
 
            if (!willClash) {
 
               if (playerGoesFirst == 1) {
-                if (playerSkillEffective->skillType == 0) {
+                if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
                 attackPhase(player, playerSkillEffective, playerTempOffense,
                             playerTempDefense, boss, enemySkillEffective,
                             enemyTempOffense, enemyTempDefense,
                             playerSkillEffective->Coins, 0, 0);
                 }
-                if (enemySkillEffective->skillType == 0) {
+                if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
                 attackPhase(boss, enemySkillEffective, enemyTempOffense,
                             enemyTempDefense, player, playerSkillEffective,
                             playerTempOffense, playerTempDefense,
                             enemySkillEffective->Coins, 0, 0);
                 }
             } else if (playerGoesFirst == 0) {
-                  if (enemySkillEffective->skillType == 0) {
+                  if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
                 attackPhase(boss, enemySkillEffective, enemyTempOffense,
                             enemyTempDefense, player, playerSkillEffective,
                             playerTempOffense, playerTempDefense,
                             enemySkillEffective->Coins, 0, 0);
                   }
-                  if (playerSkillEffective->skillType == 0) {
+                  if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
                 attackPhase(player, playerSkillEffective, playerTempOffense,
                             playerTempDefense, boss, enemySkillEffective,
                             enemyTempOffense, enemyTempDefense,
@@ -15451,7 +15470,7 @@ void runKingInBindsBattle(
                   }
             }
 
-        } else {
+        } else if (playerSkillEffective->skillType == 0 || enemySkillEffective->skillType == 0) {
 
             ClashResult clash =
                 clashPhase(player, playerSkillEffective, playerTempOffense,
@@ -15464,10 +15483,11 @@ void runKingInBindsBattle(
                 boss->Tremor[2] += clash.playerFinalPower;
                 printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                         player->name, player->name, boss->name, clash.playerFinalPower);
+                sleep(1);
                 if (boss->Tremor[2] > 50 && boss->Stagger <= 0) {
                   boss->Stagger += 2;
                   printf("\n%s Staggered for one turn\n", boss->name);
-
+                  sleep(1);
                   boss->Tremor[2] = 0;
                 }
               } else {
@@ -15488,10 +15508,11 @@ void runKingInBindsBattle(
                 player->Tremor[2] += clash.enemyFinalPower;
                 printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                         boss->name, boss->name, player->name, clash.enemyFinalPower);
+                sleep(1);
                 if (player->Tremor[2] > 50 && player->Stagger <= 0) {
                   player->Stagger += 2;
                   printf("\n%s Staggered for one turn\n", player->name);
-
+                  sleep(1);
                   player->Tremor[2] = 0;
                 }
               } else {
@@ -16745,24 +16766,26 @@ int main() {
 
       int playerGoesFirst = 0;
 
-        if ((player.Speed > enemy.Speed) || enemySkillEffective->skillType != 0) {
+      int pType = (playerSkillEffective != NULL) ? playerSkillEffective->skillType : -1;
+      int eType = (enemySkillEffective != NULL) ? enemySkillEffective->skillType : -1;
+
+      if ((player.Speed > enemy.Speed) || eType != 0) {
           playerGoesFirst = 1;
-        } else if ((enemy.Speed > player.Speed) || playerSkillEffective->skillType != 0) {
+      } else if ((enemy.Speed > player.Speed) || pType != 0) {
           playerGoesFirst = 0;
-        } else {
-          // ถ้า Speed เท่ากัน ให้สุ่ม
-      playerGoesFirst = (rand() % 2 == 0);
-        }
+      } else {
+          playerGoesFirst = (rand() % 2 == 0);
+      }
 
     // Handle different combat scenarios based on who can act
-      if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective->skillType == 0)) {
+      if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective != NULL && enemySkillEffective->skillType == 0)) {
 
         attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                     enemyTempDefense, &player, playerSkillEffective,
                     playerTempOffense, playerTempDefense,
                     enemySkillEffective->Coins, 0, 0);
 
-      } else if ((!IsplayerUnableToAct && playerSkillEffective->skillType == 0) && IsenemyUnableToAct) {
+      } else if ((!IsplayerUnableToAct && playerSkillEffective != NULL && playerSkillEffective->skillType == 0) && IsenemyUnableToAct) {
         // Enemy is panicked (punching bag), player attacks freely
 
         attackPhase(&player, playerSkillEffective, playerTempOffense,
@@ -16772,39 +16795,44 @@ int main() {
 
       } else {
 
-        int canPlayerClash = (playerSkillEffective->skillType == 0 || playerSkillEffective->skillType == 4 || playerSkillEffective->skillType == 5);
-        int canEnemyClash = (enemySkillEffective->skillType == 0 || enemySkillEffective->skillType == 4 || enemySkillEffective->skillType == 5);
+        int canPlayerClash = (playerSkillEffective != NULL) && 
+                             (pType == 0 || pType == 4 || pType == 5);
+        int canEnemyClash  = (enemySkillEffective != NULL) && 
+                             (eType == 0 || eType == 4 || eType == 5);
 
-        int willClash = playerSkillEffective->Clashable && enemySkillEffective->Clashable && canPlayerClash && canEnemyClash;
+        int willClash = (playerSkillEffective != NULL && enemySkillEffective != NULL) &&
+                        playerSkillEffective->Clashable && 
+                        enemySkillEffective->Clashable && 
+                        canPlayerClash && canEnemyClash;
 
          if (!willClash) {
 
           if (playerGoesFirst == 1) {
             
-            if (playerSkillEffective->skillType == 0) {
+            if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
         attackPhase(&player, playerSkillEffective, playerTempOffense,
           playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
         enemyTempDefense,
           playerSkillEffective->Coins, 0, 0);
             }
 
-            if (enemySkillEffective->skillType == 0) {
+            if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
             enemyTempDefense, &player, playerSkillEffective,
             playerTempOffense, playerTempDefense,
             enemySkillEffective->Coins, 0, 0);
             }
 
-        } else if (playerGoesFirst == 0 && enemySkillEffective->skillType == 0) {
+        } else if (playerGoesFirst == 0) {
 
-            if (enemySkillEffective->skillType == 0) {
+            if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
             enemyTempDefense, &player, playerSkillEffective,
             playerTempOffense, playerTempDefense,
             enemySkillEffective->Coins, 0, 0);
             }
 
-            if (playerSkillEffective->skillType == 0) {
+            if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
           attackPhase(&player, playerSkillEffective, playerTempOffense,
             playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
           enemyTempDefense,
@@ -16813,7 +16841,7 @@ int main() {
 
         }
 
-    } else {
+    } else if (playerSkillEffective->skillType == 0 || enemySkillEffective->skillType == 0) {
         
       // Normal clash - both can act
       ClashResult clash =
@@ -16831,11 +16859,11 @@ int main() {
           enemy.Tremor[2] += clash.playerFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   player.name, player.name, enemy.name, clash.playerFinalPower);
-
+          sleep(1);
           if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
             enemy.Stagger += 2;
             printf("\n%s Staggered for one turn\n", enemy.name);
-
+            sleep(1);
             enemy.Tremor[2] = 0;
           }
 
@@ -16858,11 +16886,11 @@ int main() {
           player.Tremor[2] += clash.enemyFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   enemy.name, enemy.name, player.name, clash.enemyFinalPower);
-
+          sleep(1);
           if (player.Tremor[2] > 50 && player.Stagger <= 0) {
             player.Stagger += 2;
             printf("\n%s Staggered for one turn\n", player.name);
-
+            sleep(1);
             player.Tremor[2] = 0;
           }
 
