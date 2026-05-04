@@ -1712,7 +1712,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
 
   // Meursault:Blade Lineage Mentor - To claim thier bones
   if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
-      (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
+      (atk == &attacker->defenseSkill[1] || atk == &attacker->skills[2])) {
 
     float missingHPPercent = ((float)(attacker->MAX_HP - attacker->HP) / attacker->MAX_HP) * 100.0f;
 
@@ -2244,7 +2244,11 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
 
     // Last coin power bonus (from character buffs only)
     if (i == remainingCoins - 1) {
+      if (atk->skillType == 0) {
         bonus = attacker->FinalPowerBoost + attacker->AttackPowerBoost;
+      } else {
+        bonus = attacker->FinalPowerBoost + attacker->DefensePowerBoost;
+      }
         currentPower += bonus;
       if (currentPower <= 0) currentPower = 0;
     }
@@ -4443,7 +4447,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // Gregor:Firefist - S4 Burn
     if (isId(attacker->name, "Gregor:Firefist") == 0 &&
-        atk == &attacker->skills[3] && !Evaded) {
+        atk == &attacker->defenseSkill[0] && !Evaded) {
 
       int Stack = 0;
       int Count = 0;
@@ -11765,10 +11769,10 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       
       usleep(500000);
       
-      attackPhase(Loser, &Loser->skills[3], Loser->skills[3].Offense, Loser->skills[3].Defense,
-        Winner, WinnerSkill, winOff, winDef, Loser->skills[3].Coins, 0, 0);
+      attackPhase(Loser, &Loser->defenseSkill[1], Loser->defenseSkill[1].Offense, Loser->defenseSkill[1].Defense,
+        Winner, WinnerSkill, winOff, winDef, Loser->defenseSkill[1].Coins, 0, 0);
       
-      fullPlayer->skills[3].active = 0;
+      fullPlayer->defenseSkill[1].active = 0;
 
        Winner->ParalyzeNextTurn += 5;
 
@@ -11863,13 +11867,13 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[1] = (SkillStats){"Acupuncture", 3, 5, 3, 3, 3, 1, 1, 0, 2, 1};
     player->skills[2] =
         (SkillStats){"Yield My Flesh", 20, -8, 1, 0, 15, 1, 1, 0, 1, 1};
-    player->skills[3] =
-        (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 2, 1, 0, 0, 1};
 
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
     player->defenseSkill[0] = (SkillStats){"Overthrow", 8, 10, 1, 5, 3, 1, 0, 0, 0, 0, 3};
+    player->defenseSkill[1] =
+      (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 2, 1, 0, 0, 1};
 
-    player->numDefenseSkills = 1; // <-- important
+    player->numDefenseSkills = 2; // <-- important
     
     player->numSkills = 4; // <-- important
   } else if (pIndex == 2) {
