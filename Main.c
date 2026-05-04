@@ -235,6 +235,8 @@ const char* getSkillTypeName(int type) {
         case 1: return "Guard Skill";
         case 2: return "Evade Skill";
         case 3: return "Counter Skill";
+        case 4: return "Clashable Guard Skill";
+        case 5: return "Clashable Counter Skill";
         default: return "Attack Skill";
     }
 }
@@ -1266,10 +1268,10 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     int powerReduction = 0;
     if (defSkill->skillType == 4 && !isStaggered(defender)) {
         printf("\n--- Defense Phase ---\n");
-        printf("%s prepare to mitigate damage with %s: %s\n", defender->name, getSkillTypeName(defSkill->skillType), defSkill->name);
+        printf("%s prepare to mitigate damage with %s: %s (Cracking Coin fixed Coin Power to 1)\n", defender->name, getSkillTypeName(defSkill->skillType), defSkill->name);
 
         // 1. คำนวณพลังพื้นฐาน (Base + Level Bonus + Buff)
-        powerReduction = defSkill->BasePower + defender->BasePowerBoost + defender->DefensePowerBoost;
+        powerReduction = defSkill->BasePower + defender->BasePowerBoost + defender->DefensePowerBoost + defender->FinalPowerBoost;
 
         int defenseDiff = defTempDefense - atkTempOffense;
         if (defenseDiff > 0) {
@@ -1283,8 +1285,6 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
         for (int j = 0; j < defSkill->Coins; j++) {
             int isHead = tossCoinWithSanity(defender);
             if (isHead) {
-                powerReduction += 1; // Fixed Coin Power เป็น 1 ตามเงื่อนไข
-                // Check paralyze
                 if (attacker->Paralyze > 0) { // ← Character's paralyze
                     powerReduction += 0;
                     defender->Paralyze--;
@@ -1297,7 +1297,8 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
             printf("\n%-10d %-10s %-10d", j + 1, (isHead ? "Heads" : "Tails"), powerReduction);
             usleep(400000); 
         }
-        printf("\n(%d bonus) %s total Defense power: %d\n", defenseDiff / 3, defender->name, powerReduction);
+      
+        printf("\n(%d bonus) %s total Defense power: %d\n", ((defenseDiff > 0) ? (defenseDiff / 3) : 0) + defender->DefensePowerBoost + defender->FinalPowerBoost, defender->name, powerReduction);
         sleep(1);
     }
 
@@ -2205,19 +2206,6 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     int currentPower = totalPower;
 
     int bonus = 0;
-
-    // Last coin power bonus (from character buffs only)
-    if (i == remainingCoins - 1) {
-        bonus = attacker->FinalPowerBoost + attacker->AttackPowerBoost;
-      
-      if (defSkill->skillType == 4 && powerReduction > 0) {
-            bonus -= powerReduction;
-          if (currentPower < 0) currentPower = 0;
-      }
-      
-        currentPower += bonus;
-      if (currentPower <= 0) currentPower = 0;
-    }
     
     // Calculate offense difference modifier: (Off - Def) / (|Off - Def| + 25) × 100
     int offenseDiff = atkTempOffense - defTempDefense;
@@ -2228,6 +2216,11 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
 
     // Apply offense modifier to current power (as percentage)
     float modifiedPower = currentPower + ((currentPower * damageModifier) / 100.0f);
+
+    if (defSkill->skillType == 4 && powerReduction > 0) {
+              modifiedPower -= powerReduction;
+    }
+    
 if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // Adjust multiplier if defender is Unbreakable
@@ -3531,7 +3524,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         // คำนวณพลังหลบตามสูตร: Base 4 + (โยนเหรียญที่มีพลัง 10 + Fanatic)
         evadePower = 4 + defender->BasePowerBoost;
         if (tossCoinWithSanity(defender)) {
-            evadePower += (10 + fanaticUsed) + defender->CoinPowerBoost;
+            evadePower += (10 + fanaticUsed) + defender->CoinPowerBoost + defender->FinalPowerBoost;
         }
 
       } else {
@@ -3546,7 +3539,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                 defender->Paralyze--;
             }
           } else {
-              evadePower += CoinBuff + defSkill->CoinPower + defender->CoinPowerBoost + defender->DefensePowerBoost;
+              evadePower += CoinBuff + defSkill->CoinPower + defender->CoinPowerBoost + defender->DefensePowerBoost + defender->FinalPowerBoost;
             if (evadePower <= 0) evadePower = 0;
           }
         
@@ -8242,21 +8235,27 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
    // ------------------------------------------------------------
   
 // ------------------------------ Gregor:Firefist ------------------------------
+  
     // Gregor:Firefist – Reset passive
   if (isId(c->name, "Gregor:Firefist") == 0 && c->Passive <= 0) {
     
-    printf("\n%s runs out of fuel, use '%s' instead!\n", c->name, c->skills[3].name);
+    printf("\n%s runs out of fuel, use '%s' instead!\n", c->name, c->defenseSkill[0].name);
 
     sleep(1);
     
     printf("\n%s: I've prepped plenty of fuel.\n", c->name);
 
-     sleep(1);
+    chosenSkill = &c->defenseSkill[0];
+
+    sleep(1);
+  }
+
+  // Gregor:Firefist – Reset passive
+  if (isId(c->name, "Gregor:Firefist") == 0 && chosenSkill == &c->defenseSkill[0]) {
 
     printf("\n%s regain District 12 Fuel to 100\n", c->name);
-    
+
     c->Passive = 100;
-    chosenSkill = &c->skills[3];
 
     sleep(1);
   }
@@ -9954,7 +9953,7 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
   if (isId(counterUnit->name, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       counterUnit->Passive >= 5 &&
-      (s2 != &counterUnit->skills[6] && s2 != &counterUnit->skills[7] && s2 != &counterUnit->skills[3] && s2 != &counterUnit->skills[4] && s2 != &counterUnit->skills[5])) {
+      (s2 != &counterUnit->defenseSkill[0] && s2 != &counterUnit->defenseSkill[1] && s2 != &counterUnit->skills[3] && s2 != &counterUnit->skills[4] && s2 != &counterUnit->skills[5])) {
 
        clearTurnSkillBuffs(counterUnit);
 
@@ -9962,7 +9961,7 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
     int cOff = counterUnit->OffenseBoost, cDef = counterUnit->DefenseBoost;
 
     SkillStats *chosenSkill = getEffectiveSkill(
-        counterUnit, AttackUnit, &counterUnit->skills[6], &cOff, &cDef);
+        counterUnit, AttackUnit, &counterUnit->defenseSkill[0], &cOff, &cDef);
 
     counterUnit->Passive -= 5;
     if (counterUnit->Passive < 1) counterUnit->Passive = 1;
@@ -10000,11 +9999,11 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
 
       printf(
       "\n%s consumes half of Hardblood(%d left) on self to use %s\n",
-      counterUnit->name, counterUnit->Passive, counterUnit->skills[7].name);
+      counterUnit->name, counterUnit->Passive, counterUnit->defenseSkill[1].name);
 
       int cOff = counterUnit->OffenseBoost, cDef = counterUnit->DefenseBoost;
       
-      chosenSkill = getEffectiveSkill(counterUnit, AttackUnit, &counterUnit->skills[7], &cOff, &cDef);
+      chosenSkill = getEffectiveSkill(counterUnit, AttackUnit, &counterUnit->defenseSkill[1], &cOff, &cDef);
 
       int savedEnemyCoins = s1->Coins;
       s1->Coins = WinnerCoin;
@@ -11470,32 +11469,44 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
   if (playerUnbreakableLost > 0 && playerCoins <= 0 && !IsenemyStagger) {
     usleep(500000);
-    attackPhase(p2, result.enemyskillUsed, result.enemyTempOffense,
-                result.enemyTempDefense, p1, result.playerskillUsed,
-                result.playerTempOffense, result.playerTempDefense,
-                (result.enemyCoins > result.enemyskillUsed->Unbreakable)
-                    ? result.enemyCoins
-                    : result.enemyskillUsed->Unbreakable,
-      result.enemyUnbreakableLost
-      , clashCount);
-    usleep(500000);
-    if (p1->HP > 0) {
-      printf("\n%s lost the Clash with Cracking Unbreakable Coins (Halve the Damage)\n", p1->name);
-      usleep(500000);
-      attackPhase(p1, result.playerskillUsed, result.playerTempOffense,
-                  result.playerTempDefense, p2, result.enemyskillUsed,
-                  result.enemyTempOffense, result.enemyTempDefense,
-                  (result.playerCoins > result.playerskillUsed->Unbreakable)
-                      ? result.playerCoins
-                      : result.playerskillUsed->Unbreakable,
-                  result.playerskillUsed->Unbreakable, clashCount);
-    }
 
+    // ถ้าเป็นสกิลโจมตีปกติ ให้ศัตรูตีเราก่อน แล้วเราค่อยสวนด้วยเหรียญที่เหลือ (Cracking)
+    if (s1->skillType != 4) {
+        attackPhase(p2, result.enemyskillUsed, result.enemyTempOffense,
+                    result.enemyTempDefense, p1, result.playerskillUsed,
+                    result.playerTempOffense, result.playerTempDefense,
+                    (result.enemyCoins > result.enemyskillUsed->Unbreakable)
+                        ? result.enemyCoins
+                        : result.enemyskillUsed->Unbreakable,
+          result.enemyUnbreakableLost
+          , clashCount);
+
+        usleep(500000);
+        if (p1->HP > 0 && s1->skillType == 0) {
+          printf("\n%s lost the Clash with Cracking Unbreakable Coins (Halve the Damage)\n", p1->name);
+          attackPhase(p1, result.playerskillUsed, result.playerTempOffense,
+                      result.playerTempDefense, p2, result.enemyskillUsed,
+                      result.enemyTempOffense, result.enemyTempDefense,
+                      (result.playerCoins > result.playerskillUsed->Unbreakable)
+                          ? result.playerCoins
+                          : result.playerskillUsed->Unbreakable,
+                      result.playerskillUsed->Unbreakable, clashCount);
+        }
+    } else {
+        // ถ้าเป็น Guard (Type 4) แล้วแพ้ (เหรียญหมด) 
+        // ไม่ต้อง Print ว่าชนะ และไม่ต้องเพิ่ม Stagger Threshold ให้ศัตรู
+        // ปล่อยให้ result.winner เป็น 2 เพื่อให้ศัตรูโจมตีเข้ามาตามปกติ
+        result.winner = 2; 
+        return result; 
+    }
     result.winner = 99;
   }
 
   if (enemyUnbreakableLost > 0 && enemyCoins <= 0 && !IsplayerStagger) {
     usleep(500000);
+    
+     if (s2->skillType != 4) {
+       
     attackPhase(p1, result.playerskillUsed, result.playerTempOffense,
                 result.playerTempDefense, p2, result.enemyskillUsed,
                 result.enemyTempOffense, result.enemyTempDefense,
@@ -11504,8 +11515,9 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
                     : result.playerskillUsed->Unbreakable,
       result.playerUnbreakableLost
       , clashCount);
+    
     usleep(500000);
-    if (p2->HP > 0) {
+    if (p2->HP > 0 && s2->skillType == 0) {
       printf("\n%s lost the Clash with Cracking Unbreakable Coins (Halve the Damage)\n", p2->name);
       usleep(500000);
       attackPhase(p2, result.enemyskillUsed, result.enemyTempOffense,
@@ -11517,7 +11529,14 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
                   s2->Unbreakable, clashCount);
     }
 
-    result.winner = 99;
+     } else {
+         // ถ้าเป็น Guard (Type 4) แล้วแพ้ (เหรียญหมด) 
+         // ไม่ต้อง Print ว่าชนะ และไม่ต้องเพิ่ม Stagger Threshold ให้ศัตรู
+         // ปล่อยให้ result.winner เป็น 2 เพื่อให้ศัตรูโจมตีเข้ามาตามปกติ
+         result.winner = 1; 
+         return result; 
+       }
+       result.winner = 99;
   }
 
   // Yield my flesh mechanic
@@ -11532,6 +11551,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       int winCoins = (Winner == p1) ? playerCoins : enemyCoins;
     
     usleep(500000);
+
+      if (WinnerSkill->skillType != 4) {
       
       attackPhase(Winner, WinnerSkill, winOff, winDef, Loser, LoserSkill, loseOff, loseDef, 
       // ตรรกะคำนวณเหรียญ: ถ้าเป็น Unbreakable ให้ใช้จำนวนเหรียญสูงสุด (15) 
@@ -11541,6 +11562,22 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       // ส่งจำนวนเหรียญที่แตกไปจริงๆ (เช่น 1) แทนที่จะส่ง 0
       (Winner == p1) ? playerUnbreakableLost : enemyUnbreakableLost, 
       clashCount);
+
+    } else {
+      // --- [Clashable Guard Win Effect] ---
+      Winner->Tremor[2] += result.playerFinalPower;
+      printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
+        Winner->name, Winner->name, Loser->name, result.playerFinalPower);
+
+      if (Loser->Tremor[2] > 50 && p1->Stagger <= 0) {
+            Loser->Stagger += 2;
+        printf("\n%s Staggered for one turn\n", p2->name);
+
+          Loser->Tremor[2] = 0;
+      }
+
+      // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
+  }
       
     usleep(500000);
     if (Loser->HP > 0) {
@@ -11849,6 +11886,12 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
       (SkillStats){"Stigmatize", 4, 7, 2, 3, 0, 1, 1, 0, 1, 1};
     player->skills[5] =
     (SkillStats){"Blazing Strike", 13, 15, 1, 5, 0, 1, 0, 0, 0, 1};
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"Rue", 15, 5, 1, 0, 5, 1, 0, 0, 0, 0, 1};
+
+    player->numDefenseSkills = 1; // <-- important
+    
     player->numSkills = 4; // <-- important
   } else if (pIndex == 8) {
     player->name = "Gregor:Firefist";
@@ -11861,7 +11904,12 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[1] =
         (SkillStats){"I'll burn away every last drop of your filthy blood",4, 6, 2, 3, 3, 1, 0, 0, 2, 1};
     player->skills[2] = (SkillStats){"Firefist", 5, 4, 3, 5, 3, 1, 1, 0, 1, 1};
-    player->skills[3] = (SkillStats){"I have to keep going for big sis", 9, 7, 1, 2, 3, 1, 0, 0, 0, 1};
+    
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"I have to keep going for big sis", 9, 7, 1, 2, 3, 1, 0, 0, 0, 1, 5};
+
+    player->numDefenseSkills = 1; // <-- important
+    
     player->numSkills = 4; // <-- important
   } else if (pIndex == 9) {
     player->name = "Heishou Pack - You Branch Adept Heathcliff";
@@ -11874,6 +11922,12 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
         (SkillStats){"Mutilating Talons", 4, 4, 3, 2, -1, 1, 0, 0, 2, 1};
     player->skills[2] = (SkillStats){"Bloodflame Massacre [血炎亂舞]", 4, 3, 4, 3, -1, 1, 0, 0, 1, 1};
     player->skills[3] = (SkillStats){"Rooster's Rampaging Blades Under the Ensanguined Heaven [血天下雞舞亂刀]", 5, 3, 4, 5, -1, 1, 0, 4, 0, 1};
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"More Grub for Us", 5, 4, 2, 2, -1, 1, 0, 0, 0, 1, 5};
+
+    player->numDefenseSkills = 1; // <-- important
+    
     player->numSkills = 4; // <-- important
   } else if (pIndex == 10) {
     player->name = "The Middle Little Brother Sinclair";
@@ -11912,6 +11966,11 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[5].active = 0; // Prescript Executed flag
     player->skills[8].active = 0; // <--- สำคัญ: ปลดล็อคการรับแต้ม
     player->skills[13].active = 0; // <--- สำคัญ: รีเซ็ตโควต้าเทิร์นแรก
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"By Unpredictable Whim", 4, 10, 1, 0, 2, 1, 0, 0, 0, 0, 2};
+
+    player->numDefenseSkills = 1; // <-- important
     
       player->numSkills = 4;
     } else if (pIndex == 12) {
@@ -11935,6 +11994,11 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[4].active = 0; // Gaze
     player->skills[7].active = 0; // Gaze Next turn
     player->skills[5].active = 0; // Bliss Flag (for once per turn)
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"Such Filth", 4, 10, 1, 0, 0, 1, 0, 0, 0, 0, 2};
+
+    player->numDefenseSkills = 1; // <-- important
     
       player->numSkills = 5;
     } else { // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable
@@ -11948,6 +12012,12 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[2] = (SkillStats){"Degraded Pillar", 7, 4, 2, 4, 5, 1, 1, 0, 2, 1};
     player->skills[3] = (SkillStats){"Degraded Lock", 9, 11, 1, 6, 5, 1, 0, 0, 1, 1};
     player->skills[4] = (SkillStats){"Degraded Shockwave", 4, 5, 3, 6, 5, 1, 0, 0, 1, 1};
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"Spatial Guard", 5, 10, 1, 0, 0, 1, 1, 1, 0, 1, 4};
+
+    player->numDefenseSkills = 1; // <-- important
+    
     player->numSkills = 5; // <-- important
   }
   // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active,
@@ -13801,7 +13871,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       //------------------------ Lobotomy E.G.O::Solemn Lament Yi Sang ---------------------------
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Reload
-    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player->Passive <= 0 || player->defenseSkill[0].active == 1) {
+    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && (player->Passive <= 0 || player->defenseSkill[0].active == 1)) {
 
       int Spend = (30 - player->Passive)/2;
 
@@ -14224,6 +14294,10 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
           player->skills[4].BasePower += 3;
           player->skills[4].CoinPower += 1;
           player->skills[4].Unbreakable = 3;
+
+      player->defenseSkill[0].name = "Spatial Manipulation";
+      player->defenseSkill[0].BasePower += 5;
+      player->defenseSkill[0].CoinPower += 5;
 
       printf("\n%s at 50%% or less HP, 'Serious' activated! increase HP and Max HP to 1150, gains +100%% damage and 5 Final Power for one turn; then gain new Skills set (Once per Encounter) (Cannot be defeat until this effect activated)\n", player->name);
 
@@ -14897,8 +14971,10 @@ void runKingInBindsBattle(
           if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
             enemy.Stagger += 2;
             printf("\n%s Staggered for one turn\n", enemy.name);
+
+             enemy.Tremor[2] = 0;
           }
-          enemy.Tremor[2] = 0;
+
         } else {
           attackPhase(
               player, clash.playerskillUsed,
@@ -14920,8 +14996,9 @@ void runKingInBindsBattle(
           if (player->Tremor[2] > 50 && player->Stagger <= 0) {
             player->Stagger += 2;
             printf("\n%s Staggered for one turn\n", player->name);
+
+            player->Tremor[2] = 0;
           }
-          player->Tremor[2] = 0;
         } else {
           attackPhase(
               &enemy, clash.enemyskillUsed,
@@ -15390,8 +15467,9 @@ void runKingInBindsBattle(
                 if (boss->Tremor[2] > 50 && boss->Stagger <= 0) {
                   boss->Stagger += 2;
                   printf("\n%s Staggered for one turn\n", boss->name);
+
+                  boss->Tremor[2] = 0;
                 }
-                boss->Tremor[2] = 0;
               } else {
                 attackPhase(
                     player, clash.playerskillUsed,
@@ -15413,8 +15491,9 @@ void runKingInBindsBattle(
                 if (player->Tremor[2] > 50 && player->Stagger <= 0) {
                   player->Stagger += 2;
                   printf("\n%s Staggered for one turn\n", player->name);
+
+                  player->Tremor[2] = 0;
                 }
-                player->Tremor[2] = 0;
               } else {
                 attackPhase(
                     boss, clash.enemyskillUsed,
@@ -16459,7 +16538,14 @@ int main() {
 
     // Player picks one skill (only if can act)
     int playerSkillIndex;
-    
+
+    int playerTempOffense = 0, playerTempDefense = 0;
+    int enemyTempOffense = 0, enemyTempDefense = 0;
+    playerTempOffense += player.OffenseBoost;
+    playerTempDefense += player.DefenseBoost;
+    enemyTempOffense += enemy.OffenseBoost;
+    enemyTempDefense += enemy.DefenseBoost;
+
     if (!IsplayerUnableToAct) {
       printf("\nDashboard Skills:\n");
 
@@ -16618,14 +16704,6 @@ int main() {
           ;
       }
 
-      int playerTempOffense = 0, playerTempDefense = 0;
-      int enemyTempOffense = 0, enemyTempDefense = 0;
-
-      playerTempOffense += player.OffenseBoost;
-      playerTempDefense += player.DefenseBoost;
-      enemyTempOffense += enemy.OffenseBoost;
-      enemyTempDefense += enemy.DefenseBoost;
-
       if (choice == 0) {
         // --- กรณีเลือก Guard (แทนที่ Skill 1) ---
         playerSkillEffective = &player.defenseSkill[0]; // ชี้ไปที่สกิลป้องกัน
@@ -16655,6 +16733,7 @@ int main() {
       // Player can't act, just pick a random skill for defensive purposes
       playerSkillIndex = playerSkill1;
     }
+  }   // closes if (!IsplayerUnableToAct)
 
     playerSkillEffective =
         getEffectiveSkill(&player, &enemy, playerSkillEffective,
@@ -16756,9 +16835,9 @@ int main() {
           if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
             enemy.Stagger += 2;
             printf("\n%s Staggered for one turn\n", enemy.name);
-          }
 
-          enemy.Tremor[2] = 0;
+            enemy.Tremor[2] = 0;
+          }
 
           // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
         } else {
@@ -16783,9 +16862,9 @@ int main() {
           if (player.Tremor[2] > 50 && player.Stagger <= 0) {
             player.Stagger += 2;
             printf("\n%s Staggered for one turn\n", player.name);
-          }
 
-          player.Tremor[2] = 0;
+            player.Tremor[2] = 0;
+          }
 
           // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
         } else {
@@ -16803,21 +16882,19 @@ int main() {
       }
 
       }
+    }   // closes combat chain (if/else if/else for IsplayerUnableToAct)
 
-    
-      printf("\n--- Turn End ---\n");
+    printf("\n--- Turn End ---\n");
 
-      // 1. จบเทิร์นของผู้เล่น (จัดการกระสุน/Sanity/ล้างบัฟผู้เล่น)
-      handleTurnEnd(&player, &enemy, playerSkillIndex, enemySkillIndex);
+    // 1. จบเทิร์นของผู้เล่น (จัดการกระสุน/Sanity/ล้างบัฟผู้เล่น)
+    handleTurnEnd(&player, &enemy, playerSkillIndex, enemySkillIndex);
 
-      // 2. จบเทิร์นของบอส (จัดการความสามารถบอส/ล้างบัฟบอส)
-      handleTurnEnd(&enemy, &player, enemySkillIndex, playerSkillIndex);
-      
-      TurnCount++;
-    }
+    // 2. จบเทิร์นของบอส (จัดการความสามารถบอส/ล้างบัฟบอส)
+    handleTurnEnd(&enemy, &player, enemySkillIndex, playerSkillIndex);
 
-}
-  
+    TurnCount++;
+  }   // closes while (player.HP > 0 && enemy.HP > 0)
+
   printf("\n--- Battle Result ---\n");
   if (player.HP <= 0 && enemy.HP <= 0) {
     printf("It's a draw!\n");
@@ -16828,6 +16905,5 @@ int main() {
   }
 
   return 0;
-}
-}
-}
+}   // closes else block
+}   // closes main
