@@ -11871,7 +11871,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
     player->defenseSkill[0] = (SkillStats){"Overthrow", 8, 10, 1, 5, 3, 1, 0, 0, 0, 0, 3};
     player->defenseSkill[1] =
-      (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 2, 1, 0, 0, 1};
+      (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 2, 1, 0, 0, 0, 3};
 
     player->numDefenseSkills = 2; // <-- important
     
@@ -15046,14 +15046,19 @@ void runKingInBindsBattle(
   int pType = (playerSkillEffective != NULL) ? playerSkillEffective->skillType : -1;
   int eType = (enemySkillEffective != NULL) ? enemySkillEffective->skillType : -1;
 
-      if ((player->Speed > enemy.Speed) || eType != 0) {
-        playerGoesFirst = 1;
-      } else if ((enemy.Speed > player->Speed) || pType != 0) {
-        playerGoesFirst = 0;
-      } else {
-        // ถ้า Speed เท่ากัน ให้สุ่ม
-    playerGoesFirst = (rand() % 2 == 0);
-      }
+        if (eType == 3) { 
+          // ถ้าศัตรูใช้ Counter (Type 3) เราต้องตีก่อนเสมอ
+          playerGoesFirst = 1;
+        } else if (pType == 3) { 
+          // ถ้าเราใช้ Counter (Type 3) ศัตรูต้องตีก่อนเสมอ
+          playerGoesFirst = 0;
+        } else if (player->Speed > enemy.Speed) {
+          playerGoesFirst = 1;
+        } else if (enemy.Speed > player->Speed) {
+          playerGoesFirst = 0;
+        } else {
+          playerGoesFirst = (rand() % 2 == 0);
+        }
 
   int canPlayerClash = (playerSkillEffective != NULL) && 
                        (pType == 0 || pType == 4 || pType == 5);
@@ -15068,26 +15073,26 @@ void runKingInBindsBattle(
            if (!willClash) {
              
       if (playerGoesFirst == 1) {
-        if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
+        if (playerSkillEffective != NULL) {
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, &enemy, enemySkillEffective,
                       enemyTempOffense, enemyTempDefense,
                       playerSkillEffective->Coins, 0, 0);
         }
-        if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
+        if (enemySkillEffective != NULL) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
                       enemySkillEffective->Coins, 0, 0);
         }
       } else if (playerGoesFirst == 0) {
-        if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
+        if (enemySkillEffective != NULL) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
                       enemySkillEffective->Coins, 0, 0);
         }
-        if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
+        if (playerSkillEffective != NULL) {
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, &enemy, enemySkillEffective,
                       enemyTempOffense, enemyTempDefense,
@@ -15568,14 +15573,19 @@ void runKingInBindsBattle(
           int pType = (playerSkillEffective != NULL) ? playerSkillEffective->skillType : -1;
           int eType = (enemySkillEffective != NULL) ? enemySkillEffective->skillType : -1;
 
-        if ((player->Speed > boss->Speed) || eType != 0) {
-          playerGoesFirst = 1;
-        } else if ((boss->Speed > player->Speed) || pType != 0) {
-          playerGoesFirst = 0;
-        } else {
-          // ถ้า Speed เท่ากัน ให้สุ่ม
-      playerGoesFirst = (rand() % 2 == 0);
-        }
+          if (eType == 3) { 
+            // ถ้าศัตรูใช้ Counter (Type 3) เราต้องตีก่อนเสมอ
+            playerGoesFirst = 1;
+          } else if (pType == 3) { 
+            // ถ้าเราใช้ Counter (Type 3) ศัตรูต้องตีก่อนเสมอ
+            playerGoesFirst = 0;
+          } else if (player->Speed > enemy.Speed) {
+            playerGoesFirst = 1;
+          } else if (boss->Speed > player->Speed) {
+            playerGoesFirst = 0;
+          } else {
+            playerGoesFirst = (rand() % 2 == 0);
+          }
 
         // Combat — เหมือน main() ทุกอย่าง
      if (IsplayerUnableToAct && (!IsenemyUnableToAct && enemySkillEffective != NULL && enemySkillEffective->skillType == 0)) {
@@ -15607,26 +15617,26 @@ void runKingInBindsBattle(
            if (!willClash) {
 
               if (playerGoesFirst == 1) {
-                if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
+                if (playerSkillEffective != NULL) {
                 attackPhase(player, playerSkillEffective, playerTempOffense,
                             playerTempDefense, boss, enemySkillEffective,
                             enemyTempOffense, enemyTempDefense,
                             playerSkillEffective->Coins, 0, 0);
                 }
-                if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
+                if (enemySkillEffective != NULL) {
                 attackPhase(boss, enemySkillEffective, enemyTempOffense,
                             enemyTempDefense, player, playerSkillEffective,
                             playerTempOffense, playerTempDefense,
                             enemySkillEffective->Coins, 0, 0);
                 }
             } else if (playerGoesFirst == 0) {
-                  if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
+                  if (enemySkillEffective != NULL) {
                 attackPhase(boss, enemySkillEffective, enemyTempOffense,
                             enemyTempDefense, player, playerSkillEffective,
                             playerTempOffense, playerTempDefense,
                             enemySkillEffective->Coins, 0, 0);
                   }
-                  if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
+                  if (playerSkillEffective != NULL) {
                 attackPhase(player, playerSkillEffective, playerTempOffense,
                             playerTempDefense, boss, enemySkillEffective,
                             enemyTempOffense, enemyTempDefense,
@@ -16952,12 +16962,18 @@ int main() {
       int pType = (playerSkillEffective != NULL) ? playerSkillEffective->skillType : -1;
       int eType = (enemySkillEffective != NULL) ? enemySkillEffective->skillType : -1;
 
-      if ((player.Speed > enemy.Speed) || eType != 0) {
-          playerGoesFirst = 1;
-      } else if ((enemy.Speed > player.Speed) || pType != 0) {
-          playerGoesFirst = 0;
+      if (eType == 3) { 
+        // ถ้าศัตรูใช้ Counter (Type 3) เราต้องตีก่อนเสมอ
+        playerGoesFirst = 1;
+      } else if (pType == 3) { 
+        // ถ้าเราใช้ Counter (Type 3) ศัตรูต้องตีก่อนเสมอ
+        playerGoesFirst = 0;
+      } else if (player.Speed > enemy.Speed) {
+        playerGoesFirst = 1;
+      } else if (enemy.Speed > player.Speed) {
+        playerGoesFirst = 0;
       } else {
-          playerGoesFirst = (rand() % 2 == 0);
+        playerGoesFirst = (rand() % 2 == 0);
       }
 
     // Handle different combat scenarios based on who can act
@@ -16992,14 +17008,14 @@ int main() {
 
           if (playerGoesFirst == 1) {
             
-            if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
+            if (playerSkillEffective != NULL) {
         attackPhase(&player, playerSkillEffective, playerTempOffense,
           playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
         enemyTempDefense,
           playerSkillEffective->Coins, 0, 0);
             }
 
-            if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
+            if (enemySkillEffective != NULL) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
             enemyTempDefense, &player, playerSkillEffective,
             playerTempOffense, playerTempDefense,
@@ -17008,14 +17024,14 @@ int main() {
 
         } else if (playerGoesFirst == 0) {
 
-            if (enemySkillEffective != NULL && enemySkillEffective->skillType == 0) {
+            if (enemySkillEffective != NULL) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
             enemyTempDefense, &player, playerSkillEffective,
             playerTempOffense, playerTempDefense,
             enemySkillEffective->Coins, 0, 0);
             }
 
-            if (playerSkillEffective != NULL && playerSkillEffective->skillType == 0) {
+            if (playerSkillEffective != NULL) {
           attackPhase(&player, playerSkillEffective, playerTempOffense,
             playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
           enemyTempDefense,
