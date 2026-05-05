@@ -260,12 +260,22 @@ void applyDamage(Character *defender, int damage, int trueDamage) {
     // 3. HP
     defender->HP -= damage;
     if (defender->HP < 0) defender->HP = 0;
+
+    // Heishou Pack - You Branch Adept Heathcliff save for lost HP
+    if (isId(defender->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+        defender->skills[6].active += (int)(damage);
+    }
     
 } else {
     
     // HP
     defender->HP -= damage;
     if (defender->HP < 0) defender->HP = 0;
+
+    // Heishou Pack - You Branch Adept Heathcliff save for lost HP
+    if (isId(defender->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+        defender->skills[6].active += (int)(damage); 
+    }
     
 }
 
@@ -4076,8 +4086,8 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
        (atk == &attacker->skills[1])) {
 
       if (i == remainingCoins - 1) {
-        attacker->skills[4].active += 2;
-        printf("\t [On Hit] Impending Ruin +2 on enemy (%d)", attacker->skills[4].active);
+        attacker->skills[4].active += 3;
+        printf("\t [On Hit] Impending Ruin +3 on enemy (%d)", attacker->skills[4].active);
       }
       
     }
@@ -9773,6 +9783,39 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     sleep(1);
   }
 
+  // Heishou Pack - You Branch Adept Heathcliff - Skill def base power
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 10 && (chosenSkill == &c->defenseSkill[0])) {
+
+     c->BasePowerBoost += 1;
+
+      printf("\n%s at 10+ Burn (Stack(%d) + Count(%d)) on self, gains +1 Base Power\n", c->name, c->skills[0].active, c->skills[1].active);
+
+    sleep(1);
+  }
+
+  // Heishou Pack - You Branch Adept Heathcliff - Skill def coin power
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->defenseSkill[0]) && c->skills[2].active > 0) {
+
+      c->CoinPowerBoost += 1;
+
+      printf("\n%s has Bloodflame [血炎], gains +1 Coin Power\n", c->name);
+
+    sleep(1);
+  }
+
+  // Heishou Pack - You Branch Adept Heathcliff - Skill def deal more damage on HP
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->defenseSkill[0])) {
+
+    float damageboost = c->skills[6].active / 3;
+    if (damageboost > 30.0f) damageboost = 30.0f;
+
+    c->DamageUp += damageboost;
+
+      printf("\n%s deals +1%% damage for every 3%% HP this unit cumulatively lost in this Encounter (%.0f%% - Max 30%%)\n", c->name, damageboost);
+
+    sleep(1);
+  }
+
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 coin power
   if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
@@ -9851,12 +9894,16 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 Gain 3 Bloodflame [血炎] 
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3] || chosenSkill == &c->defenseSkill[0])) {
 
-    c->skills[2].active += 3;
+    int gain = 3;
+
+    if (chosenSkill == &c->defenseSkill[0]) gain = 2;
+
+    c->skills[2].active += gain;
     if (c->skills[2].active > 3) c->skills[2].active = 3;
  
-      printf("\n%s gains 3 Bloodflame [血炎] (%d - Max 3)\n", c->name, c->skills[2].active);
+      printf("\n%s gains %d Bloodflame [血炎] (%d - Max 3)\n", c->name, gain, c->skills[2].active);
 
     sleep(1);
   }
@@ -10043,6 +10090,17 @@ void applyClashStartPassives(Character *p1, SkillStats *s1, Character *p2, Skill
     if (p1->skills[1].active > 99) p1->skills[1].active = 99;
 
     printf("\n%s applies +1 Burn Stack(%d) and +1 Burn Count(%d) on self\n", p1->name, p1->skills[0].active, p1->skills[1].active);
+
+    sleep(1);
+  }
+
+  // Heishou Pack - You Branch Adept Heathcliff Skill 1 and 2 gain on clash
+  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->defenseSkill[0])) {
+
+    p1->skills[1].active += 3;
+    if (p1->skills[1].active > 99) p1->skills[1].active = 99;
+
+    printf("\n%s gains +3 Burn Count on self (%d)\n", p1->name, p1->skills[1].active);
 
     sleep(1);
   }
@@ -16462,7 +16520,7 @@ int main() {
             
           printf("\nSkills (%d Attack Skills, %d Defense Skills):\n", tempEnemy.numSkills, tempEnemy.numDefenseSkills);
 
-        printf("\nAttack Skills %d:\n\n", tempPlayer.numSkills);
+        printf("\nAttack Skills %d:\n\n", tempEnemy.numSkills);
 
           for (int i = 0; i < tempEnemy.numSkills; i++) {
             SkillStats s = tempEnemy.skills[i];
@@ -16482,7 +16540,7 @@ int main() {
                    s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Copies);
             }
 
-         printf("\nDefense Skills %d:\n\n", tempPlayer.numDefenseSkills);
+         printf("\nDefense Skills %d:\n\n", tempEnemy.numDefenseSkills);
 
         for (int i = 0; i < tempEnemy.numDefenseSkills; i++) {
           SkillStats s = tempEnemy.defenseSkill[i];
