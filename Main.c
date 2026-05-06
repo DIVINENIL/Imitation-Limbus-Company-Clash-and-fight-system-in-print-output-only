@@ -815,13 +815,27 @@ void severCoin(Character *attacker, Character *defender, SkillStats *atkSkill, S
   defSkill->name = glitchText(defSkill->name, (100/defSkill->Coins)); 
     defSkill->Coins--;
 
-    // 2. Glitch ชื่อสกิลของ Ryōshū (Attacker)
-    // เงื่อนไข: จะ Glitch ก็ต่อเมื่อ ไม่ใช่ท่าไม้ตาย "'Erasing Me, Erasing You.'"
-    if (atkSkill != &attacker->skills[5]) { 
-        atkSkill->name = glitchText(atkSkill->name, 5); // หายทีละ 5%
-    }
+  if (defSkill->Unbreakable > defSkill->Coins) {
+      defSkill->Unbreakable = defSkill->Coins;
+  }
 
-    printf("\n\x1b[1;35m[SEVERED]\x1b[0m %s used %s to cut a coin!\n", attacker->name, atkSkill->name);
+  // 2. สุ่มเลือกสกิลของ Ryōshū (Attacker) เพื่อ Glitch ชื่อ
+  int glitcheableIndices[MAX_SKILLS];
+  int count = 0;
+
+  for (int i = 0; i < attacker->numSkills; i++) {
+      // เงื่อนไข: ไม่ใช่ท่าไม้ตาย (index 5), สกิลมีชื่ออยู่จริง, และสกิลยังไม่พัง (Copies >= 0)
+      if (i != 5 && attacker->skills[i].name != NULL && attacker->skills[i].Copies >= 0) {
+          glitcheableIndices[count++] = i;
+      }
+  }
+
+  if (count > 0) {
+      int randomIdx = glitcheableIndices[rand() % count];
+      attacker->skills[randomIdx].name = glitchText(attacker->skills[randomIdx].name, 5); // หายทีละ 10% เพื่อให้เห็นผลชัดขึ้น
+  }
+
+    printf("\n\x1b[1;35m[SEVERED]\x1b[0m %s used %s to delete a coin!\n", attacker->name, atkSkill->name);
 
     // 3. ถ้าสกิลศัตรูพัง (เหรียญหมด)
     if (defSkill->Coins <= 0) {
@@ -1270,6 +1284,12 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
     attacker->skills[1].active = 0; // Bleed Count
     attacker->skills[2].active = 0; // Nail
     attacker->skills[4].active = 0; // Gaze
+  }
+  
+
+  // Muga Ryōshū
+  if (isId(attacker->ID, "Gregor:Firefist") == 0) {
+      attacker->skills[0].active = 0; // Sever the thread
   }
 
 
@@ -2155,6 +2175,8 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
   int AmmoLeft = attacker->Passive; // Calculate remaining ammo for Meursault: The Thumb's buff
 
   for (int i = 0; i < remainingCoins; i++) {
+
+    if (attacker->HP > 0 && defender->HP > 0) {
 
     // --------------------------- Coin Buff Section ------------------------------------------
 
@@ -3200,7 +3222,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // Lei heng – skill 6
     if (isId(attacker->ID, "Lei heng") == 0 &&
-        (atk == &attacker->skills[5]) && i == 0) {
+        (atk == &attacker->skills[4]) && i == 0) {
 
       printf("\n\n%s: \"Y'all don't go on huntin' tigers without preparin' yerselves to get chomped 'tween one of them jaws!\"\n",
              attacker->name);
@@ -4909,9 +4931,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // Muga Ryōshū gains on attack
     if (isId(attacker->ID, "Muga Ryōshū") == 0) {
-        attacker->Passive += 1; // Gain 1 Muga for every coin use
+        attacker->Passive += 4; // Gain 1 Muga for every coin use
         if (attacker->Passive > 100) attacker->Passive = 100;
-      printf("\t Muga [無我] +1 (%d - Max 100)", attacker->Passive);
+      printf("\t Muga [無我] +4 (%d - Max 100)", attacker->Passive);
 
       attacker->skills[0].active += attacker->skills[10].active; // Inflicted sever
       if (attacker->skills[0].active > 100) attacker->skills[0].active = 100;
@@ -5674,6 +5696,8 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
   }
 
+  }
+
   printf("%s total damage dealt (Opponent's defense: %d): %d\n",
          attacker->name, defTempDefense, totalDamage);
 
@@ -5682,6 +5706,35 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   
   
   //---------------- After Attack Buff ----------------------------
+
+    // Muga Ryōshū - Execution
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && attacker->skills[0].active >= 100 && atk != &attacker->skills[5]) {
+
+          printf("\n\x1b[1;31m%s: \"However much time slips by, I hope it feels like only a fleeting moment to her.\"\x1b[0m\n", attacker->name);
+      
+          sleep(1);
+
+      // โจมตีซ้ำด้วยสกิลที่ 5
+      attackPhase(attacker, &attacker->skills[5], atkTempOffense, atkTempDefense, 
+                  defender, defSkill, defTempOffense, defTempDefense, 
+                  attacker->skills[5].Coins, 0, clashCount);
+
+        }
+
+    // Muga Ryōshū - Execution
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[5]) {
+
+          defender->HP = 0;
+
+      defender->Passive = -99;
+
+      for (int i = 0; i < MAX_SKILLS; i++) {
+          defender->skills[i].active = -99;
+      }
+      
+      defender->Stagger = 999;            // ทำให้ติด Stagger ค้างไว้ (กันเหนียว)
+
+        }
 
     // The One Who Grips Faust - Bliss of Execution
     if (isId(attacker->ID, "The One Who Grips Faust") == 0) {
@@ -6159,7 +6212,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // Lei heng – skill 3 or 6
   if (isId(attacker->ID, "Lei heng") == 0 &&
-      (atk == &attacker->skills[2] || atk == &attacker->skills[5])) {
+      (atk == &attacker->skills[2] || atk == &attacker->skills[4])) {
 
     int clashpowerdebuff = attacker->skills[1].active * 1;
     if (clashpowerdebuff > 5) clashpowerdebuff = 5;
@@ -7036,7 +7089,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
 
-
   
 
 // Returns effective skill and also temporary offense/defense for this turn
@@ -7132,7 +7184,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     c->FinalPowerBoost += gain;
 
-    printf("\n%s gains +1 Final Power (%d - Max 3) for every 10 Muga [無我] on self (%d)\n", c->name, gain, c->Passive);
+    printf("\n%s gains +1 Final Power (%d - Max 5) for every 10 Muga [無我] on self (%d)\n", c->name, gain, c->Passive);
 
     sleep(1);
 
@@ -7145,7 +7197,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     c->FinalPowerBoost += gain;
 
-    printf("\n%s gains +1 Final Power (%d - Max 3) for every 6 Bleed Stack on target (%d)\n", c->name, gain, c2->Bleed[0]);
+    printf("\n%s gains +1 Final Power (%d - Max 4) for every 6 Bleed Stack on target (%d)\n", c->name, gain, c2->Bleed[0]);
 
     sleep(1);
 
@@ -8415,7 +8467,12 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   
  // ---------------------------- Lei heng -----------------------------
-  if (isId(c->ID, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active == 3) {
+    if ((isId(c->ID, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active == 3) || isId(c2->ID, "Muga Ryōshū") == 0) {
+
+    if (isId(c2->ID, "Muga Ryōshū") == 0) {
+      c->skills[4].active = 1;
+        c->skills[0].active = 3;
+    }
     
     float missing = (c->MAX_HP - c->HP) / (c->MAX_HP * 0.15); // fraction of HP missing (0.0 - 1.0)
     int SkillDamageUp = (int)(missing) * 10;  // 10% for every 15%
@@ -8498,7 +8555,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   if (isId(c->ID, "Lei heng") == 0 && c->HP < c->MAX_HP * 0.4 &&
       (chosenSkill == &c->skills[2])) {
 
-    chosenSkill = &c->skills[5];
+    chosenSkill = &c->skills[4];
 
     sleep(1);
 
@@ -8657,7 +8714,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     
   }  // Lei heng – Consumes Extreme strength
   else if (isId(c->ID, "Lei heng") == 0 &&
-      (chosenSkill == &c->skills[5])) {
+      (chosenSkill == &c->skills[4])) {
 
       printf("\n%s consumes all Extreme Strength [底力] Stack on self (%d)\n",
         c->name, c->Passive);
@@ -8676,7 +8733,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       c->FinalPowerBoost += Boost;
     if (Boost > 0 && c->Passive >= 25)
       printf("\n%s at 25 consumed, gains +1 Final Power for every 10 Sanity different (%d - Max 6)\n", c->name, Boost);
-    if (Boost > 50) {
+    if (Boost >= 50) {
 
       c->CoinPowerBoost +=1;
       c->DamageUp += 50;
@@ -11114,7 +11171,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 
     sleep(1);
   } // Lei heng – Skill 6 lost
-  else if (isId(p2->ID, "Lei heng") == 0 && s2 == &p2->skills[5] &&
+  else if (isId(p2->ID, "Lei heng") == 0 && s2 == &p2->skills[4] &&
       enemyCoins <= 0) {
 
     p2->FinalPowerBoost -= 2;
@@ -11578,7 +11635,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
   int playerTotal = 0;
   int enemyTotal = 0;
 
-  while (playerCoins > 0 && enemyCoins > 0) {
+  while (playerCoins > 0 && enemyCoins > 0 && p1->HP > 0 && p2->HP > 0) {
 
     // ----------------- On Clashing buff --------------------
 
@@ -11786,6 +11843,19 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       sleep(1);
       }
 
+
+      if (isId(p1->ID, "Muga Ryōshū") == 0) {
+        int chance = 0;
+        if (s1 == &p1->skills[2] || s1 == &p1->skills[3]) chance = 25 + (p1->Passive/3) + (p1->skills[0].active/3);
+        else if (s1 == &p1->skills[4]) chance = 50 + (p1->Passive/3) + (p1->skills[0].active/3);
+
+        if ((rand() % 100) < chance) {
+            severCoin(p1, p2, s1, s2); // p1 ชนะ, ตัดเหรียญ s2, และทำลายชื่อ s1 ของตัวเอง
+          sleep(1);
+        }
+      }
+      
+
       // -------------- Counter --------------
 
       if (enemyCoins <= 0) {
@@ -11855,17 +11925,6 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       }
 
 
-
-      if (isId(p1->ID, "Muga Ryōshū") == 0) {
-        int chance = (p1->Passive/3) + (p1->skills[0].active/3);
-        if (s1 == &p1->skills[2] || s1 == &p1->skills[3]) chance = 25;
-        else if (s1 == &p1->skills[4]) chance = 50;
-
-        if ((rand() % 100) < chance) {
-            severCoin(p1, p2, s1, s2); // p1 ชนะ, ตัดเหรียญ s2, และทำลายชื่อ s1 ของตัวเอง
-          sleep(1);
-        }
-      }
       
 
       
@@ -11882,6 +11941,21 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
        sleep(1);
         }
 
+
+
+
+
+      if (isId(p2->ID, "Muga Ryōshū") == 0) {
+        int chance = 0;
+        if (s2 == &p2->skills[2] || s2 == &p2->skills[3]) chance = 25 + (p2->Passive/3) + (p2->skills[0].active/3);
+        else if (s2 == &p2->skills[4]) chance = 50 + (p2->Passive/3) + (p2->skills[0].active/3);
+
+        if ((rand() % 100) < chance) {
+            severCoin(p2, p1, s2, s1); // บอส Ryoshu ชนะ, ตัดเหรียญ s1, และทำลายชื่อ s2
+          sleep(1);
+        }
+      }
+      
 
 
       // -------------- Counter --------------
@@ -11956,18 +12030,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       }
 
 
-      
-
-      if (isId(p2->ID, "Muga Ryōshū") == 0) {
-        int chance = (p2->Passive/3) + (p2->skills[0].active/3);
-        if (s2 == &p2->skills[2] || s2 == &p2->skills[3]) chance = 25;
-        else if (s2 == &p2->skills[4]) chance = 50;
-
-        if ((rand() % 100) < chance) {
-            severCoin(p2, p1, s2, s1); // บอส Ryoshu ชนะ, ตัดเหรียญ s1, และทำลายชื่อ s2
-          sleep(1);
-        }
-      }
+    
 
     
 
@@ -12668,6 +12731,8 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
         (SkillStats){"Tanglecleaver [快刀亂麻]", 8, 12, 1, 6, 3, 1.25, 0, 1, 0, 1};
     enemy->skills[3] = (SkillStats){
         "Blasting Shatterslash [爆碎斬]", 4, 3, 3, 4, 3, 1, 0, 3, 0, 1};
+    enemy->skills[4] = (SkillStats){
+      "Savage Tigerslayer's Perfected Flurry of Blades [超絕猛虎殺擊亂斬]", 3, 3, 6, 6, 3, 1, 0, 6, 0, 1};
     
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
     enemy->defenseSkill[0] = (SkillStats){
@@ -12675,9 +12740,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
 
     enemy->numDefenseSkills = 1;
     
-    enemy->skills[5] = (SkillStats){
-        "Savage Tigerslayer's Perfected Flurry of Blades [超絕猛虎殺擊亂斬]", 3, 3, 6, 6, 3, 1, 0, 6, 0, 1};
-    enemy->numSkills = 6; // <-- important
+    enemy->numSkills = 5; // <-- important
   } else if (eIndex == 2) {
     enemy->name = "Erlking Heathcliff";
     enemy->HP = 901;
@@ -12918,9 +12981,11 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
       sleep(1);
 
     enemy->Bleed[0] += 3;
-    enemy->Bleed[1] += 3;
+    if (enemy->Bleed[0] > 99) enemy->Bleed[0] = 99; 
+    enemy->Bleed[1] += 1;
+    if (enemy->Bleed[1] > 99) enemy->Bleed[1] = 99; 
 
-    printf("\n%s gains +3 Bleed Stack (%d) and +3 Bleed Count (%d)\n", enemy->name, enemy->Bleed[0], enemy->Bleed[1]);
+    printf("\n%s gains +3 Bleed Stack (%d) and +1 Bleed Count (%d)\n", enemy->name, enemy->Bleed[0], enemy->Bleed[1]);
 
     sleep(1);
 
@@ -12954,8 +13019,8 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
       // สูตร: 1 (พื้นฐาน) + (Muga/10; Max 4)
     player->skills[10].active = 0;
 
-      int moreInflict = 1 + (player->Passive / 10);
-      if (moreInflict > 5) moreInflict = 5; 
+      int moreInflict = 2 + (player->Passive / 10);
+      if (moreInflict > 6) moreInflict = 6; 
       player->skills[10].active += moreInflict; // ค่าสูงสุด Inflict บนตัวศัตรู
 
       // 3. Offense Level จากการโดนตีในตาที่แล้ว (สะสมจาก applyDamage)
@@ -12966,12 +13031,6 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
         sleep(1);
       }
 
-      // 4. เช็ค Execution (100 Stacks)
-      if (enemy->skills[0].active >= 100) {
-          printf("\n\x1b[1;31m %s activates 'Erasing Me, Erasing You.' instead!\x1b[0m\n", player->name);
-          *playerSkill1 = 5; // บังคับเปลี่ยนเป็น Skill ท่าไม้ตาย (index 5)
-        sleep(1);
-      }
   }
 
   // ------------------------------------------------------------------------------------------
@@ -13572,7 +13631,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
     sleep(1);
 
     printf("\n%s replaces the powerful attack '%s' with '%s'\n", enemy->name,
-      enemy->skills[2].name, enemy->skills[5].name);
+      enemy->skills[2].name, enemy->skills[4].name);
 
     sleep(1);
 
@@ -13605,24 +13664,24 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Lei heng – skill 6 using first fight
-  if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[5].active == 0 && enemy->skills[0].active == 3) {
+  if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[4].active == 0 && enemy->skills[0].active == 3) {
 
-    enemy->skills[5].active = 1;
-    *enemySkillIndex = 5; 
+    enemy->skills[4].active = 1;
+    *enemySkillIndex = 4; 
     enemy->skills[1].active++; // Overheat count
     if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
 
   }
 
   // Lei heng – skill 6 every 3 turns
-    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 3) && enemy->skills[0].active == 3) {
+    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[4].active > 0 && enemy->skills[4].active < 3) && enemy->skills[0].active == 3) {
 
-      enemy->skills[5].active++; // Turn Count
+      enemy->skills[4].active++; // Turn Count
 
     }
-    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[5].active >= 3) && enemy->skills[0].active == 3) {
+    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[4].active >= 3) && enemy->skills[0].active == 3) {
 
-      *enemySkillIndex = 5; 
+      *enemySkillIndex = 4; 
       enemy->skills[1].active++; // Overheat count
       if (enemy->skills[1].active > 5) enemy->skills[1].active = 5;
 
@@ -13876,7 +13935,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     // Lei heng – skill 3 and skill 6 Before fight
       if (isId(player->ID, "Lei heng") == 0 &&
           (&player->skills[*enemySkillIndex] == &player->skills[2] ||
-           (&player->skills[*enemySkillIndex] == &player->skills[5]))) {
+           (&player->skills[*enemySkillIndex] == &player->skills[4]))) {
 
         printf("\n%s: \"I'maboutta drop somethin' big on y'all! Don't let it kill "
                "y'all now and spoil the fun!\"\n",
@@ -14508,7 +14567,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     // Lei heng – skill 3 and skill 6 turn end
     if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[0].active == 3 && enemy->skills[3].active > 0) {
 
-      enemy->skills[5].active = 1;
+      enemy->skills[4].active = 1;
 
       printf("\n%s heals Sanity equal to Extreme Strength [底力] consumed(%d)\n", enemy->name, enemy->skills[3].active);
       updateSanity(enemy, enemy->skills[3].active);
@@ -15165,16 +15224,9 @@ if (isId(enemy->ID, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
 
     clearTurnEffects(player);
 
-    // Muga Ryōshū – End
-    if (isId(player->ID, "Muga Ryōshū") == 0 && playerSkillUsed == &player->skills[5]) {
-
-        enemy->HP = 0;
-
-    }
-
     // -------------------------------------------------------- Lost CutScene --------------------------------------------------------
 
-    if (isId(player->ID, "Muga Ryōshū") == 0 && playerSkillUsed != &player->skills[5]) {
+    if (isId(player->ID, "Muga Ryōshū") != 0) {
     
     // Lost CutScene
     if (isId(enemy->ID, "Lei heng") == 0 && enemy->HP <= enemy->MAX_HP*0.2) {
@@ -16798,7 +16850,7 @@ int main() {
                           printf("Passive Skills:\n");
                           printf(" 1. Wading Through a Dream, the Self Nowhere to be Found [無我夢中]\n"
                             " Turn Start: Gain Muga [無我] equal to current turn count\n"
-                            " Gain 1 Muga [無我] for every use of this unit's Coin\n\n"
+                            " Gain 4 Muga [無我] for every use of this unit's Coin\n\n"
 
                             " \x1b[1;30m'I must make it look as though Araya is already safely out of the House of Spiders.'\x1b[0m\n\n"
 
@@ -16824,12 +16876,12 @@ int main() {
                       printf(" 4. Tiansha Star's Blade - Arayashiki [天殺星刀阿賴耶識]\n"
                              " - Min & Max Speed +6\n"
                         " - Offense Level +6\n"
-                       " - Inflict 3 more Bleed Potency with Skills\n"
+                       " - Inflict 3 more Bleed Stack with Skills\n"
                        " - Turn Start: Gain 3 Offense Level Up for every hit enemy attack this unit (Max 6)\n\n"
 
                              " \x1b[1;30m'The heavens themselves are not spared—heaven, earth, man, and the self. This star rises only for the one who perceives all existence and time as a single whole to sever them all.'\x1b[0m\n");
                          printf(" 5. Severed and Torn until Even the Form is Undone [支離滅裂]\n"
-                            " On Hit, inflict 1 Sever the Thread [切絲]\n"
+                            " On Hit, inflict 2 Sever the Thread [切絲]\n"
                           " - Turn Start: Inflict 1 more Sever the Thread [切絲] for every 10 Muga [無我] on self (Max 4)\n\n"
 
                           " When hit, take -(Muga [無我] on self + Sever the Thread [切絲] on target)%% damage (Max 90%%)\n\n"
@@ -16847,7 +16899,7 @@ int main() {
                             " \x1b[1;30m'Secure the help of someone stronger than me, or gain more allies... Either way, I must come back with a guaranteed means of dealing with them once and for all.'\x1b[0m\n\n");
                          printf(" 6. Sever the Thread [切絲]\n"
                           " - Turn Start:\n"
-                          " · Gain 3 Bleed and +3 Bleed Count\n"
+                          " · Gain +3 Bleed Stack and +1 Bleed Count\n"
                           " · Take damage equal to (Stack / 3)\n"
                           " - When hit, take damage equal to (Stack / 5)\n"
                          " - The more this effect stacks...\n"
@@ -17222,6 +17274,40 @@ int main() {
     printf("\n%s: \".... You too.\"\n", player.name);
 
     sleep(2);
+  } else if (strcmp(player.name, "Muga Ryōshū") == 0 &&
+             strcmp(enemy.name, "Lei heng") == 0) {
+
+    printf("\n%s: \"Finally decidin' to put it all on the line, ain't ya?\"\n",
+           enemy.name);
+
+    sleep(1);
+
+    printf("\n%s: \"So this is that 'Muga [無我]' state I've heard 'em whisperin' 'bout... lookin' like ya've gone and emptied out your own head entirely!\"\n", enemy.name);
+
+    sleep(1);
+
+    printf("\n%s: \"Come on then, shrimp! Let's see if that empty soul o' yours can actually keep up with my rhythm!\" *Reload*\n", enemy.name);
+
+    sleep(2);
+
+    enemy.skills[0].name = "Double Slash - Blast [爆]";
+    enemy.skills[0].CoinPower += 1;
+    enemy.skills[1].name = "Triple Slash - Blast [爆]";
+    enemy.skills[1].CoinPower += 1;
+
+    enemy.MAX_HP += 1000;
+    enemy.HP += 1000;
+    enemy.Sanity += 45;
+    enemy.sanityLossBase = 3;
+    enemy.Passive += 50;
+
+    printf("\n%s gains +1000 Max HP, heals +45 Sanity and 50 Extreme Strength [極力] at start of the Encounter\n", enemy.name);
+
+    sleep(1);
+
+    printf("\n%s gains 'Unrelenting Spirit - Shin [剛氣-心]'\n", enemy.name);
+
+    sleep(1);
   } else if (strcmp(player.name, "Hong lu:The Lord of Hongyuan") == 0 &&
              strcmp(enemy.name, "Jia Qiu") == 0) {
 
