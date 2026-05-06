@@ -368,7 +368,7 @@ void updateSanity(Character *c, int delta) {
       return;
   }
 
-  if (isId(c->ID, "Muga Ryōshū") == 0 && delta > 0) {
+  if (isId(c->ID, "Muga Ryōshū") == 0 && delta != 0) {
       return;
   }
   
@@ -11853,6 +11853,19 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       if (isId(p2->ID, "Meursault:Blade Lineage Mentor") == 0 && s2 == &p2->skills[2] && enemyCoins <= 0) {
         Loser = p2; LoserSkill = s2;
       }
+
+
+
+      if (isId(p1->ID, "Muga Ryōshū") == 0) {
+        int chance = (p1->Passive/3) + (p1->skills[0].active/3);
+        if (s1 == &p1->skills[2] || s1 == &p1->skills[3]) chance = 25;
+        else if (s1 == &p1->skills[4]) chance = 50;
+
+        if ((rand() % 100) < chance) {
+            severCoin(p1, p2, s1, s2); // p1 ชนะ, ตัดเหรียญ s2, และทำลายชื่อ s1 ของตัวเอง
+          sleep(1);
+        }
+      }
       
 
       
@@ -11943,7 +11956,18 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       }
 
 
+      
 
+      if (isId(p2->ID, "Muga Ryōshū") == 0) {
+        int chance = (p2->Passive/3) + (p2->skills[0].active/3);
+        if (s2 == &p2->skills[2] || s2 == &p2->skills[3]) chance = 25;
+        else if (s2 == &p2->skills[4]) chance = 50;
+
+        if ((rand() % 100) < chance) {
+            severCoin(p2, p1, s2, s1); // บอส Ryoshu ชนะ, ตัดเหรียญ s1, และทำลายชื่อ s2
+          sleep(1);
+        }
+      }
 
     
 
@@ -11986,28 +12010,6 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       if (p2->Bleed[1] <= 0) p2->Bleed[0] = 0;
 
     }
-
-      if (isId(p1->ID, "Muga Ryōshū") == 0) {
-          int chance = 0;
-          if (s1 == &p1->skills[2] || s1 == &p1->skills[3]) chance = 25;
-          else if (s1 == &p1->skills[4]) chance = 50;
-
-          if ((rand() % 100) < chance) {
-              severCoin(p1, p2, s1, s2); // p1 ชนะ, ตัดเหรียญ s2, และทำลายชื่อ s1 ของตัวเอง
-            sleep(1);
-          }
-      }
-
-      if (isId(p2->ID, "Muga Ryōshū") == 0) {
-          int chance = 0;
-          if (s2 == &p2->skills[2] || s2 == &p2->skills[3]) chance = 25;
-          else if (s2 == &p2->skills[4]) chance = 50;
-
-          if ((rand() % 100) < chance) {
-              severCoin(p2, p1, s2, s1); // บอส Ryoshu ชนะ, ตัดเหรียญ s1, และทำลายชื่อ s2
-            sleep(1);
-          }
-      }
 
 
 
@@ -12950,6 +12952,8 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
       // 2. Severed and Torn: Inflict Sever the Thread more อัตโนมัติทุกต้นเทิร์น
       // สูตร: 1 (พื้นฐาน) + (Muga/10; Max 4)
+    player->skills[10].active = 0;
+
       int moreInflict = 1 + (player->Passive / 10);
       if (moreInflict > 5) moreInflict = 5; 
       player->skills[10].active += moreInflict; // ค่าสูงสุด Inflict บนตัวศัตรู
@@ -14145,12 +14149,6 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
 
 
-    // Muga Ryōshū – Reset sever value
-    if (isId(player->ID, "Muga Ryōshū") == 0) {
-
-      player->skills[10].active = 0;
-
-    }
     
     // Meursault:The Thumb Shin buffs (temporary, print once)
     if (isId(player->ID, "Meursault:The Thumb") == 0 && (playerSkillUsed == &player->defenseSkill[0] || player->Stagger > 0) && !player->skills[3].active) {
