@@ -4,13 +4,13 @@
 #include <time.h>
 #include <unistd.h>
 
-int isId(const char *fullName, const char *targetId) {
-    if (fullName == NULL || targetId == NULL) return 1; // 1 คือไม่เจอ (สไตล์ strcasecmp)
+int isId(const char *characterID, const char *targetId) {
+    if (characterID == NULL || targetId == NULL) return 1; 
 
-    if (strstr(fullName, targetId) != NULL) {
-        return 0; // เจอแล้ว! ส่งค่า 0 กลับไป (เพื่อให้ == 0 ของเดิมทำงานได้)
+    if (strstr(characterID, targetId) != NULL) {
+        return 0; // หาเจอ (ID ยังคงเดิมแม้ชื่อจะพัง)
     }
-    return 1; // ไม่เจอ ส่ง 1
+    return 1;
 }
 
 #define MAX_SKILLS 20
@@ -38,6 +38,7 @@ typedef struct { // skill
 
 typedef struct { // Character
   const char *name;
+  const char *ID;
   SkillStats skills[MAX_SKILLS];
   SkillStats defenseSkill[MAX_SKILLS];
   int numSkills;
@@ -262,7 +263,7 @@ void applyDamage(Character *defender, int damage, int trueDamage) {
     if (defender->HP < 0) defender->HP = 0;
 
     // Heishou Pack - You Branch Adept Heathcliff save for lost HP
-    if (isId(defender->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+    if (isId(defender->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
         defender->skills[6].active += (int)(damage);
     }
     
@@ -273,7 +274,7 @@ void applyDamage(Character *defender, int damage, int trueDamage) {
     if (defender->HP < 0) defender->HP = 0;
 
     // Heishou Pack - You Branch Adept Heathcliff save for lost HP
-    if (isId(defender->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+    if (isId(defender->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
         defender->skills[6].active += (int)(damage); 
     }
     
@@ -358,12 +359,16 @@ void TremorBurst(Character *attacker, Character *defender, int TremorBurstStagge
 // Helper to handle Sanity changes, locking, and clamping
 void updateSanity(Character *c, int delta) {
 
-  if (isId(c->name, "Muga Ryōshū") == 0 && (c->Sinking[0] > 0 || c->Sinking[1] > 0)) {
+  if (isId(c->ID, "Muga Ryōshū") == 0 && (c->Sinking[0] > 0 || c->Sinking[1] > 0)) {
       if (delta < 0) {
           int hpDmg = abs(delta) * 3;
           applyDamage(c, hpDmg, 1); // True damage
       }
       c->Sanity = -44; // ล็อคไว้ที่ -44 เสมอ
+      return;
+  }
+
+  if (isId(c->ID, "Muga Ryōshū") == 0 && delta > 0) {
       return;
   }
   
@@ -402,12 +407,12 @@ int isPanicked(Character *c) {
 // Get Sanity status message
 const char *getSanityStatus(Character *c) {
   if (c->Sanity <= -45) {
-    if (isId(c->name, "Lei heng") == 0) return "Beastly Instinct"; 
-  if (isId(c->name, "Erlking Heathcliff") == 0) return "Revenge"; 
-     if (isId(c->name, "Sukuna:King of Curse") == 0) return "King"; 
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) return "Reawakening Joy Of Carnage"; 
-   if (isId(c->name, "Fixer grade 9?") == 0) return "Black Heart"; 
-    if (isId(c->name, "Jia Qiu") == 0) return "Jia Qiu"; 
+    if (isId(c->ID, "Lei heng") == 0) return "Beastly Instinct"; 
+  if (isId(c->ID, "Erlking Heathcliff") == 0) return "Revenge"; 
+     if (isId(c->ID, "Sukuna:King of Curse") == 0) return "King"; 
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0) return "Reawakening Joy Of Carnage"; 
+   if (isId(c->ID, "Fixer grade 9?") == 0) return "Black Heart"; 
+    if (isId(c->ID, "Jia Qiu") == 0) return "Jia Qiu"; 
 
     return "PANIC";
   }
@@ -421,15 +426,15 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
 
   // NORMAL ((-30)+ Sanity) - Reset to base values
   if (c->Sanity > -30) {
-    if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+    if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
       c->sanityGainBase = 6;
 
-    } else if (isId(c->name, "Erlking Heathcliff") == 0) {
+    } else if (isId(c->ID, "Erlking Heathcliff") == 0) {
 
       updateSanity(c, 15);
       printf("\n%s heals 15 Sanity (%d)\n", c->name, c->Sanity);
       sleep(1);
-    } else if (isId(c->name, "Fixer grade 9?") == 0) {
+    } else if (isId(c->ID, "Fixer grade 9?") == 0) {
       c->sanityLossBase = -7;
       
     }
@@ -438,7 +443,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
   
   // LOW MORALE (-30 to -44 Sanity)
   if (c->Sanity <= -30 && c->Sanity > -45) {
-    if (isId(c->name, "Lei heng") == 0) {
+    if (isId(c->ID, "Lei heng") == 0) {
 
       c->DamageUp += 10;
       c->FinalPowerBoost += 1;
@@ -449,7 +454,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
              c->name);
       sleep(1);
 
-    } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+    } else if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
       *offense += 2;
       c->sanityGainBase = 10;
 
@@ -458,7 +463,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
           c->name);
       sleep(1);
 
-    } else if (isId(c->name, "Erlking Heathcliff") == 0) {
+    } else if (isId(c->ID, "Erlking Heathcliff") == 0) {
       c->DamageUp += 30;
       *defense -= 3;
       updateSanity(c, 15);
@@ -470,7 +475,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Low Morale', %s gains 30%% more damange, Defense -3.\n",
              c->name);
       sleep(1);
-    } else if (isId(c->name, "Fixer grade 9?") == 0) {
+    } else if (isId(c->ID, "Fixer grade 9?") == 0) {
       c->ClashPower += 2;
       *defense -= 3;
       c->sanityGainBase = -12; // Negative gain = loss on win
@@ -478,7 +483,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Low Morale', %s gains 2 Clash Power Up, Defense -3, Sanity Loss Efficiency +6.\n",
              c->name);
       sleep(1);
-    } else if (isId(c->name, "Jia Qiu") == 0) {
+    } else if (isId(c->ID, "Jia Qiu") == 0) {
       
       c->DamageUp += 10;
 
@@ -487,7 +492,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
           c->name);
       sleep(1);
 
-    } else if (isId(c->name, "Sukuna:King of Curse") == 0) {
+    } else if (isId(c->ID, "Sukuna:King of Curse") == 0) {
 
       c->DamageUp += 30;
 
@@ -502,7 +507,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
 
   // PANIC (-45 Sanity)
   if (c->Sanity <= -45) {
-    if (isId(c->name, "Lei heng") == 0) {
+    if (isId(c->ID, "Lei heng") == 0) {
 
       c->DamageUp += 20;
       c->CoinPowerBoost += 2;
@@ -514,7 +519,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
 
       sleep(1);
 
-    } else if (isId(c->name,
+    } else if (isId(c->ID,
                           "Sancho:The Second Kindred of Don Quixote") == 0) {
       *offense += 3;
       *defense += 6;
@@ -522,7 +527,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Reawakening Joy Of Carnage', %s gains Offense +3 and Defense +6.\n", c->name);
       sleep(1);
 
-    } else if (isId(c->name, "Erlking Heathcliff") == 0) {
+    } else if (isId(c->ID, "Erlking Heathcliff") == 0) {
 
       c->DamageUp += 50;
       *defense -= 6;
@@ -530,7 +535,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Revenge', %s gains 50%% more damage and Defense -6.\n",
              c->name);
       sleep(1);
-    } else if (isId(c->name, "Fixer grade 9?") == 0) {
+    } else if (isId(c->ID, "Fixer grade 9?") == 0) {
 
       c->DamageUp += 30;
       *defense -= 5;
@@ -539,14 +544,14 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       printf("\nWhile 'Black Heart', %s gains 30%% more damange, 3 Attack Power Up, Defense -5.\n",
              c->name);
       sleep(1);
-    } else if (isId(c->name, "Jia Qiu") == 0) {
+    } else if (isId(c->ID, "Jia Qiu") == 0) {
 
       c->DamageUp += 20;
 
       printf("\nWhile 'Jia Qiu', %s deals 20%% more damage.\n",
              c->name);
       sleep(1);
-    } else if (isId(c->name, "Sukuna:King of Curse") == 0) {
+    } else if (isId(c->ID, "Sukuna:King of Curse") == 0) {
 
       c->DamageUp += 100;
       c->Protection -= 100;
@@ -745,7 +750,7 @@ void getSkills(Character *c, int *s1, int *s2, int *s3, int lastUnused,
 // Modified when gained new pattern
 void GainNewPattern(Character *c, Character *c2) {
 
-  if (isId(c->name, "Lei heng") == 0) {
+  if (isId(c->ID, "Lei heng") == 0) {
 
     if (c->Stagger > 0) {
     c->Stagger = 0;
@@ -821,7 +826,8 @@ void severCoin(Character *attacker, Character *defender, SkillStats *atkSkill, S
     // 3. ถ้าสกิลศัตรูพัง (เหรียญหมด)
     if (defSkill->Coins <= 0) {
         defSkill->Copies = -1; 
-        defender->name = glitchText(defender->name, 20); // ชื่อศัตรูเริ่มหาย
+      
+        defender->name = glitchText(defender->name, (100/(defender->numDefenseSkills + defender->numSkills))); // ชื่อศัตรูเริ่มหาย
         printf("\n\x1b[1;31m[ERASED]\x1b[0m %s's Skill is collapsing...\n", defender->name);
     }
 }
@@ -1226,40 +1232,40 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
   // ------------ Player ------------
 
   // The House of Spiders: The Index Nursefather Yi Sang - Tremor Burst
-  if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+  if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
       if (attacker->skills[12].active > 0) {
           attacker->skills[12].active = 0;
       }
   }
 
     // Binah - Fairy
-    if (isId(attacker->name, "Binah") == 0) {
+    if (isId(attacker->ID, "Binah") == 0) {
         if (attacker->skills[0].active > 0) {
             attacker->skills[0].active = 0;
         }
     }
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly
-    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
+    if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
         if (attacker->skills[0].active > 0) {
             attacker->skills[0].active = 0;
         }
     }
 
   // The Middle Little Brother Sinclair - Marks
-  if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0) {
+  if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0) {
       attacker->skills[0].active = 0; // Vendetta Mark
   }
 
   // Gregor:Firefist - Burn
-  if (isId(attacker->name, "Gregor:Firefist") == 0) {
+  if (isId(attacker->ID, "Gregor:Firefist") == 0) {
       attacker->skills[0].active = 0; // Burn Stack
     attacker->skills[1].active = 0; // Burn Count
   }
 
 
   // The One Who Grips Faust
-  if (isId(attacker->name, "The One Who Grips Faust") == 0) {
+  if (isId(attacker->ID, "The One Who Grips Faust") == 0) {
       attacker->skills[0].active = 0; // Bleed Stack
     attacker->skills[1].active = 0; // Bleed Count
     attacker->skills[2].active = 0; // Nail
@@ -1270,7 +1276,7 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
   // ------------ Boss ------------
 
     // King in Binds - Sinking & Tremor
-    if (isId(attacker->name, "King in Binds") == 0) {
+    if (isId(attacker->ID, "King in Binds") == 0) {
         attacker->skills[1].active = 0; // Sinking Stack
         attacker->skills[2].active = 0; // Sinking Count
         attacker->skills[3].active = 0; // Tremor Stack
@@ -1404,7 +1410,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   //--------------------------- Before Attack Buff ----------------------------
 
     // Heishou Pack - You Branch Adept Heathcliff - Battleblood Instinct buff
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->Passive > 0) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->Passive > 0) {
 
     float gain = attacker->Passive * 0.75f;
 
@@ -1416,7 +1422,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // The Middle Little Brother Sinclair - Passive Buff Mark
-    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && attacker->skills[0].active > 0) {
+    if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && attacker->skills[0].active > 0) {
 
       int takevalue = attacker->skills[0].active * 2;
       if (takevalue > 20) takevalue = 20;
@@ -1429,14 +1435,14 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // Sukuna:King of Curse Chanting
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && atk == &attacker->skills[4]) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && atk == &attacker->skills[4]) {
 
       attacker->skills[4].active++; // Chant Count
 
     }
 
     // Sukuna:King of Curse - Skill 3
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[2])) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[2])) {
 
       printf("\n%s's last coin count as 'Cursed Technique'\n", attacker->name);
 
@@ -1444,7 +1450,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // Sukuna:King of Curse - Skill 7
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[6])) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[6])) {
 
       printf("\n%s's first and second coins count as 'Cursed Technique'\n", attacker->name);
 
@@ -1452,7 +1458,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
   // Binah lost
-  if (isId(defender->name, "Binah") == 0 && ClashLostAttack && defender->Passive) {
+  if (isId(defender->ID, "Binah") == 0 && ClashLostAttack && defender->Passive) {
     
       defender->Protection += 80;
 
@@ -1463,7 +1469,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
     printf("\n%s getting attack by Full Cracking Coins, take -80%% damage and gain (50 + Missing HP/3) (%d - Max 100) Shield (%.2f)\n", defender->name, shieldGain, defender->Shield + defender->TempShield);
   }
-    else if (isId(defender->name, "Binah") == 0 && defender->Passive && defender->Sanity >= 0) {
+    else if (isId(defender->ID, "Binah") == 0 && defender->Passive && defender->Sanity >= 0) {
 
     updateSanity(defender, -10);
 
@@ -1478,7 +1484,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     // ---------------------------------- Dawn Office Fixer Sinclair ----------------------------------------
 
   // Dawn Office Fixer Sinclair - Skill Buff base form
-  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && !attacker->skills[3].active && attacker->Sanity >= 45) {
+  if (isId(attacker->ID, "Dawn Office Fixer Sinclair") == 0 && !attacker->skills[3].active && attacker->Sanity >= 45) {
 
     attacker->FinalPowerBoost += 3;
 
@@ -1489,7 +1495,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
   }
     
-    if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45) {
+    if (isId(attacker->ID, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45) {
 
       attacker->CoinPowerBoost += 3;
 
@@ -1501,7 +1507,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S2 45 sp
-  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[1])) {
+  if (isId(attacker->ID, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[1])) {
 
     attacker->AttackPowerBoost += 2;
 
@@ -1513,7 +1519,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
     // Dawn Office Fixer Sinclair - Skill Buff ego form S3 45 sp
-  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
+  if (isId(attacker->ID, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && attacker->Sanity >= 45 && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
 
     attacker->AttackPowerBoost += 15;
 
@@ -1525,7 +1531,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S4
-  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[2]) && attacker->skills[3].active) {
+  if (isId(attacker->ID, "Dawn Office Fixer Sinclair") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[2]) && attacker->skills[3].active) {
 
       int boost = (abs(attacker->Sanity)) * 5;
 
@@ -1541,7 +1547,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     // ------------------------------------------------------------------------
 
   // Meursault:The Thumb Unbreakable BUff
-  if (isId(attacker->name, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active && (Unbreakable == atk->Coins)) {
+  if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active && (Unbreakable == atk->Coins)) {
 
     float missing = (attacker->MAX_HP - attacker->HP) / attacker->MAX_HP; // fraction of HP missing (0.0 - 1.0)
     int SkillUp = ((int)(missing * 100.0f)) + 75;  // 75% + missing
@@ -1556,7 +1562,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
     // Meursault:The Thumb 20+ BUff
-    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active) {
+    if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (attacker->skills[2].active >= 14) && attacker->Passive <= 0 && attacker->skills[3].active) {
     float TargetHP = (defender->HP / defender->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
       float UnitHP = (attacker->HP / attacker->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
 
@@ -1578,7 +1584,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
   // Jia Qiu - S3 and S6 S10
-  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[10] || atk == &attacker->skills[3] || atk == &attacker->skills[6])) {
+  if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[10] || atk == &attacker->skills[3] || atk == &attacker->skills[6])) {
 
     int boost = rand() % 30 + 1;
     
@@ -1590,7 +1596,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Heathcliff:Wild Hunt – buff coffin
-  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
      (atk == &attacker->skills[2])) {
 
     int gain = 12 * attacker->Passive;
@@ -1604,7 +1610,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
   // Heathcliff:Wild Hunt – buff coffin
-  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
      (atk == &attacker->skills[3])) {
 
     int gain = 10 * attacker->Passive;
@@ -1618,7 +1624,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
     // Heathcliff:Wild Hunt – buff Dullahan
-    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
        (atk == &attacker->skills[3])) {
 
       int gain = 20 * attacker->skills[0].active;
@@ -1632,7 +1638,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
   // FireFist – Attack buff s1
-  if (isId(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skills[0]) {
+  if (isId(attacker->ID, "Gregor:Firefist") == 0 && atk == &attacker->skills[0]) {
 
     int consumed = 15;
 
@@ -1661,7 +1667,7 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   }
 
 // FireFist – Attack buff s2
-if (isId(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skills[1]) {
+if (isId(attacker->ID, "Gregor:Firefist") == 0 && atk == &attacker->skills[1]) {
 
   int consumed = 20;
 
@@ -1692,7 +1698,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && atk == &attacker->skills[1])
 }
 
 // FireFist – Attack buff s3
-if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2])) {
+if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2])) {
 
     int prevPassive = attacker->Passive;  // store before change
     int consumed = ((attacker->Passive - 25) > 0) ? 25 : attacker->Passive ;
@@ -1741,7 +1747,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
 }
 
   // Heathcliff:Wild Hunt – skill 3
-  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
       (atk == &attacker->skills[3])) {
 
     int missingSanity = 45 - attacker->Sanity;
@@ -1762,7 +1768,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     // ------------------ Meursault:Blade Lineage Mentor ------------------
 
   // Meursault:Blade Lineage Mentor - Yield my flesh
-  if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 &&
       (atk == &attacker->skills[2])) {
 
       int DamageBuff = 2 * abs(attacker->Sanity);
@@ -1777,7 +1783,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   }
 
   // Meursault:Blade Lineage Mentor - To claim thier bones
-  if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 &&
       (atk == &attacker->defenseSkill[0] || atk == &attacker->defenseSkill[1] || atk == &attacker->skills[2])) {
 
     float missingHPPercent = ((float)(attacker->MAX_HP - attacker->HP) / attacker->MAX_HP) * 100.0f;
@@ -1798,7 +1804,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   }
 
     // Meursault:Blade Lineage Mentor - Overthrow skill
-    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 &&
+    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 &&
         (atk == &attacker->defenseSkill[0])) {
 
      attacker->FinalPowerBoostNextTurn += 1;
@@ -1810,7 +1816,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     // ------------------------------------------------------------------------
 
   // Yi sang:Fell Bullet - Torn Memory
-  if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 &&
       (atk == &attacker->skills[0] ||
        atk == &attacker->skills[1])) {
 
@@ -1821,7 +1827,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   }
 
     // Hong lu:The Lord of Hongyuan - Skill 3 deal more damage on HP
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[3])) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[3])) {
 
       float missingSelf  = (float)(attacker->MAX_HP  - attacker->HP)  / attacker->MAX_HP * 100.0f;
       float missingEnemy = (float)(defender->MAX_HP - defender->HP) / defender->MAX_HP * 100.0f;
@@ -1837,7 +1843,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     }
 
   // Hong lu:The Lord of Hongyuan - S3 Buff
-  if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
 
     int buff = 10;
@@ -1854,7 +1860,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   }
 
     // Hong lu:The Lord of Hongyuan - Skill 3-1/3-2 deal more damage on HP
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
 
       int Boost = (defender->Rupture[0] + attacker->Poise[0]) / 6;
       if (Boost > 3) Boost = 3;
@@ -1871,14 +1877,14 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     }
 
     // Sancho:The Second Kindred of Don Quixote - Heal mechnics
-   if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && Unbreakable <= 0) {
+   if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && Unbreakable <= 0) {
 
     int healvalue = 40;
 
      int missingHP = (int)(((attacker->MAX_HP - attacker->HP) / attacker->MAX_HP) * 100);
       if (missingHP > 20) missingHP = 20;
 
-     if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+     if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
       healvalue += 100;
@@ -1891,7 +1897,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
      sleep(1);
      
    }  // Sancho:The Second Kindred of Don Quixote - certain heal skill
-     else if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+     else if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
              0 &&
          (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
 
@@ -1901,7 +1907,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
      }
 
   // Don Quixote:The Manager of La Manchaland and Sancho - Heal mechnics
-  if ((isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+  if ((isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
            0 &&
        (atk == &attacker->skills[0] || atk == &attacker->skills[1] ||
         atk == &attacker->skills[4]))) {
@@ -1910,14 +1916,14 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
            "10)\n");
 
     sleep(1);
-  } else if ((isId(attacker->name,
+  } else if ((isId(attacker->ID,
                          "Don Quixote:The Manager of La Manchaland") == 0 &&
               (atk == &attacker->skills[2]))) {
 
     printf("\nOn Hit with this Skill: heal 50%% of the HP damage dealt (Max 10)\n");
 
     sleep(1);
-  } else if (isId(attacker->name,
+  } else if (isId(attacker->ID,
                         "Don Quixote:The Manager of La Manchaland") == 0 &&
              (atk == &attacker->skills[3] || atk == &attacker->skills[5])) {
 
@@ -1928,7 +1934,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   }
     
   // Sancho:The Second Kindred of Don Quixote - Ultimate
-  if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       atk == &attacker->skills[13]) {
 
@@ -1943,7 +1949,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   
   // Hong lu:The Lord of Hongyuan - Lordsguard
   const char *HeshinPacks = NULL;
-  if (isId(defender->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(defender->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       defender->skills[5].active == -1 &&
       (defender->skills[5].BasePower == 1 ||
        defender->skills[5].CoinPower == 1 || defender->skills[5].Coins == 1 ||
@@ -1987,7 +1993,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
   }
 
     // Roland – Mang (心)
-    if (isId(attacker->name, "Fixer grade 9?") == 0 && isId(defender->name, "Binah") == 0 && attacker->Sanity >= 0 && defender->Passive == 1) {
+    if (isId(attacker->ID, "Fixer grade 9?") == 0 && isId(defender->ID, "Binah") == 0 && attacker->Sanity >= 0 && defender->Passive == 1) {
 
       int Mang = rand() % 5 + 1;
 
@@ -2009,7 +2015,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     }
 
   // Roland - Ultimate
-  if (isId(attacker->name, "Fixer grade 9?") ==
+  if (isId(attacker->ID, "Fixer grade 9?") ==
           0 &&
       atk == &attacker->skills[9]) {
 
@@ -2041,14 +2047,14 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     // ------------------- The House of Spiders: The Index Nursefather Yi Sang -------------------
 
     // --- [เพิ่ม] การลดดาเมจเมื่อ Yi Sang เป็นฝ่ายรับ (เหรียญแตก) ---
-    if (isId(defender->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+    if (isId(defender->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
         if (Unbreakable > 0) { // ถ้าโดนโจมตีด้วยเหรียญที่แพ้ Clash มา (Cracking Coins)
             if (defender->skills[3].active == 1) { printf("\n%s takes -10%% damage from Cracking Unbreakable Coins\n", defender->name); } // ลดดาเมจ 10%
             if (defender->skills[3].active == 2) { printf("\n%s takes -25%% damage from Cracking Unbreakable Coins\n", defender->name); } // ลดดาเมจ 25%
         }
     }
 
-     if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+     if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
     // Check on Hit for prescript II
     // หา Index ของสกิลที่กำลังใช้อยู่
     int atk_idx = -1;
@@ -2088,7 +2094,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
     int fanaticUsed = 0;
     
     // เช็คว่า Faust เป็นฝ่ายรับ และมี Fanatic (Passive) หรือไม่
-    if (isId(defender->name, "The One Who Grips Faust") == 0 && defender->Passive > 0 && Evaded == 0) {
+    if (isId(defender->ID, "The One Who Grips Faust") == 0 && defender->Passive > 0 && Evaded == 0) {
         Evaded = 1;
       IsStillEvaded = 1;
         fanaticUsed = defender->Passive;
@@ -2157,7 +2163,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
        // ---------------------------------------- Meursault:The Thumb Coin Buff --------------------------------
 
           // Meursault: The Thumb – Buff spend tigermark
-      if (isId(attacker->name, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
+      if (isId(attacker->ID, "Meursault:The Thumb") == 0 && !attacker->skills[3].active && attacker->Passive > 0 
       && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
       || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
       || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1)))) {
@@ -2172,7 +2178,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       }
 
       // Meursault: The Thumb – Buff spend Savage tigermark
-      if (isId(attacker->name, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
+      if (isId(attacker->ID, "Meursault:The Thumb") == 0 && attacker->skills[3].active && attacker->Passive > 0
       && ((atk == &attacker->skills[0] && i == remainingCoins - 1) 
       || (atk == &attacker->skills[1] && (i == remainingCoins - 2 || i == remainingCoins - 1))
       || (atk == &attacker->skills[2] && (i == remainingCoins - 3 || i == remainingCoins - 2 || i == remainingCoins - 1))
@@ -2197,7 +2203,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       // Check paralyze
       if (attacker->Paralyze > 0) { // ← Character's paralyze
         totalPower += 0;
-        if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3]) {
+        if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3]) {
           totalPower += atk->CoinPower; // เพิ่มพลังตามปกติแม้ติดอัมพาต
         } else {
           totalPower += 0; // สกิลอื่นโดน Paralyze ปกติ
@@ -2211,7 +2217,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       // ------------------ On Head hit ------------------------
 
       // Sukuna - Black Flash
-      if (isId(attacker->name, "Sukuna:King of Curse") == 0 &&
+      if (isId(attacker->ID, "Sukuna:King of Curse") == 0 &&
           atk == &attacker->skills[5]) {
 
         int heal = attacker->MAX_HP*0.1;
@@ -2229,7 +2235,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       }
       
       // Heishou Pack - You Branch Adept Heathcliff Skill 3 burn
-      if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && attacker->HP >= attacker->MAX_HP*0.5) {
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && attacker->HP >= attacker->MAX_HP*0.5) {
 
         applyDamage(attacker, attacker->skills[0].active, 0);
         
@@ -2241,7 +2247,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       }
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-1
-      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->ID, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
@@ -2252,7 +2258,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       }
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-2
-      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->ID, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
         
@@ -2269,7 +2275,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
        // ------------------ On Tail Hit ------------------------
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-1
-      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->ID, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
@@ -2280,7 +2286,7 @@ if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]
       }
 
       // Heathcliff:Wild Hunt - Tanut Skill 3-2
-      if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
+      if (isId(attacker->ID, "Heathcliff:Wild Hunt") ==
                      0 &&
                  (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
@@ -2405,7 +2411,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
     
     // Sukuna: King of Curse - Black Flash
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 &&
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 &&
         (atk == &attacker->skills[5]) && IsHeadHit) {
 
         Damage *= 2.5;
@@ -2413,7 +2419,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Yi sang:Fell Bullet - Torn Memory
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 &&
         (atk == &attacker->skills[0] ||
          atk == &attacker->skills[1])) {
 
@@ -2421,7 +2427,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // The House of Spiders: The Index Nursefather Yi Sang Skill 4 Last coins
-    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1 && attacker->skills[3].active == 2) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1 && attacker->skills[3].active == 2) {
 
       printf("\n\n%s: \"Furiously, throughout it all.\"\n", attacker->name);
 
@@ -2432,7 +2438,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------- Sukuna:King of Curse -------------
 
     // Sukuna:King of Curse - Skill 3
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[2]) && i == 0) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[2]) && i == 0) {
 
       printf("\n\n%s: \"Come on... Keep trying.\"\n", attacker->name);
 
@@ -2440,7 +2446,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sukuna:King of Curse - Skill 7
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[6])) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[6])) {
 
       if (i == 0) {
 
@@ -2461,7 +2467,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sukuna:King of Curse - Skill 4
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[3]) && i == 0) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[3]) && i == 0) {
 
       printf("\n\n%s: \x1b[1;31m■ (Open)\x1b[0m\n", attacker->name);
       sleep(1);
@@ -2480,7 +2486,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sukuna:King of Curse - Skill 8
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[7]) && i == 0) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[7]) && i == 0) {
 
       printf("\n\n%s: \"It's over\"\n", attacker->name);
 
@@ -2491,7 +2497,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------------------------
 
     // Dawn Office Fixer Sinclair - Tanut
-    if (isId(attacker->name, "Dawn Office Fixer Sinclair") ==
+    if (isId(attacker->ID, "Dawn Office Fixer Sinclair") ==
                    0 &&
                (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && !attacker->skills[3].active && i == 0) {
 
@@ -2502,7 +2508,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Dawn Office Fixer Sinclair - Tanut
-    if (isId(attacker->name, "Dawn Office Fixer Sinclair") ==
+    if (isId(attacker->ID, "Dawn Office Fixer Sinclair") ==
                    0 &&
                (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && attacker->skills[3].active && i == 0) {
 
@@ -2519,7 +2525,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------- Jia Qiu ----------------
 
     // Jia Qiu - Taunt S4
-    if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[11]) && i == 0) {
+    if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[11]) && i == 0) {
 
     printf("\n\n%s: \"Cut them Down, Mao.\"\n", attacker->name);
 
@@ -2527,7 +2533,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Jia Qiu - Taunt S12
-    if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[12]) && i == 0) {
+    if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[12]) && i == 0) {
 
     printf("\n\n%s: \"Heed me, Zilu.\"\n", attacker->name);
 
@@ -2535,7 +2541,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Jia Qiu - Taunt S15
-    if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[15]) && i == 0) {
+    if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[15]) && i == 0) {
 
     printf("\n\n%s: \"Is it your companions who hold your tongue? Then... perhaps they must be shaken afore you are to speak your truth.\"\n", attacker->name);
 
@@ -2552,7 +2558,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------------ Don Quixote:The Manager of La Manchaland --------------
 
     // Don Quixote:The Manager of La Manchaland - Tanut Skill 2
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
 
@@ -2562,7 +2568,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Tanut Skill 3
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[2]) && i == 0) {
 
@@ -2572,7 +2578,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Skill 2 in both Buff dmg
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[1] || atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
@@ -2595,7 +2601,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Tanut Skill 3-2
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[5]) && i == remainingCoins - 1) {
 
@@ -2607,7 +2613,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // --------------------------------------------------------------------------
 
     // Don Quixote:The Manager of La Manchaland - Skill 2-2 dmg
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == remainingCoins - 1 && attacker->Passive >= 2) {
 
@@ -2622,7 +2628,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Skill 2-2 dmg
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                    0 &&
                (atk == &attacker->skills[4]) && i == remainingCoins - 1 && attacker->Passive >= 2) {
 
@@ -2638,7 +2644,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     
       // FireFist – Attack buff s3
-      if (isId(attacker->name, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
+      if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
         printf("\n\n%s: \"RAAHHHHHHH!!! You vermin-like bastards!\"\n", attacker->name);
 
@@ -2677,7 +2683,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Jia Qiu – buff s5 and s13 S15
-      if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[5] || atk == &attacker->skills[13] || atk == &attacker->skills[15]) && i == remainingCoins - 1) {
+      if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[5] || atk == &attacker->skills[13] || atk == &attacker->skills[15]) && i == remainingCoins - 1) {
 
           int boost = abs((int)(5 * attacker->Sanity));  // 4% per missing fuel
           if (boost > 200) boost = 200;                    // cap at 100%
@@ -2689,7 +2695,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Jia Qiu - S11
-    if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[11] && i == remainingCoins - 1)) {
+    if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[11] && i == remainingCoins - 1)) {
 
       int boost = abs(defender->Sanity);
       if (boost > 10) boost = 10;
@@ -2702,7 +2708,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sukuna:King of Curse - Tanut Skill 5
-    if (isId(attacker->name, "Sukuna:King of Curse") ==
+    if (isId(attacker->ID, "Sukuna:King of Curse") ==
                    0 &&
                (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
@@ -2720,7 +2726,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ----------------- Sancho:The Second Kindred of Don Quixote -----------------
 
     // Sancho:The Second Kindred of Don Quixote - Ult skill 12
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[12] && i == 0) {
 
@@ -2731,11 +2737,11 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
       // Sancho:The Second Kindred of Don Quixote - Ultimate
-      if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+      if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
               0 &&
           atk == &attacker->skills[13] && i == 0) {
 
-        if (isId(defender->name, "Don Quixote:The Manager of La Manchaland") == 0) { 
+        if (isId(defender->ID, "Don Quixote:The Manager of La Manchaland") == 0) { 
           printf("\n\n%s: \"No matter what... No matter how many times... I'll still go for our dream!!!\"\n", attacker->name); 
         } else { 
           printf("\n\n%s: \"You dream too! Will end...\"\n", attacker->name); 
@@ -2745,7 +2751,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Sancho:The Second Kindred of Don Quixote - Skill 1
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[3] && i == 0) {
 
@@ -2756,7 +2762,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Skill 4
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[6]) {
 
@@ -2787,7 +2793,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Skill 5
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[7]) {
 
@@ -2810,7 +2816,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Skill 6
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[8]) {
 
@@ -2833,7 +2839,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Skill 7
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[9]) {
 
@@ -2848,7 +2854,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Skill 8
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[10]) {
 
@@ -2871,7 +2877,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Skill 9
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         atk == &attacker->skills[11]) {
 
@@ -2898,7 +2904,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------- Heathcliff:Wild Hunt ---------------------
 
     // Heathcliff:Wild Hunt - Tanut Skill 2
-    if (isId(attacker->name, "Heathcliff:Wild Hunt") ==
+    if (isId(attacker->ID, "Heathcliff:Wild Hunt") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == 2) {
 
@@ -2918,7 +2924,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------------------------------------------------------
 
     // Hong lu:The Lord of Hongyuan - Tanut Skill 2
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") ==
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") ==
                    0 &&
                (atk == &attacker->skills[1]) && i == 0) {
 
@@ -2930,7 +2936,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------------------------------------------------------
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Tanut Skill 3
-    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
                    0 &&
                (atk == &attacker->skills[2]) && i == 0) {
 
@@ -2942,7 +2948,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // --------------------------------- Yi sang:Fell Bullet ---------------------------------------
 
     // Yi sang:Fell Bullet - Tanut Skill 3
-    if (isId(attacker->name, "Yi sang:Fell Bullet") ==
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") ==
                    0 &&
                (atk == &attacker->skills[2]) && i == 0) {
 
@@ -2952,7 +2958,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
 
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 &&
         atk == &attacker->skills[2]) {
 
       int totalBonusPercent = 0; // ตัวแปรเก็บรวม % โบนัส กันทบต้นทุน
@@ -3068,7 +3074,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------- Don Quixote:The Manager of La Manchaland -------------------
 
       // Don Quixote:The Manager of La Manchaland - Tanut
-      if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+      if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                      0 &&
                  (atk == &attacker->skills[3])) {
 
@@ -3091,7 +3097,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
       // Don Quixote:The Manager of La Manchaland - Tanut
-      if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+      if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                      0 &&
                  (atk == &attacker->skills[4])) {
 
@@ -3114,7 +3120,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
       // Don Quixote:The Manager of La Manchaland - Tanut
-      if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+      if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                      0 &&
                  (atk == &attacker->skills[7])) {
 
@@ -3137,7 +3143,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
       // Don Quixote:The Manager of La Manchaland - Tanut
-      if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+      if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
                      0 &&
                  (atk == &attacker->skills[5] && i == 0)) {
 
@@ -3154,7 +3160,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       // --------------------------------------------------------------
 
       // Heishou Pack - You Branch Adept Heathcliff - Taunt Skill 3
-      if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == 0) {
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == 0) {
 
       printf("\n\n%s: \"Bloodtalons... conflagrate!\"\n", attacker->name);
 
@@ -3162,7 +3168,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
       // Heishou Pack - You Branch Adept Heathcliff - Taunt Skill 4
-      else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
+      else if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
 
         if (i == 0) {
 
@@ -3183,7 +3189,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
      //----------------------- Lei heng ---------------------
     // Lei heng – skill 4
-    if (isId(attacker->name, "Lei heng") == 0 &&
+    if (isId(attacker->ID, "Lei heng") == 0 &&
         (atk == &attacker->skills[3]) && i == 0) {
 
       printf("\n\n%s: \"Eyes up here, boys! Don'tcha go losin' yer heads now!\"\n",
@@ -3193,7 +3199,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Lei heng – skill 6
-    if (isId(attacker->name, "Lei heng") == 0 &&
+    if (isId(attacker->ID, "Lei heng") == 0 &&
         (atk == &attacker->skills[5]) && i == 0) {
 
       printf("\n\n%s: \"Y'all don't go on huntin' tigers without preparin' yerselves to get chomped 'tween one of them jaws!\"\n",
@@ -3207,7 +3213,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------------------------- Meursault:The Thumb --------------------------------
 
     // Meursault:The Thumb - Tanut Skill 3-2
-    if (isId(attacker->name, "Meursault:The Thumb") ==
+    if (isId(attacker->ID, "Meursault:The Thumb") ==
                    0 &&
                (atk == &attacker->skills[3]) && i == 0) {
 
@@ -3217,7 +3223,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
      // Meursault:The Thumb - Tanut Skill 3
-      if (isId(attacker->name, "Meursault:The Thumb") ==
+      if (isId(attacker->ID, "Meursault:The Thumb") ==
                      0 &&
                  (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
@@ -3231,7 +3237,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Meursault:The Thumb S1-1
-    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && !attacker->skills[3].active) {
+    if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && !attacker->skills[3].active) {
 
         attacker->Passive--;
         attacker->skills[2].active++;
@@ -3244,7 +3250,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       sleep(1);
       
     } // Meursault:The Thumb S1-2
-    else if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && attacker->skills[3].active) {
+    else if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[0]) && i == remainingCoins - 1 && attacker->Passive > 0 && attacker->skills[3].active) {
 
         attacker->Passive--;
         attacker->skills[2].active++;
@@ -3258,7 +3264,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Meursault:The Thumb S2-1
-    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && !attacker->skills[3].active) {
+    if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && !attacker->skills[3].active) {
 
       if (i == remainingCoins - 2) {
 
@@ -3284,7 +3290,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
       
     } // Meursault:The Thumb S2-2
-    else if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && attacker->skills[3].active) {
+    else if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[1]) && attacker->Passive > 0 && attacker->skills[3].active) {
 
         if (i == remainingCoins - 2) {
 
@@ -3312,7 +3318,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
     
     // Meursault:The Thumb S3-1
-    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[2]) && !attacker->skills[3].active && attacker->Passive > 0) {
+    if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[2]) && !attacker->skills[3].active && attacker->Passive > 0) {
 
       if (i == remainingCoins - 1) {
         
@@ -3343,7 +3349,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Meursault:The Thumb S3-2
-    if (isId(attacker->name, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[3]) && attacker->skills[3].active && attacker->Passive > 0) {
+    if (isId(attacker->ID, "Meursault:The Thumb") == 0 && (atk == &attacker->skills[3]) && attacker->skills[3].active && attacker->Passive > 0) {
 
       if (i == remainingCoins - 1) {
 
@@ -3391,7 +3397,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ----------------- The One Who Grips Faust -----------------
 
     // The One Who Grips Faust Skill 3 Last coins
-    if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[2] && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[2] && i == remainingCoins - 1) {
 
       printf("\n\n%s: \"Pierce through...!\"\n", attacker->name);
 
@@ -3400,7 +3406,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // The One Who Grips Faust Skill 4 after Last coins
-    if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[3]) {
+    if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[3]) {
 
       if (i == 0) {
 
@@ -3421,7 +3427,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // The One Who Grips Faust Skill 5 after Last coins
-    if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[4]) {
+    if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[4]) {
 
       if (i == 0) {
 
@@ -3436,7 +3442,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -------------------------------------------------------
 
     // Meursault:Blade Lineage Mentor - Skill 3
-    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") ==
+    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") ==
                    0 &&
                (atk == &attacker->skills[2]) && i == 0) {
 
@@ -3446,7 +3452,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Hong lu:The Lord of Hongyuan S2 Last coins
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
       printf("\n\n%s: \"Clear the path.\"\n", attacker->name);
 
@@ -3454,7 +3460,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Hong lu:The Lord of Hongyuan S2 Last coins
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[1] || atk == &attacker->skills[4]) && i == remainingCoins - 1 && IsCritical) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[1] || atk == &attacker->skills[4]) && i == remainingCoins - 1 && IsCritical) {
 
         attacker->DamageUp += 50;
 
@@ -3465,7 +3471,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // Meursault:Blade Lineage Mentor S2 Last coins
-    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 2) {
+    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 2) {
 
         attacker->DamageUp += 60;
 
@@ -3475,7 +3481,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Fixer grade 9? S8 Last coins
-    if (isId(attacker->name, "Fixer grade 9?") == 0 && (atk == &attacker->skills[7]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Fixer grade 9?") == 0 && (atk == &attacker->skills[7]) && i == remainingCoins - 1) {
 
         attacker->DamageUp += 50;
 
@@ -3488,7 +3494,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------------- The Middle Little Brother Sinclair ------------------------
     
     // The Middle Little Brother Sinclair Skill 2 Last coins
-    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[1] || (atk == &attacker->skills[3] && attacker->Passive >= 2 && attacker->Passive < 4)) && attacker->Passive >= 3 && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[1] || (atk == &attacker->skills[3] && attacker->Passive >= 2 && attacker->Passive < 4)) && attacker->Passive >= 3 && i == remainingCoins - 1) {
 
         attacker->DamageUp += 20;
 
@@ -3498,7 +3504,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // The Middle Little Brother Sinclair Skill 3 Last coins
-    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins - 1) {
 
       int damageupValue = attacker->Passive * 5;
       if (damageupValue > 30) damageupValue = 30;
@@ -3526,7 +3532,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------- The One Who Grips Faust --------------------------
 
     // The One Who Grips Faust Skill 3/4 Last coins
-    if (isId(attacker->name, "The One Who Grips Faust") == 0 && (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && attacker->skills[2].active >= 5 && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "The One Who Grips Faust") == 0 && (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && attacker->skills[2].active >= 5 && i == remainingCoins - 1) {
 
         attacker->DamageUp += 50;
 
@@ -3536,7 +3542,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // The One Who Grips Faust - Whistles Count
-    if (isId(attacker->name, "The One Who Grips Faust") == 0) {
+    if (isId(attacker->ID, "The One Who Grips Faust") == 0) {
         if (i == 0) attacker->skills[3].active++; // นับครั้งการทำกิจกรรม (Whistles)
     }
 
@@ -3549,7 +3555,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // --------------------- The Index Nursefather Yi Sang ----------------------------------
 
     // --- [เพิ่ม] โบนัสโจมตีสำหรับ Sizzling Wound ---
-    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
 
       // คำนวณลำดับเหรียญที่แท้จริง: (เหรียญทั้งหมด - เหรียญที่เหลืออยู่ตอนนี้) + ลำดับเหรียญใน Loop ปัจจุบัน
       int realCoinIndex = (atk->Coins - remainingCoins) + i; 
@@ -3565,7 +3571,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // --- Yi sang Mask reduce damage from cracking coins ---
-    if (isId(defender->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+    if (isId(defender->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
            if (Unbreakable > 0) { 
             if (defender->skills[3].active == 1) { Damage *= 0.9; } // ลดดาเมจ 10%
             if (defender->skills[3].active == 2) { Damage *= 0.75; } // ลดดาเมจ 25%
@@ -3573,7 +3579,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
     
 
-    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3] && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3] && i == remainingCoins - 1) {
       
           attacker->DamageUp += 90.0f;
 
@@ -3591,7 +3597,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     int weapon = -1; // ประกาศตัวแปรเก็บไว้ก่อน
     const char* wName[] = {"Hatchet", "Stiletto", "Bastard Sword", "Rapier", "Hammer", "Greatsword", "Lance", "Whip", "Scythe"};
 
-    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
       
       if (atk == &attacker->skills[3] && i == remainingCoins - 1) {
           weapon = 8; // Fixed as Scythe
@@ -3641,7 +3647,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // Evaded
     if (Evaded) {
 
-      if (isId(defender->name, "The One Who Grips Faust") == 0 && fanaticUsed > 0) {
+      if (isId(defender->ID, "The One Who Grips Faust") == 0 && fanaticUsed > 0) {
 
         // คำนวณพลังหลบตามสูตร: Base 4 + (โยนเหรียญที่มีพลัง 10 + Fanatic)
         evadePower = 4 + defender->BasePowerBoost;
@@ -3697,7 +3703,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
 // Yi sang:Fell Bullet First Coin damage Save
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 &&
         atk == &attacker->skills[2] && i == remainingCoins - 2) {
 
       int missingHP = (int)(((float)finalDamage / defender->MAX_HP) * 100.0f);
@@ -3709,7 +3715,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
 
 // The Index Nursefather Yi Sang: Oracle Device [Caduceus] Weapon Name + Other
-      if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+      if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
             printf(" [%s] ", wName[weapon]); 
 
             // 1. ตรวจสอบสถานะเหรียญปัจจุบัน
@@ -3787,7 +3793,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 // --------------- Meursault:Blade Lineage Mentor -----------------
 
     // Meursault:Blade Lineage Mentor - Gain on attack
-    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
+    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
 
       int gain = 5;
 
@@ -3799,7 +3805,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Meursault:Blade Lineage Mentor - Gain on attack
-    if (isId(attacker->name, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 0 && !Evaded) {
+    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 0 && !Evaded) {
 
       int gain = 15;
 
@@ -3815,7 +3821,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -------------------------------- Heishou Pack - You Branch Adept Heathcliff --------------------------------
 
     // Heishou Pack - You Branch Adept Heathcliff - Gain on attack
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && !Evaded) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && !Evaded) {
 
       int gain = 1;
       if (attacker->HP < attacker->MAX_HP * 0.5) gain += 1;
@@ -3828,7 +3834,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff - Bloodflame buff
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->skills[2].active > 0 && i < 3 && !Evaded) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->skills[2].active > 0 && i < 3 && !Evaded) {
 
       int gain = 3;
       
@@ -3849,7 +3855,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 3 coins
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1) {
 
         attacker->skills[0].active += 2;
       if (attacker->skills[0].active > 99) attacker->skills[0].active = 99;
@@ -3860,7 +3866,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
     
     // Heishou Pack - You Branch Adept Heathcliff Skill 2 Last coins
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
 
         attacker->skills[0].active += 3;
       if (attacker->skills[0].active > 99) attacker->skills[0].active = 99;
@@ -3885,7 +3891,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 3 Last coins
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
 
       float damageboost = (attacker->skills[0].active + attacker->skills[1].active) * 2.0f;
       if (damageboost > 20) damageboost = 20;
@@ -3901,7 +3907,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 4 Last coins
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
       float damageboost = 20.0f;
       int damage = finalDamage * (damageboost / 100);
@@ -3916,7 +3922,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       float healvalue = finalDamage + damage;
 
-      if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins > attacker->skills[3].Coins && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5)) {
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins > attacker->skills[3].Coins && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5)) {
         
         attacker->HP += healvalue;
 
@@ -3926,7 +3932,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
         sleep(1);
         
-      } else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins <= attacker->skills[3].Coins && attacker->skills[0].active < 20 && attacker->HP > attacker->MAX_HP * 0.5) {
+      } else if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins <= attacker->skills[3].Coins && attacker->skills[0].active < 20 && attacker->HP > attacker->MAX_HP * 0.5) {
         
         attacker->HP += healvalue;
 
@@ -4015,7 +4021,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------- Yi sang:Fell Bullet ----------------------
 
     // Yi sang:Fell Bullet - DefSkill 1 Gain / Inflict
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 && atk == &attacker->defenseSkill[0] && !Evaded) {
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->defenseSkill[0] && !Evaded) {
 
       if (i == remainingCoins - 1) {
           attacker->Poise[0] += 2;
@@ -4029,7 +4035,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Yi sang:Fell Bullet - Skill 1 Gain / Inflict
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[0] && !Evaded) {
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[0] && !Evaded) {
 
       if (i == remainingCoins - 1) {
           attacker->Poise[1] += 1;
@@ -4054,7 +4060,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Yi sang:Fell Bullet - Skill 2 Gain / Inflict
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[1] && !Evaded) {
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[1] && !Evaded) {
 
       if (i == remainingCoins - 2) {
           attacker->Poise[0] += 2;
@@ -4100,7 +4106,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Yi sang:Fell Bullet - Skill 3 Gain / Inflict
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[2] && !Evaded) {
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[2] && !Evaded) {
 
       if (i == remainingCoins - 1) {
             defender->Bleed[0] += 3;
@@ -4136,7 +4142,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------- Heathcliff:Wild Hunt ----------------------
 
     // Heathcliff:Wild Hunt – Skill 2 Inflict
-    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
        (atk == &attacker->skills[1])) {
 
       if (i == remainingCoins - 1) {
@@ -4151,7 +4157,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------- Hong lu:The Lord of Hongyuan ----------------------
     
     // Hong lu:The Lord of Hongyuan - Skill 1 Inflict
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[0] && !Evaded) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[0] && !Evaded) {
 
       if (i == remainingCoins - 2) {
           attacker->Poise[1] += 3;
@@ -4168,7 +4174,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Hong lu:The Lord of Hongyuan - Skill 2 Inflict
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[1] && !Evaded) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[1] && !Evaded) {
 
       if (i == remainingCoins - 4) {
         defender->Rupture[1] += 2;
@@ -4197,7 +4203,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Hong lu:The Lord of Hongyuan - Skill 3 Inflict
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[2] && !Evaded) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[2] && !Evaded) {
 
       if (i == remainingCoins - 1) {
         defender->Rupture[1] += 5;
@@ -4208,7 +4214,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Hong lu:The Lord of Hongyuan - Skill 4 Inflict
-      if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[3] && !Evaded) {
+      if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[3] && !Evaded) {
 
           defender->Rupture[0] += 1;
           if (defender->Rupture[0] > 99) defender->Rupture[0] = 99;
@@ -4224,7 +4230,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Hong lu:The Lord of Hongyuan - Skill 5 Inflict
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[4] && !Evaded) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[4] && !Evaded) {
 
       if (i == remainingCoins - 2) {
         defender->Rupture[1] += 1;
@@ -4243,7 +4249,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heshin Packs - Mao - Skill 7 Inflict
-    if (isId(attacker->name, "Heshin Packs - Mao") == 0 && atk == &attacker->skills[6] && !Evaded) {
+    if (isId(attacker->ID, "Heshin Packs - Mao") == 0 && atk == &attacker->skills[6] && !Evaded) {
 
       if (i == remainingCoins - 3) {
         defender->Rupture[1] += 2;
@@ -4266,7 +4272,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heshin Packs - Si - Skill 8 Inflict
-    if (isId(attacker->name, "Heshin Packs - Si") == 0 && atk == &attacker->skills[7] && !Evaded) {
+    if (isId(attacker->ID, "Heshin Packs - Si") == 0 && atk == &attacker->skills[7] && !Evaded) {
 
       if (i == remainingCoins - 1) {
         defender->Rupture[1] += 2;
@@ -4277,7 +4283,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heshin Packs - Wu - Skill 9 Inflict
-    if (isId(attacker->name, "Heshin Packs - Wu") == 0 && atk == &attacker->skills[8] && !Evaded) {
+    if (isId(attacker->ID, "Heshin Packs - Wu") == 0 && atk == &attacker->skills[8] && !Evaded) {
 
       if (i == remainingCoins - 3) {
         defender->Rupture[0] += 2;
@@ -4303,7 +4309,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heshin Packs - You - Skill 10 Inflict
-    if (isId(attacker->name, "Heshin Packs - You") == 0 && atk == &attacker->skills[9] && !Evaded) {
+    if (isId(attacker->ID, "Heshin Packs - You") == 0 && atk == &attacker->skills[9] && !Evaded) {
 
         defender->Burn[0] += 2;
         if (defender->Burn[0] > 99) defender->Burn[0] = 99;
@@ -4324,7 +4330,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -------------------------------- The One Who Grips Faust --------------------------------
 
   // The One Who Grips Faust - SKill 1 Inflict
-  if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[0] && !Evaded) {
+  if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[0] && !Evaded) {
 
     if (i == remainingCoins - 2) {
       attacker->skills[2].active += 1; // Nail
@@ -4342,7 +4348,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // The One Who Grips Faust - SKill 2 Inflict
-  if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[1] && !Evaded) {
+  if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[1] && !Evaded) {
 
     if (i == remainingCoins - 3) {
       attacker->skills[2].active += 2; // Nail
@@ -4373,7 +4379,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // The One Who Grips Faust - SKill 3 Inflict
-  if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[2] && !Evaded) {
+  if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[2] && !Evaded) {
 
     if (i == remainingCoins - 3) {
       attacker->skills[2].active += 2; // Nail
@@ -4396,7 +4402,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // The One Who Grips Faust - SKill 4 Inflict
-  if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[3] && !Evaded) {
+  if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[3] && !Evaded) {
 
     if (i != remainingCoins - 1 && IsHeadHit) {
       attacker->skills[2].active += 1; // Nail
@@ -4410,7 +4416,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // The One Who Grips Faust - SKill 5 Inflict
-  if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[4] && !Evaded) {
+  if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[4] && !Evaded) {
 
     if (i == remainingCoins - 1) {
       defender->ProtectionNextTurn -= 50;
@@ -4424,7 +4430,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -------------------------------- Gregor:Firefist --------------------------------
     
     // Gregor:Firefist - S1 Burn
-    if (isId(attacker->name, "Gregor:Firefist") == 0 &&
+    if (isId(attacker->ID, "Gregor:Firefist") == 0 &&
         atk == &attacker->skills[0] && !Evaded) {
 
       int Stack = 0;
@@ -4451,7 +4457,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Gregor:Firefist - S2 Burn
-    if (isId(attacker->name, "Gregor:Firefist") == 0 &&
+    if (isId(attacker->ID, "Gregor:Firefist") == 0 &&
         atk == &attacker->skills[1] && !Evaded) {
 
       int Stack = 0;
@@ -4487,7 +4493,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Gregor:Firefist - S3 Burn
-      if (isId(attacker->name, "Gregor:Firefist") == 0 &&
+      if (isId(attacker->ID, "Gregor:Firefist") == 0 &&
           atk == &attacker->skills[2] && !Evaded) {
 
         int Stack = 0;
@@ -4519,7 +4525,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Gregor:Firefist - S4 Burn
-    if (isId(attacker->name, "Gregor:Firefist") == 0 &&
+    if (isId(attacker->ID, "Gregor:Firefist") == 0 &&
         atk == &attacker->defenseSkill[0] && !Evaded) {
 
       int Stack = 0;
@@ -4551,7 +4557,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------------------------ Binah -----------------------------------
     
     // Binah - Fairy Skill 1
-    if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
+    if (isId(attacker->ID, "Binah") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
 
       int inflictvalue = 1;
 
@@ -4565,7 +4571,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Binah - Fairy Skill 3
-    if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[2]) && i == 0 && !Evaded) {
+    if (isId(attacker->ID, "Binah") == 0 && (atk == &attacker->skills[2]) && i == 0 && !Evaded) {
 
       int inflictvalue = 3;
 
@@ -4578,7 +4584,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Binah - Fairy
-    if (isId(attacker->name, "Binah") == 0 && attacker->skills[0].active > 0 && !Evaded) {
+    if (isId(attacker->ID, "Binah") == 0 && attacker->skills[0].active > 0 && !Evaded) {
 
       if (!attacker->Passive) {
         
@@ -4609,7 +4615,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly s1
-    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (attacker->Passive > 0) && (atk == &attacker->skills[0]) && !Evaded) {
 
       int inflictvalue = 1;
@@ -4623,7 +4629,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       printf("\t [On Hit] Butterfly +%d on enemy(%d)", inflictvalue, attacker->skills[0].active);
 
     } // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly s2
-    else if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    else if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (attacker->Passive > 0) && (atk == &attacker->skills[1]) && !Evaded) {
 
        int inflictvalue;
@@ -4644,7 +4650,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       printf("\t [On Hit] Butterfly +%d on enemy(%d)", inflictvalue, attacker->skills[0].active);
 
     } // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly s3
-    else if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    else if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (attacker->Passive >= 0) && (atk == &attacker->skills[2]) && !Evaded) {
 
        int inflictvalue;
@@ -4684,7 +4690,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly heal lose at 0-
-    if (isId(attacker->name,
+    if (isId(attacker->ID,
                    "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
         (attacker->skills[0].active > 0) && attacker->Sanity < 0 && !Evaded) {
 
@@ -4735,7 +4741,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     } // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly heal lose at 0+
-      else if (isId(attacker->name,
+      else if (isId(attacker->ID,
                      "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
           (attacker->skills[0].active > 0) && attacker->Sanity >= 0 && !Evaded) {
 
@@ -4836,7 +4842,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     //Lobotomy E.G.O::Solemn Lament Yi Sang while attack Reload
-    if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+    if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
       0 && attacker->Passive <= 0 && i != remainingCoins - 1) {
 
       if (atk != &attacker->skills[2]) {
@@ -4894,7 +4900,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------- Muga Ryōshū -------------------
 
     // Muga Ryōshū on attack
-    if (isId(attacker->name, "Muga Ryōshū") == 0 && attacker->skills[0].active/5 > 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && attacker->skills[0].active/5 > 0) {
         applyDamage(defender, attacker->skills[0].active/5, 0); // deal sever the thread/5 damage
       printf("\t Enemy takes +%d damage", attacker->skills[0].active/5);
 
@@ -4902,7 +4908,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Muga Ryōshū gains on attack
-    if (isId(attacker->name, "Muga Ryōshū") == 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0) {
         attacker->Passive += 1; // Gain 1 Muga for every coin use
         if (attacker->Passive > 100) attacker->Passive = 100;
       printf("\t Muga [無我] +1 (%d - Max 100)", attacker->Passive);
@@ -4913,13 +4919,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Muga Ryōshū gains on get hit
-    if (isId(defender->name, "Muga Ryōshū") == 0) {
+    if (isId(defender->ID, "Muga Ryōshū") == 0) {
           defender->skills[11].active += 1; // Gain 1 Muga for every coin use
         if (defender->skills[11].active > 2) defender->skills[11].active = 2;
     }
 
     // Muga Ryōshū on attack skill 1
-    if (isId(attacker->name, "Muga Ryōshū") == 0 && atk == &attacker->skills[0] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[0] && Unbreakable <= 0) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -4949,7 +4955,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Muga Ryōshū on attack skill 2
-    if (isId(attacker->name, "Muga Ryōshū") == 0 && atk == &attacker->skills[1] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[1] && Unbreakable <= 0) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -4979,7 +4985,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Muga Ryōshū on attack skill 3
-    if (isId(attacker->name, "Muga Ryōshū") == 0 && atk == &attacker->skills[2] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[2] && Unbreakable <= 0) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -5020,7 +5026,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Muga Ryōshū on attack skill 4
-    if (isId(attacker->name, "Muga Ryōshū") == 0 && atk == &attacker->skills[3] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[3] && Unbreakable <= 0) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -5061,7 +5067,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Muga Ryōshū on attack skill 5
-    if (isId(attacker->name, "Muga Ryōshū") == 0 && atk == &attacker->skills[4] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[4] && Unbreakable <= 0) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -5114,7 +5120,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------------------------------------------
 
     // Sukuna:King of Curse gains Binding vow
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[0] || atk == &attacker->skills[1] || (atk == &attacker->skills[2] && (i == remainingCoins - 1)) || (atk == &attacker->skills[6] && (i == remainingCoins - 4 || i == remainingCoins - 5)) || atk == &attacker->skills[7])) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[0] || atk == &attacker->skills[1] || (atk == &attacker->skills[2] && (i == remainingCoins - 1)) || (atk == &attacker->skills[6] && (i == remainingCoins - 4 || i == remainingCoins - 5)) || atk == &attacker->skills[7])) {
 
       int gainsvalue = finalDamage/4;
 
@@ -5128,7 +5134,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------------- King in Binds ------------------------------
 
     // King in Binds - Sinking
-    if (isId(attacker->name,
+    if (isId(attacker->ID,
                    "King in Binds") == 0 &&
         (attacker->skills[1].active > 0 || attacker->skills[2].active > 0) && !Evaded) {
 
@@ -5168,7 +5174,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // King in Binds skill 1, 3 Debuff
-    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[0] || atk == &attacker->skills[2]) && !Evaded) {
+    if (isId(attacker->ID, "King in Binds") == 0 && (atk == &attacker->skills[0] || atk == &attacker->skills[2]) && !Evaded) {
 
         attacker->skills[1].active += 2;
       if (attacker->skills[1].active > 99) attacker->skills[1].active = 99;
@@ -5178,7 +5184,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // King in Binds skill 2 Debuff
-    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
+    if (isId(attacker->ID, "King in Binds") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
 
       if (i == remainingCoins - 3) {
 
@@ -5199,7 +5205,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // King in Binds skill 4 Debuff
-    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[3]) && !Evaded) {
+    if (isId(attacker->ID, "King in Binds") == 0 && (atk == &attacker->skills[3]) && !Evaded) {
 
       if (i == remainingCoins - 2) {
 
@@ -5243,7 +5249,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // King in Binds skill 6 Debuff
-    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[5]) && !Evaded) {
+    if (isId(attacker->ID, "King in Binds") == 0 && (atk == &attacker->skills[5]) && !Evaded) {
 
         attacker->skills[3].active += attacker->skills[1].active;
       if (attacker->skills[3].active > 99) attacker->skills[3].active = 99;
@@ -5281,7 +5287,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // King in Binds Moment of Audience
-    if (isId(attacker->name, "King in Binds") == 0 && attacker->skills[6].active > 0 && !Evaded) {
+    if (isId(attacker->ID, "King in Binds") == 0 && attacker->skills[6].active > 0 && !Evaded) {
 
       // For make it work 'next turn'
         if (attacker->skills[6].active == 1) {
@@ -5346,7 +5352,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // King in Binds skill 5 Debuff
-    if (isId(attacker->name, "King in Binds") == 0 && (atk == &attacker->skills[4]) && !Evaded) {
+    if (isId(attacker->ID, "King in Binds") == 0 && (atk == &attacker->skills[4]) && !Evaded) {
 
       if (defender->hasSanity == 1) { // Normal
         int deal = attacker->skills[1].active + attacker->skills[2].active;
@@ -5398,7 +5404,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ----------------------------------------------------------
 
     //Dawn Office Fixer Sinclair S1 EGO FORM REUSE
-    if (isId(attacker->name, "Dawn Office Fixer Sinclair") ==
+    if (isId(attacker->ID, "Dawn Office Fixer Sinclair") ==
       0 && attacker->skills[3].active && i == 0 && atk == &attacker->skills[0]) {
 
         remainingCoins++;
@@ -5410,7 +5416,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Fixer grade 9? S6 Reuse
-    if (isId(attacker->name, "Fixer grade 9?") ==
+    if (isId(attacker->ID, "Fixer grade 9?") ==
       0 && attacker->Passive >= 10 && i == 0 && atk == &attacker->skills[5] && !ClashLostAttack) {
 
         remainingCoins++;
@@ -5425,7 +5431,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // Fixer grade 9? S3 Reuse
-    if (isId(attacker->name, "Fixer grade 9?") == 0 && attacker->Passive >= 15 && atk == &attacker->skills[2] && i == remainingCoins - 1 && remainingCoins <= atk->Coins && !ClashLostAttack) {
+    if (isId(attacker->ID, "Fixer grade 9?") == 0 && attacker->Passive >= 15 && atk == &attacker->skills[2] && i == remainingCoins - 1 && remainingCoins <= atk->Coins && !ClashLostAttack) {
 
       attacker->skills[2].Coins = remainingCoins;
 
@@ -5438,14 +5444,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           sleep(1);
 
-    } else if (isId(attacker->name, "Fixer grade 9?") == 0 && atk == &attacker->skills[3]) {
+    } else if (isId(attacker->ID, "Fixer grade 9?") == 0 && atk == &attacker->skills[3]) {
       attacker->skills[2].Coins = 2;
     }
 
     // -------------------- Heishou Pack - You Branch Adept Heathcliff ---------------------
     
     // Heishou Pack - You Branch Adept Heathcliff - Skill 2 reuse
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[2].active > 0 || attacker->HP < attacker->MAX_HP * 0.5) && atk == &attacker->skills[1] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[1].Coins) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[2].active > 0 || attacker->HP < attacker->MAX_HP * 0.5) && atk == &attacker->skills[1] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[1].Coins) {
 
       attacker->skills[1].Coins = remainingCoins;
 
@@ -5455,12 +5461,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           sleep(1);
 
-    } else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[1]) {
+    } else if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[1]) {
       attacker->skills[1].Coins = 3;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff - Skill 3-2 reuse
-    if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5) && atk == &attacker->skills[3] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[3].Coins) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[0].active >= 20 || attacker->HP <= attacker->MAX_HP * 0.5) && atk == &attacker->skills[3] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[3].Coins) {
 
       attacker->skills[3].Coins = remainingCoins;
 
@@ -5470,14 +5476,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           sleep(1);
 
-    } else if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[3]) {
+    } else if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && atk == &attacker->skills[3]) {
       attacker->skills[3].Coins = 4;
     }
 
     // -------------------------------------------------------------
 
     // Heathcliff:Wild Hunt – Skill 4 addition damage
-    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
        (atk == &attacker->skills[3]) && i == remainingCoins - 1 && !Evaded) {
 
       int damage = abs(attacker->Sanity - defender->Sanity);
@@ -5495,7 +5501,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
     
     // Sancho:The Second Kindred of Don Quixote - Heal mechnics
-     if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0 && !Evaded) {
+     if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0 && !Evaded) {
 
       int healvalue = 40;
 
@@ -5504,7 +5510,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
        healvalue += missingHP;
 
-    if (isId(attacker->name,
+    if (isId(attacker->ID,
                    "Sancho:The Second Kindred of Don Quixote") == 0 &&
         (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
 
@@ -5523,7 +5529,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                           : finalheal;
 
      } // Sancho:The Second Kindred of Don Quixote - Heal mechnics for certain skil when clash lost
-        else if (isId(attacker->name,"Sancho:The Second Kindred of Don Quixote") == 0 &&
+        else if (isId(attacker->ID,"Sancho:The Second Kindred of Don Quixote") == 0 &&
            (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13]) && ClashLostAttack == 1 && !Evaded) {
 
          printf(" HP +%d", (int)(attacker->HP + finalDamage) > attacker->MAX_HP
@@ -5537,7 +5543,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         }
 
     // Don Quixote:The Manager of La Manchaland - Heal mechnics
-    if ((isId(attacker->name,
+    if ((isId(attacker->ID,
                     "Don Quixote:The Manager of La Manchaland") == 0 &&
          (atk == &attacker->skills[0] || atk == &attacker->skills[1] ||
           atk == &attacker->skills[4])) && !Evaded) {
@@ -5554,7 +5560,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
               ? (int)(attacker->MAX_HP - attacker->HP)
               : (int)(finalDamage * 0.3 > 10 ? 10 : finalDamage * 0.3);
 
-    } else if ((isId(attacker->name,
+    } else if ((isId(attacker->ID,
                            "Don Quixote:The Manager of La Manchaland") == 0 &&
                 (atk == &attacker->skills[2])) && !Evaded) {
       // Max 10 with heal 50% of the HP damage dealt
@@ -5570,7 +5576,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
               ? (int)(attacker->MAX_HP - attacker->HP)
               : (int)(finalDamage * 0.5 > 10 ? 10 : finalDamage * 0.5);
 
-    } else if (isId(attacker->name,
+    } else if (isId(attacker->ID,
                           "Don Quixote:The Manager of La Manchaland") == 0 &&
                (atk == &attacker->skills[5] || atk == &attacker->skills[3]) && !Evaded) {
       // Max 20 with heal 50% of the HP damage dealt
@@ -5589,9 +5595,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // Jia Qiu enemy heal
-    if (isId(attacker->name, "Jia Qiu") == 0 && (attacker->skills[15].active > 0) && defender->HP <= 0) {
+    if (isId(attacker->ID, "Jia Qiu") == 0 && (attacker->skills[15].active > 0) && defender->HP <= 0) {
 
-      if (isId(defender->name, "Hong lu:The Lord of Hongyuan") == 0) {
+      if (isId(defender->ID, "Hong lu:The Lord of Hongyuan") == 0) {
 
         attacker->skills[15].active -= 1;
 
@@ -5612,7 +5618,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // The One Who Grips Faust Skill 2 after Last coins
-  if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[1] && i == remainingCoins - 1) {
+  if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[1] && i == remainingCoins - 1) {
 
     printf("\n\n%s: \"Heeheh.\"\n", attacker->name);
 
@@ -5621,7 +5627,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
   
     // The One Who Grips Faust Skill 5 after Last coins
-      if (isId(attacker->name, "The One Who Grips Faust") == 0 && atk == &attacker->skills[4]) {
+      if (isId(attacker->ID, "The One Who Grips Faust") == 0 && atk == &attacker->skills[4]) {
 
         if (i == remainingCoins - 1) {
 
@@ -5634,7 +5640,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
     // The Middle Little Brother Sinclair Skill 3 after Last coins
-    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins - 1) {
 
       printf("\n\n%s: \"Does that sting?\"\n", attacker->name);
 
@@ -5643,13 +5649,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // The House of Spiders: The Index Nursefather Yi Sang Skill 4 after Last coins
-    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1 && attacker->skills[3].active == 2) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1 && attacker->skills[3].active == 2) {
 
       printf("\n\n%s: \"*beep* Hah... the waves are rolling in.\"\n", attacker->name);
 
       sleep(1);
 
-    } else if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
+    } else if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
 
         printf("\n\n%s: \"Replication complete.\"\n", attacker->name);
 
@@ -5678,7 +5684,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   //---------------- After Attack Buff ----------------------------
 
     // The One Who Grips Faust - Bliss of Execution
-    if (isId(attacker->name, "The One Who Grips Faust") == 0) {
+    if (isId(attacker->ID, "The One Who Grips Faust") == 0) {
         // 8. Bliss of Execution (Once per Turn)
         if (attacker->Passive > 0 && attacker->skills[2].active >= 6 && 
             attacker->skills[5].active == 0 && atk != &attacker->skills[4]) {
@@ -5704,7 +5710,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
     
     // Sukuna:King of Curse - Lost of Cursed Energy
-    if (isId(attacker->name, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[7])) {
+    if (isId(attacker->ID, "Sukuna:King of Curse") == 0 && (atk == &attacker->skills[7])) {
 
       printf("\n%s gains 'Lost of Cursed Energy'\n", attacker->name);
 
@@ -5717,7 +5723,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 // ------------------------ The House of Spiders: The Index Nursefather Yi Sang ---------------------------
 
-    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
       
       int uncrackedUnbreakable = atk->Unbreakable - initialCrackedCount;
           if (uncrackedUnbreakable < 0) uncrackedUnbreakable = 0;
@@ -5788,7 +5794,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       sleep(1);
     }
 
-    if (isId(attacker->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3]) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3]) {
         // [Attack End] Consume all Procuration [Hermes]
         attacker->skills[1].active = 0; 
         printf("\n%s consumes all Procuration [Hermes] Stacks", attacker->name);
@@ -5806,7 +5812,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ------------------- The Middle Little Brother Sinclair ------------------------
     
     // The Middle Little Brother Sinclair Passive never forget
-    if (isId(defender->name, "The Middle Little Brother Sinclair") == 0 && defender->skills[3].active == 0) {
+    if (isId(defender->ID, "The Middle Little Brother Sinclair") == 0 && defender->skills[3].active == 0) {
 
       defender->skills[3].active = 1; // Check for Once per Turn
 
@@ -5820,7 +5826,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
      // The Middle Little Brother Sinclair Passive never forget gain book
-    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && attacker->skills[0].active > 0) {
+    if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && attacker->skills[0].active > 0) {
 
         attacker->skills[1].active += attacker->skills[0].active;
       if (attacker->skills[1].active > 30) attacker->skills[1].active = 30;
@@ -5834,7 +5840,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // The Middle Little Brother Sinclair loses Envy Resonance
-    if (isId(attacker->name, "The Middle Little Brother Sinclair") == 0 && attacker->Passive > 0 && attacker->skills[2].active == 1) {
+    if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && attacker->Passive > 0 && attacker->skills[2].active == 1) {
 
       attacker->skills[2].active = 0;
       
@@ -5854,7 +5860,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -----------------------------------------------
     
     // Don Quixote:The Manager of La Manchaland - S3-1 Buff S3-2
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
         atk == &attacker->skills[5]) {
 
       int Hardblood = (int)(attacker->Passive/10) * 10;
@@ -5879,7 +5885,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Empower Skill
-    if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+    if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
         (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
 
       int Hardblood = 10;
@@ -5894,7 +5900,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Don Quixote:The Manager of La Manchaland - Hardblood gains 2
-    if (isId(defender->name, "Don Quixote:The Manager of La Manchaland") == 0) {
+    if (isId(defender->ID, "Don Quixote:The Manager of La Manchaland") == 0) {
 
       int Hardblood = 2;
 
@@ -5908,7 +5914,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 3 after attack
-  if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2])) {
+  if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2])) {
 
       attacker->skills[1].active += 2;
 
@@ -5919,7 +5925,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 4 after attack consumes
-  if (isId(attacker->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
+  if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
 
       attacker->Passive = 0;
 
@@ -5951,7 +5957,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // --------------------------------------- Binah  -----------------------------------------
   
   // Binah - Skill 2 debuff
-  if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
+  if (isId(attacker->ID, "Binah") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
 
     int inflictvalue = 1;
 
@@ -5963,7 +5969,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Binah - Skill 4 debuff
-  if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[3]) && !Evaded) {
+  if (isId(attacker->ID, "Binah") == 0 && (atk == &attacker->skills[3]) && !Evaded) {
 
     int inflictvalue = 50;
 
@@ -5976,7 +5982,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Binah - Skill 5 debuff serious
-  if (isId(attacker->name, "Binah") == 0 && (atk == &attacker->skills[4]) && !Evaded) {
+  if (isId(attacker->ID, "Binah") == 0 && (atk == &attacker->skills[4]) && !Evaded) {
 
     int inflictvalue = 1;
     
@@ -5993,7 +5999,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Binah - Skill 3 4 debuff serious
-  if (isId(attacker->name, "Binah") == 0 && attacker->Passive && (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && !Evaded) {
+  if (isId(attacker->ID, "Binah") == 0 && attacker->Passive && (atk == &attacker->skills[2] || atk == &attacker->skills[3]) && !Evaded) {
 
     int inflictvalue = 5;
     
@@ -6021,7 +6027,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // -----------------------------------------------------------------------------------------
 
    // Hong lu:The Lord of Hongyuan S3-1 Debuff
-    if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[2]) && attacker->Passive > 0 && !Evaded) {
+    if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[2]) && attacker->Passive > 0 && !Evaded) {
 
         defTempDefense -= attacker->Passive;
         defTempOffense -= attacker->Passive;
@@ -6034,7 +6040,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // -------------------------------- Roland ------------------------------
     
     // Fixer grade 9? S8 Heal
-    if (isId(attacker->name, "Fixer grade 9?") == 0 && (atk == &attacker->skills[8]) && attacker->Passive >= 10) {
+    if (isId(attacker->ID, "Fixer grade 9?") == 0 && (atk == &attacker->skills[8]) && attacker->Passive >= 10) {
 
       int totalheal = totalDamage;
 
@@ -6048,7 +6054,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       sleep(1);
     }
 
-    if (isId(attacker->name, "Fixer grade 9?") == 0 && atk == &attacker->skills[9]) {
+    if (isId(attacker->ID, "Fixer grade 9?") == 0 && atk == &attacker->skills[9]) {
 
         // [Attack End] Target Lose 5 Sanity, 3 Def Down, +30% Fragile
         updateSanity(defender, -5);
@@ -6059,7 +6065,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Roland – Mang (心)
-    if (isId(attacker->name, "Fixer grade 9?") == 0 && isId(defender->name, "Binah") == 0 && attacker->skills[6].active > 0) {
+    if (isId(attacker->ID, "Fixer grade 9?") == 0 && isId(defender->ID, "Binah") == 0 && attacker->skills[6].active > 0) {
 
       int Mang = attacker->skills[6].active * 5;
 
@@ -6076,7 +6082,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ----------------------------------------------------------------
 
   // Dawn Office Fixer Sinclair - Skill EGO form S4 lose sanity
-  if (isId(attacker->name, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
+  if (isId(attacker->ID, "Dawn Office Fixer Sinclair") == 0 && attacker->skills[3].active && (atk == &attacker->skills[3] || atk == &attacker->skills[2])) {
 
       updateSanity(attacker, -(15));
       if (attacker->Sanity < -45) attacker->Sanity = -45;
@@ -6089,14 +6095,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Meursault:The Thumb Shin buffs (temporary, print once)
-  if (isId(attacker->name, "Meursault:The Thumb") == 0 &&
+  if (isId(attacker->ID, "Meursault:The Thumb") == 0 &&
        attacker->Passive <= 0 && !attacker->skills[3].active) {
 
     int amount = ((int)(8 * defender->MAX_HP)) / 847;
     if (amount < 8) amount = 8;
 
-    if (isId(defender->name, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(defender->name, "Don Quixote") == 0) amount += 2; // pity for boss
-    if (isId(defender->name, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
+    if (isId(defender->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(defender->ID, "Don Quixote") == 0) amount += 2; // pity for boss
+    if (isId(defender->ID, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
 
     attacker->skills[3].active = 1;
 
@@ -6112,14 +6118,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Meursault:The Thumb Shin buffs (temporary, print once)
-  if (isId(defender->name, "Meursault:The Thumb") == 0 &&
+  if (isId(defender->ID, "Meursault:The Thumb") == 0 &&
     defender->HP <= defender->MAX_HP*0.65 && !defender->skills[3].active) {
 
     int amount = ((int)(8 * attacker->MAX_HP)) / 847;
     if (amount < 8) amount = 8;
 
-    if (isId(defender->name, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(defender->name, "Don Quixote") == 0) amount += 2; // pity for boss
-    if (isId(defender->name, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
+    if (isId(defender->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(defender->ID, "Don Quixote") == 0) amount += 2; // pity for boss
+    if (isId(defender->ID, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
 
       defender->skills[3].active = 1;
 
@@ -6135,7 +6141,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Roland – Buff
-  if (isId(attacker->name, "Fixer grade 9?") == 0 && atk == &attacker->skills[9]) {
+  if (isId(attacker->ID, "Fixer grade 9?") == 0 && atk == &attacker->skills[9]) {
 
     int Losetotal = totalDamage;
     
@@ -6152,7 +6158,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   //--------------------------------Lei heng---------------------
 
   // Lei heng – skill 3 or 6
-  if (isId(attacker->name, "Lei heng") == 0 &&
+  if (isId(attacker->ID, "Lei heng") == 0 &&
       (atk == &attacker->skills[2] || atk == &attacker->skills[5])) {
 
     int clashpowerdebuff = attacker->skills[1].active * 1;
@@ -6168,7 +6174,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
   
   // Lei heng – inner strength gain
-  if (isId(attacker->name, "Lei heng") == 0 &&
+  if (isId(attacker->ID, "Lei heng") == 0 &&
     attacker->skills[0].active == 2) {
 
     attacker->Passive += remainingCoins * 2;
@@ -6178,7 +6184,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     printf("\n%s gains +%d Inner Strength [底力](%d - Max 25)\n",
            attacker->name, remainingCoins * 2, attacker->Passive);
 
-  } else if (isId(attacker->name, "Lei heng") == 0 &&
+  } else if (isId(attacker->ID, "Lei heng") == 0 &&
     attacker->skills[0].active == 3) {
 
     attacker->Passive += remainingCoins * 3;
@@ -6191,7 +6197,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // --------------------- Heathcliff:Wild Hunt -----------------------
   // Heathcliff:Wild Hunt – skill 3 heal sanity
-  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
       atk == &attacker->skills[3]) {
 
     if (attacker->Sanity < 0) {
@@ -6212,7 +6218,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // --------------------- Heathcliff:Wild Hunt -----------------------
     // Heathcliff:Wild Hunt – skill 3 loses Dullahan on attack side
-    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
         atk == &attacker->skills[3] && attacker->skills[0].active > 0) {
 
         atk->skillType = 0;
@@ -6227,7 +6233,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     } 
     
     // Heathcliff:Wild Hunt – skill 3 loses Dullahan on defender side
-    if (isId(defender->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(defender->ID, "Heathcliff:Wild Hunt") == 0 &&
       defSkill == &defender->skills[3] && defender->skills[0].active > 0) {
 
       atk->skillType = 0;
@@ -6242,7 +6248,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Heathcliff:Wild Hunt – gain coffin
-  if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
      (atk == &attacker->skills[2] || atk == &attacker->skills[3])) {
 
     int gain;
@@ -6262,7 +6268,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
     // Heathcliff:Wild Hunt – Skill 4 heal sanity
-    if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+    if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
        (atk == &attacker->skills[3])) {
 
       updateSanity(attacker, 10);
@@ -6275,7 +6281,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
      // Heathcliff:Wild Hunt – Skill 2 loses sanity
-      if (isId(attacker->name, "Heathcliff:Wild Hunt") == 0 &&
+      if (isId(attacker->ID, "Heathcliff:Wild Hunt") == 0 &&
          (atk == &attacker->skills[1]) && attacker->skills[0].active > 0) {
 
         updateSanity(attacker, -(10));
@@ -6289,7 +6295,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // --------------------------- Hong lu:The Lord of Hongyuan -------------------------- 
   // Hong lu:The Lord of Hongyuan - S3-1 to S3-2
-  if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       atk == &attacker->skills[2] &&
       (attacker->skills[5].BasePower == 1 ||
        attacker->skills[5].CoinPower == 1 || attacker->skills[5].Coins == 1 ||
@@ -6529,7 +6535,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     sleep(1);
 
-  } else if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  } else if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
              atk == &attacker->skills[2]) {
 
      attacker->CoinPowerBoost = 0;
@@ -6544,7 +6550,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
  
   // Hong lu:The Lord of Hongyuan - S3-1 to S3-2
-  if (isId(attacker->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       atk == &attacker->skills[3]) {
 
     printf("\n%s: \"How Daguanyuan has been purged.\"\n", attacker->name);
@@ -6553,7 +6559,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Hong lu:The Lord of Hongyuan - Lordsguard
-  if (isId(defender->name, "Hong lu:The Lord of Hongyuan") == 0 &&
+  if (isId(defender->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       defender->skills[5].active == -1 && (HeshinPacks != NULL)) {
 
     if (defender->HP <= 0) {
@@ -6600,7 +6606,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Hong lu:The Lord of Hongyuan - Mao
-  if (isId(attacker->name, "Heshin Packs - Mao") == 0 &&
+  if (isId(attacker->ID, "Heshin Packs - Mao") == 0 &&
       atk == &attacker->skills[6] && !Evaded) {
 
     defender->ClashPowerNextTurn -= 1;
@@ -6610,7 +6616,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
 
   } // Hong lu:The Lord of Hongyuan - Si
-  else if (isId(attacker->name, "Heshin Packs - Si") == 0 &&
+  else if (isId(attacker->ID, "Heshin Packs - Si") == 0 &&
       atk == &attacker->skills[7] && !Evaded) {
 
     int randomlost = rand() % 2 + 1;
@@ -6632,7 +6638,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
 
   } // Hong lu:The Lord of Hongyuan - Wu
-  else if (isId(attacker->name, "Heshin Packs - Wu") == 0 &&
+  else if (isId(attacker->ID, "Heshin Packs - Wu") == 0 &&
       atk == &attacker->skills[8] && !Evaded) {
 
     defender->ProtectionNextTurn -= 20;
@@ -6646,7 +6652,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // --------------------------------------------------------------
 
     // Meursault:Blade Lineage Mentor - Passive
-    if (isId(defender->name, "Meursault:Blade Lineage Mentor") == 0) {
+    if (isId(defender->ID, "Meursault:Blade Lineage Mentor") == 0) {
 
       defender->FinalPowerBoostNextTurn += 1;
 
@@ -6657,7 +6663,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
      // Yi sang:Fell Bullet - Torn Memory S3 lost
-    if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 &&
         atk == &attacker->skills[2]) {
 
       updateSanity(attacker, -(attacker->Passive*2));
@@ -6670,7 +6676,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
   // Yi sang:Fell Bullet - Torn Memory S3 lost
-  if (isId(attacker->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 &&
       atk == &attacker->skills[2] &&
       attacker->Passive >= 7) {
 
@@ -6702,7 +6708,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
   // Don Quixote:The Manager of La Manchaland - Hardblood gains 5 for counter
   // won
-  if (isId(attacker->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       (atk == &attacker->skills[6])) {
 
@@ -6717,7 +6723,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   //------------------------------------Sancho:The Second Kindred of Don Quixote-------------------
     
   // Sancho - Ultimate After attack
-  if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       (atk == &attacker->skills[12]) && attacker->Passive >= 1 && !Evaded) {
 
@@ -6732,7 +6738,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
     // Sancho - Skill 11
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         (atk == &attacker->skills[10]) && !Evaded) {
 
@@ -6757,7 +6763,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho - Skill 12
-    if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") ==
+    if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
             0 &&
         (atk == &attacker->skills[11]) && !Evaded) {
 
@@ -6781,7 +6787,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Sancho:The Second Kindred of Don Quixote - Gain Hardblood on Hit without Clash Lose
-     if (isId(attacker->name, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0) {
+     if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0) {
 
         attacker->Passive += 3;
        if (attacker->Passive > 30) attacker->Passive = 30;
@@ -6795,7 +6801,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // -------------------- Erlking Heathcliff ----------------------------
     // Erlking Heathcliff Skill 2 buff
-    if (isId(attacker->name, "Erlking Heathcliff") == 0 && atk == &attacker->skills[2] && !Evaded) {
+    if (isId(attacker->ID, "Erlking Heathcliff") == 0 && atk == &attacker->skills[2] && !Evaded) {
 
        attacker->DamageUpNextTurn += 30;
        attacker->FinalPowerBoostNextTurn += 3;
@@ -6806,7 +6812,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Erlking Heathcliff Skill 3 debuff
-    if (isId(attacker->name, "Erlking Heathcliff") == 0 && (atk == &attacker->skills[3]) && !Evaded) {
+    if (isId(attacker->ID, "Erlking Heathcliff") == 0 && (atk == &attacker->skills[3]) && !Evaded) {
 
          defender->ParalyzeNextTurn += 3;
 
@@ -6820,7 +6826,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 //------------------------------------------------------------------
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly
-  if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
+  if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0) {
 
       printf("\n%s consumed %d The Living & The Departed(%d)\n", attacker->name, attacker->skills[3].active, attacker->Passive); 
 
@@ -6828,7 +6834,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - SKill 2 gain
-  if (isId(attacker->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && atk == &attacker->skills[1]) {
+  if (isId(attacker->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && atk == &attacker->skills[1]) {
 
     if (attacker->Passive >= 1 && attacker->Passive < 20) {
     
@@ -6849,7 +6855,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // ------------------------- Jia Qiu -------------------------------
 
   // Jia Qiu - S4 and S9
-  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[9]) && !Evaded) {
+  if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[4] || atk == &attacker->skills[9]) && !Evaded) {
     
       defender->ClashPowerNextTurn -= 1;
 
@@ -6859,7 +6865,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Jia Qiu - S2 and S8
-  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[2] || atk == &attacker->skills[8]) && !Evaded) {
+  if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[2] || atk == &attacker->skills[8]) && !Evaded) {
 
         updateSanity(defender, -(5 * remainingCoins));
     if (defender->Sanity < -45) defender->Sanity = -45;
@@ -6870,7 +6876,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Jia Qiu - S12
-  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[12])) {
+  if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[12])) {
   
     int boost = 5*(abs(defender->Sanity));
   
@@ -6882,7 +6888,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Jia Qiu - Passive
-  if (isId(attacker->name, "Jia Qiu") == 0) {
+  if (isId(attacker->ID, "Jia Qiu") == 0) {
       updateSanity(attacker, 5);
     if (attacker->Sanity > 45) attacker->Sanity = 45;
 
@@ -6890,7 +6896,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
   
   // Jia Qiu Phase 1.5
-  if (isId(defender->name, "Jia Qiu") == 0 && defender->HP <= defender->MAX_HP * 0.85 &&
+  if (isId(defender->ID, "Jia Qiu") == 0 && defender->HP <= defender->MAX_HP * 0.85 &&
       defender->Passive == 1) {
 
     printf("\n%s: \"I am not yet to hear 'your' answer.\"\n", defender->name);
@@ -6924,7 +6930,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Jia Qiu LAST Ult
-  if (isId(attacker->name, "Jia Qiu") == 0 && (atk == &attacker->skills[16])) {
+  if (isId(attacker->ID, "Jia Qiu") == 0 && (atk == &attacker->skills[16])) {
 
     defender->HP = 1;
 
@@ -6934,7 +6940,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // ---------------------- Anti death effect ----------------------
 
     // Erlking Heathcliff Faded promise for wild hunt
-    if (isId(attacker->name, "Erlking Heathcliff") == 0 && isId(defender->name, "Heathcliff:Wild Hunt") == 0 && (attacker->skills[7].active == 1) && defender->HP <= 0)  {
+    if (isId(attacker->ID, "Erlking Heathcliff") == 0 && isId(defender->ID, "Heathcliff:Wild Hunt") == 0 && (attacker->skills[7].active == 1) && defender->HP <= 0)  {
 
       attacker->skills[7].active--;
         
@@ -6947,7 +6953,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Hong lu:The Lord of Hongyuan - Passive
-    if ((isId(defender->name, "Hong lu:The Lord of Hongyuan")) == 0 &&
+    if ((isId(defender->ID, "Hong lu:The Lord of Hongyuan")) == 0 &&
              defender->HP <= 0 && defender->skills[5].active == 1) {
 
         defender->skills[5].active--;
@@ -6966,7 +6972,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
       // Heishou Pack - You Branch Adept Heathcliff - Anti death Passive
-      if ((isId(defender->name, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
+      if ((isId(defender->ID, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
           defender->HP <= 0 && defender->skills[3].active == 0) {
 
           defender->skills[3].active--;
@@ -6984,7 +6990,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
       // Meursault:Blade Lineage Mentor - Passive
-      if (isId(defender->name, "Meursault:Blade Lineage Mentor") == 0 &&
+      if (isId(defender->ID, "Meursault:Blade Lineage Mentor") == 0 &&
           defender->HP <= 0 && defender->Passive == 0) {
 
           defender->Passive--;
@@ -7053,7 +7059,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------- Muga Ryōshū ----------------
 
   // Muga Ryōshū - Passive
-  if (isId(c->name, "Muga Ryōshū") == 0) {
+  if (isId(c->ID, "Muga Ryōshū") == 0) {
 
     *tempOffense += 6;
 
@@ -7077,7 +7083,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Muga Ryōshū - Final Power Skill 1/2
-  if (isId(c->name, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
     int gain = c->Passive/10;
     if (gain > 3) gain = 3;
@@ -7108,7 +7114,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Muga Ryōshū - Final Power Skill 3/4
-  if (isId(c->name, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3] || chosenSkill == &c->skills[4] || chosenSkill == &c->skills[5])) {
+  if (isId(c->ID, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3] || chosenSkill == &c->skills[4] || chosenSkill == &c->skills[5])) {
 
     printf("\n%s's Skill: Random chance to delete the earliest Coin on the Skill this unit Clashed with\n", c->name);
 
@@ -7117,7 +7123,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   // Muga Ryōshū - Final Power Skill 3/4
-  if (isId(c->name, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
     
     int gain = c->Passive/10;
     if (gain > 5) gain = 5;
@@ -7148,7 +7154,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Muga Ryōshū - Final Power Skill 5
-  if (isId(c->name, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[4])) {
+  if (isId(c->ID, "Muga Ryōshū") == 0 && (chosenSkill == &c->skills[4])) {
 
     int gain = c->Passive/4;
     if (gain > 12) gain = 12;
@@ -7168,7 +7174,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // -------------------- The One Who Grips Faust --------------------
 
   // The One Who Grips Faust - Passive
-  if (isId(c->name, "The One Who Grips Faust") == 0) {
+  if (isId(c->ID, "The One Who Grips Faust") == 0) {
       // 2. Fanatic Logic: เพิ่มพลังถ้ามี Fanatic และศัตรูติดตะปู
       if (c->Passive > 0 && c->skills[2].active > 0) {
           c->FinalPowerBoost += c->Passive;
@@ -7195,7 +7201,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The One Who Grips Faust - Skill 1
-  if (isId(c->name, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[0]) {
+  if (isId(c->ID, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[0]) {
 
     int gain = c2->Bleed[0]/3;
     if (gain > 1) gain = 1;
@@ -7225,7 +7231,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The One Who Grips Faust - Skill 2
-  if (isId(c->name, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[1]) {
+  if (isId(c->ID, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[1]) {
 
     c->skills[6].active += 1;
 
@@ -7262,7 +7268,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The One Who Grips Faust - Skill 3
-  if (isId(c->name, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[2]) {
+  if (isId(c->ID, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[2]) {
 
     c->skills[6].active += 2;
 
@@ -7299,7 +7305,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The One Who Grips Faust - Skill 4
-  if (isId(c->name, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[3]) {
+  if (isId(c->ID, "The One Who Grips Faust") == 0 && chosenSkill == &c->skills[3]) {
 
     int gain = (c2->Bleed[0] + c->skills[2].active)/6;
     if (gain > 2) gain = 2;
@@ -7334,7 +7340,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   
 // -------------------- The House of Spiders: The Index Nursefather Yi Sang --------------------
 // The House of Spiders: The Index Nursefather Yi Sang - Imitation of a Life
-  if (isId(c->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+  if (isId(c->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
 
     if (c->skills[3].active == 1) { // Wound-casing Mask
       *tempOffense += 2;
@@ -7448,7 +7454,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
 
   // The House of Spiders: The Index Nursefather Yi Sang - Skill 1 Buff
-  if (isId(c->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[0]) {
+  if (isId(c->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[0]) {
 
     if (c->skills[4].active == 0) {
 
@@ -7492,7 +7498,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   // The House of Spiders: The Index Nursefather Yi Sang - Skill 2 Buff
-  if (isId(c->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[1]) {
+  if (isId(c->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[1]) {
 
     if (c->skills[4].active == 1) {
 
@@ -7535,7 +7541,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   // The House of Spiders: The Index Nursefather Yi Sang - Skill 3 Buff
-  if (isId(c->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[2]) {
+  if (isId(c->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[2]) {
 
     if (c->skills[4].active == 2) {
 
@@ -7578,7 +7584,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   // The House of Spiders: The Index Nursefather Yi Sang - Skill 4 Buff
-  if (isId(c->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[3]) {
+  if (isId(c->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[3]) {
 
     // [Combat Start] สั่งห้ามรับ Hermes ในเทิร์นนี้ (ฝากค่าไว้ใน skills[8].active)
     c->skills[8].active = 1;
@@ -7639,7 +7645,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ---------------------------- The Middle Little Brother Sinclair ----------------------------
 
   // The Middle Little Brother Sinclair - Passive Buff Tattoo
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill != &c->skills[0] && c->skills[2].active == 0) {
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && chosenSkill != &c->skills[0] && c->skills[2].active == 0) {
 
     c->Passive++;
 
@@ -7649,7 +7655,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The Middle Little Brother Sinclair - Envy Resonance offense buff for skill 2 and 3
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->Passive >= 2 && (chosenSkill == &c->skills[1] || chosenSkill == &c->skills[2])) {
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && c->Passive >= 2 && (chosenSkill == &c->skills[1] || chosenSkill == &c->skills[2])) {
 
     int gain = c->Passive / 2;
     if (gain > 3) gain = 3;
@@ -7662,7 +7668,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The Middle Little Brother Sinclair - Passive Buff Book
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && c->skills[1].active > 0 && c->skills[2].active == 0) {
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && c->skills[1].active > 0 && c->skills[2].active == 0) {
 
     int dmgvalue = c->skills[1].active;
     if (dmgvalue > 30) dmgvalue = 30;
@@ -7704,7 +7710,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The Middle Little Brother Sinclair - Skill 1 Buff
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[0]) {
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[0]) {
 
     int MissingHP = ((c->MAX_HP - c->HP) / c->MAX_HP) * 100;
 
@@ -7735,7 +7741,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The Middle Little Brother Sinclair - Skill 2 Buff
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[1]) {
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[1]) {
 
     int MissingHP = ((c->MAX_HP - c->HP) / c->MAX_HP) * 100;
 
@@ -7751,7 +7757,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The Middle Little Brother Sinclair - Skill 3 Buff
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[2]) {
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[2]) {
 
     int MissingHP = ((c->MAX_HP - c->HP) / c->MAX_HP) * 100;
 
@@ -7769,7 +7775,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // The Middle Little Brother Sinclair - Skill 4 Buff
-  if (isId(c->name, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->defenseSkill[0]) {
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->defenseSkill[0]) {
 
     c->skills[4] = *chosenSkill;
 
@@ -7837,7 +7843,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ---------------------------- Binah -----------------------------
 
   // Binah - Arbiter
-  if (isId(c->name, "Binah") == 0 && !c->Passive) {
+  if (isId(c->ID, "Binah") == 0 && !c->Passive) {
 
     c->DamageUp -= 20;
     c->FinalPowerBoost -= 1;
@@ -7845,7 +7851,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     printf("\n%s's 'Incomplete Arbiter' activated, deals -20%% damage, Final Power -1\n", c->name);
 
     sleep(1);
-  } else if (isId(c->name, "Binah") == 0 && c->Passive) {
+  } else if (isId(c->ID, "Binah") == 0 && c->Passive) {
 
       c->DamageUp += 50;
       c->FinalPowerBoost += 2;
@@ -7856,7 +7862,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Binah - heal Sanity
-  if (isId(c->name, "Binah") == 0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "Binah") == 0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[3])) {
 
     updateSanity(c, 10);
     
@@ -7867,7 +7873,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Binah - Skill 5 buff
-  if (isId(c->name, "Binah") == 0 && (chosenSkill == &c->skills[4])) {
+  if (isId(c->ID, "Binah") == 0 && (chosenSkill == &c->skills[4])) {
 
     c->Protection += 30;
     c->ProtectionNextTurn += 30;
@@ -7878,7 +7884,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Binah - Fairy buff
-  if (isId(c->name, "Binah") == 0 && c->skills[0].active > 0 && c->Passive) {
+  if (isId(c->ID, "Binah") == 0 && c->skills[0].active > 0 && c->Passive) {
 
     int boost = c->skills[0].active * 20;
 
@@ -7895,7 +7901,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // -------------------------- Jia Qiu -----------------------------
   
  // Jia Qiu - heal Sanity on mao or zilu
-  if (isId(c->name, "Jia Qiu") == 0 &&
+  if (isId(c->ID, "Jia Qiu") == 0 &&
       (chosenSkill == &c->skills[12] || chosenSkill == &c->skills[4] || chosenSkill == &c->skills[11])) {
 
     updateSanity(c, 10);
@@ -7907,10 +7913,10 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Jia Qiu S15 Nerf
-  if (isId(c->name, "Jia Qiu") == 0 &&
+  if (isId(c->ID, "Jia Qiu") == 0 &&
       (chosenSkill == &c->skills[15])) {
 
-    if (isId(c2->name, "Hong lu:The Lord of Hongyuan") == 0) {
+    if (isId(c2->ID, "Hong lu:The Lord of Hongyuan") == 0) {
       
     printf("\n%s lost 2 Clash Power(%d) for every Uncompromising Imposition on target(%d)\n", c->name, 2 * c->skills[15].active, c->skills[15].active);
     } else {
@@ -7926,7 +7932,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   // ----------------------- Wild hunt ------------------------------
   // Heathcliff: Wild Hunt – skill 3 -> skill 4 if HP ≤ half
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
       chosenSkill == &c->skills[2] && c->skills[0].active > 0) {
     
     printf("\nWhen activated 'Dullahan', %s switching '%s' to Skill '%s'\n", c->name,
@@ -7937,7 +7943,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     sleep(1);
   }
 
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
       chosenSkill == &c->defenseSkill[0] && c->Sanity >= 15 && c->skills[0].active > 0) {
 
     printf("\n%s activated 'Dullahan', and equipped '%s', using '%s' as Clashable Counter instead\n", c->name,
@@ -7950,7 +7956,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Wild hunt – Buff
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 && c->skills[0].active > 0) {
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 && c->skills[0].active > 0) {
 
     *tempOffense += 3;
     *tempDefense -= 3;
@@ -7967,7 +7973,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – skill 4 lose sanity
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
       (chosenSkill == &c->skills[3])) {
 
       updateSanity(c, -(15));
@@ -7983,7 +7989,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   
 
   // Heathcliff:Wild Hunt – gain coffin
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
       (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
 
     int gain;
@@ -8004,7 +8010,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – Damage coffin
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 3) {
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 3) {
 
     int gain;
 
@@ -8018,7 +8024,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – Clash power coffin
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 5) {
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 && c->Passive >= 5) {
 
     int gain;
 
@@ -8032,7 +8038,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff coffin
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[1]) && c->Passive >= 4) {
 
     int gain = c->Passive/4;
@@ -8046,7 +8052,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 1
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[0] || chosenSkill == &c->defenseSkill[0]) && abs(c->Sanity - c2->Sanity) >= 10) {
 
     int gain = abs(c->Sanity - c2->Sanity)/10;
@@ -8061,7 +8067,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 1
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[0]) && c->Passive >= 3) {
 
     c->ClashPower += 1;
@@ -8073,7 +8079,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 1/2
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] || chosenSkill == &c->defenseSkill[0]) && abs(c->Sanity - c2->Sanity) >= 10) {
 
     c->ClashPower += 1;
@@ -8085,7 +8091,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 3
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[2]) && abs(c->Sanity - c2->Sanity) >= 15) {
 
     int gain = abs(c->Sanity - c2->Sanity)/15;
@@ -8100,7 +8106,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heathcliff:Wild Hunt – buff Skill 4
-  if (isId(c->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(c->ID, "Heathcliff:Wild Hunt") == 0 &&
      (chosenSkill == &c->skills[3]) && abs(45 - c->Sanity) >= 20) {
 
     int gain = abs(45 - c->Sanity)/20;
@@ -8119,7 +8125,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 // ---------------------- Meursault:Blade Lineage Mentor ---------------------
   
   //        Meursault:Blade Lineage Mentor - Remembrance
-  if ((isId(c->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 &&
        c->HP <= c->MAX_HP * 0.6)) {
 
       printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0\n",c->name);
@@ -8183,7 +8189,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   //        Meursault:Blade Lineage Mentor - Skill 1 buff
-  if ((isId(c->name, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[0])) {
+  if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[0])) {
 
     float P_HPDifferent = (c->MAX_HP - c->HP) / c->MAX_HP; // 0.0 - 1.0
      float E_HPDifferent = (c2->MAX_HP - c2->HP) / c2->MAX_HP; // 0.0 - 1.0
@@ -8203,7 +8209,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   //        Meursault:Blade Lineage Mentor - Skill 2 buff
-  if ((isId(c->name, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[1])) {
+  if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[1])) {
 
     float P_HPDifferent = (c->MAX_HP - c->HP) / c->MAX_HP; // 0.0 - 1.0
      float E_HPDifferent = (c2->MAX_HP - c2->HP) / c2->MAX_HP; // 0.0 - 1.0
@@ -8228,7 +8234,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ----------------------- Meursault:The Thumb ---------------------
   
   // Meursault: The Thumb – skill 3 -> skill 4 if HP ≤ 65
-  if (isId(c->name, "Meursault:The Thumb") == 0 &&
+  if (isId(c->ID, "Meursault:The Thumb") == 0 &&
       chosenSkill == &c->skills[2] && c->skills[3].active && c->Passive > 0) {
     
     printf("\n%s at 1+ Savage Tigermark Round, switching '%s' to Skill '%s'\n", c->name,
@@ -8240,7 +8246,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault: The Thumb – S3-1 Unbreakable
-  if (isId(c->name, "Meursault:The Thumb") == 0 && chosenSkill == &c->skills[2] && c->Passive >= 1 && !c->skills[3].active && c->skills[2].active >= 3) {
+  if (isId(c->ID, "Meursault:The Thumb") == 0 && chosenSkill == &c->skills[2] && c->Passive >= 1 && !c->skills[3].active && c->skills[2].active >= 3) {
 
     printf("\n%s at 1+ Tigermark Round and 3+ Tigermark Round spent, convert all Coins of 'Tanglecleaver' into Unbreakable Coins\n", c->name);
 
@@ -8250,7 +8256,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault: The Thumb – all Unbreakable
-  if (isId(c->name, "Meursault:The Thumb") == 0 && c->Passive >= 1 && c->skills[3].active) {
+  if (isId(c->ID, "Meursault:The Thumb") == 0 && c->Passive >= 1 && c->skills[3].active) {
 
     printf("\n%s at 1+ Savage Tigermark Round, convert all Coins of this unit's Attack Skills to Unbreakable Coins\n", c->name);
 
@@ -8260,7 +8266,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault: The Thumb – Overheat
-  if (isId(c->name, "Meursault:The Thumb") == 0 && c->Passive <= 0 && c->skills[3].active) {
+  if (isId(c->ID, "Meursault:The Thumb") == 0 && c->Passive <= 0 && c->skills[3].active) {
 
     printf("\n%s at 0 Savage Tigermark Round, convert all Coins of this unit's Attack Skills to Unbreakable Coins and Gain 'Overheat'\n", c->name);
 
@@ -8307,7 +8313,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault:The Thumb - Skill 1 and 2 or defskill Final Power
-  if (isId(c->name, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] || chosenSkill == &c->defenseSkill[0])) {
+  if (isId(c->ID, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] || chosenSkill == &c->defenseSkill[0])) {
 
     int Buff = abs(c->Sanity);
     int FinalPowerbuff = Buff/10;
@@ -8326,7 +8332,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault:The Thumb - Skill def clash power
-  if (isId(c->name, "Meursault:The Thumb") == 0 && c->Passive <= 0 && (chosenSkill == &c->defenseSkill[0])) {
+  if (isId(c->ID, "Meursault:The Thumb") == 0 && c->Passive <= 0 && (chosenSkill == &c->defenseSkill[0])) {
 
      c->ClashPower += 2;
 
@@ -8336,7 +8342,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Meursault:The Thumb - Skill 3 and 4 coin power
-  if (isId(c->name, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 20 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "Meursault:The Thumb") == 0 && abs(c->Sanity) >= 20 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
     int Buff = abs(c->Sanity);
     int CoinPowerbuff = Buff/20;
@@ -8352,18 +8358,18 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------------------------------
   
   // Shin buffs (temporary, print once per skill selection)
-  if ((isId(c->name, "Meursault:The Thumb") == 0 &&
+  if ((isId(c->ID, "Meursault:The Thumb") == 0 &&
        c->skills[3].active) ||
-      (isId(c->name, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active != 3)) {
+      (isId(c->ID, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active != 3)) {
 
-    if (isId(c->name, "Meursault:The Thumb") == 0 && c->skills[2].active < 8) {
+    if (isId(c->ID, "Meursault:The Thumb") == 0 && c->skills[2].active < 8) {
 
       int DamageBuff = (abs(c2->Sanity - c->Sanity)) > 20 ? 20 : (abs(c2->Sanity - c->Sanity));
       c->DamageUp += DamageBuff;
       
       printf("\n%s 'Unrelenting Spirit [剛氣]' activated! \n deal +1%% damage for every different Sanity between enemy and this unit (%d%% - Max 20%%)\n", c->name, DamageBuff);
 
-    } else if (isId(c->name, "Meursault:The Thumb") == 0 && c->skills[2].active >= 8) {
+    } else if (isId(c->ID, "Meursault:The Thumb") == 0 && c->skills[2].active >= 8) {
 
       int DamageBuff = (2*((int)(abs(c2->Sanity - c->Sanity)))) > 40 ? 40 : (2*(int)(abs(c2->Sanity - c->Sanity)));
       c->DamageUp += DamageBuff;
@@ -8409,7 +8415,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   
  // ---------------------------- Lei heng -----------------------------
-  if (isId(c->name, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active == 3) {
+  if (isId(c->ID, "Lei heng") == 0 && c->skills[4].active == 1 && c->skills[0].active == 3) {
     
     float missing = (c->MAX_HP - c->HP) / (c->MAX_HP * 0.15); // fraction of HP missing (0.0 - 1.0)
     int SkillDamageUp = (int)(missing) * 10;  // 10% for every 15%
@@ -8441,7 +8447,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – heal Sanity Passive and Buff dmg Passive
-  if (isId(c->name, "Lei heng") == 0 && c->Sanity > -45) {
+  if (isId(c->ID, "Lei heng") == 0 && c->Sanity > -45) {
 
       // 1. Calculate the success threshold
       // If sanity is 10, threshold becomes 40.
@@ -8489,7 +8495,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – skill 3 -> skill 6 if HP ≤ 40%
-  if (isId(c->name, "Lei heng") == 0 && c->HP < c->MAX_HP * 0.4 &&
+  if (isId(c->ID, "Lei heng") == 0 && c->HP < c->MAX_HP * 0.4 &&
       (chosenSkill == &c->skills[2])) {
 
     chosenSkill = &c->skills[5];
@@ -8499,7 +8505,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – skill 5 buff
-  if (isId(c->name, "Lei heng") == 0 && (chosenSkill == &c->skills[4])) {
+  if (isId(c->ID, "Lei heng") == 0 && (chosenSkill == &c->skills[4])) {
 
     c->DamageUpNextTurn += 10;
 
@@ -8509,7 +8515,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Lei heng – inner strength skill buff no blast skill 1
-  if (isId(c->name, "Lei heng") == 0 &&
+  if (isId(c->ID, "Lei heng") == 0 &&
     (chosenSkill == &c->skills[0]) && (strstr(c->skills[0].name, "Blast") == NULL)) {
 
     if (c->skills[0].active == 2) {
@@ -8531,7 +8537,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   }  // Lei heng – inner strength skill buff blast skill 1
-  else if (isId(c->name, "Lei heng") == 0 &&
+  else if (isId(c->ID, "Lei heng") == 0 &&
      (chosenSkill == &c->skills[0]) && (strstr(c->skills[0].name, "Blast") != NULL)) {
 
   if (c->skills[0].active == 2) {
@@ -8555,7 +8561,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
     // Lei heng – inner strength skill buff no blast skill 2
-    if (isId(c->name, "Lei heng") == 0 &&
+    if (isId(c->ID, "Lei heng") == 0 &&
       (chosenSkill == &c->skills[1]) && (strstr(c->skills[1].name, "Blast") == NULL)) {
 
       if (c->skills[0].active == 2) {
@@ -8577,7 +8583,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       }
 
     }  // Lei heng – inner strength skill buff blast skill 2
-    else if (isId(c->name, "Lei heng") == 0 &&
+    else if (isId(c->ID, "Lei heng") == 0 &&
        (chosenSkill == &c->skills[1]) && (strstr(c->skills[1].name, "Blast") != NULL)) {
 
     if (c->skills[0].active == 2) {
@@ -8601,7 +8607,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
       // Lei heng – inner strength skill buff skill 4
-      if (isId(c->name, "Lei heng") == 0 &&
+      if (isId(c->ID, "Lei heng") == 0 &&
         (chosenSkill == &c->skills[3])) {
 
         if (c->skills[0].active == 2) {
@@ -8625,7 +8631,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       }
 
   // Lei heng – Consumes inner strength
-  if (isId(c->name, "Lei heng") == 0 &&
+  if (isId(c->ID, "Lei heng") == 0 &&
     (chosenSkill == &c->skills[2])) {
 
     printf("\n%s consumes all Inner Strength [底力] Stack on self (%d)\n",
@@ -8650,7 +8656,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     c->Passive = 0;
     
   }  // Lei heng – Consumes Extreme strength
-  else if (isId(c->name, "Lei heng") == 0 &&
+  else if (isId(c->ID, "Lei heng") == 0 &&
       (chosenSkill == &c->skills[5])) {
 
       printf("\n%s consumes all Extreme Strength [底力] Stack on self (%d)\n",
@@ -8693,7 +8699,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------- Erlking Heathcliff ------------------------------
 
   // Erlking Heathcliff – Passive Buff
-  if (isId(c->name, "Erlking Heathcliff") == 0) {
+  if (isId(c->ID, "Erlking Heathcliff") == 0) {
 
     float enemyHP = (c2->HP / c2->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
     float myHP = (c->HP / c->MAX_HP) * 100; // fraction of HP missing (0.0 - 1.0)
@@ -8710,7 +8716,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Erlking Heathcliff – skill 5
-  if (isId(c->name, "Erlking Heathcliff") == 0 && chosenSkill == &c->skills[5] && abs(c2->Sanity - c->Sanity) > 0) {
+  if (isId(c->ID, "Erlking Heathcliff") == 0 && chosenSkill == &c->skills[5] && abs(c2->Sanity - c->Sanity) > 0) {
 
     int buff = abs(c2->Sanity - c->Sanity);
     if (buff > 2) buff = 2;
@@ -8727,7 +8733,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 // ------------------------------ Gregor:Firefist ------------------------------
   
     // Gregor:Firefist – Reset passive
-  if (isId(c->name, "Gregor:Firefist") == 0 && c->Passive <= 0) {
+  if (isId(c->ID, "Gregor:Firefist") == 0 && c->Passive <= 0) {
     
     printf("\n%s runs out of fuel, use '%s' instead!\n", c->name, c->defenseSkill[0].name);
 
@@ -8741,7 +8747,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Gregor:Firefist – Reset passive
-  if (isId(c->name, "Gregor:Firefist") == 0 && chosenSkill == &c->defenseSkill[0]) {
+  if (isId(c->ID, "Gregor:Firefist") == 0 && chosenSkill == &c->defenseSkill[0]) {
 
     printf("\n%s regain District 12 Fuel to 100\n", c->name);
 
@@ -8751,7 +8757,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Gregor:Firefist – Buff Passive
-  if (isId(c->name, "Gregor:Firefist") == 0) {
+  if (isId(c->ID, "Gregor:Firefist") == 0) {
 
     if (c2->HP <= (c2->MAX_HP *0.75) || c->HP <= (c->MAX_HP *0.75)) {
 
@@ -8785,7 +8791,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Gregor:Firefist - S1 Coin power buff
-  if (isId(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->ID, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[0]) {
 
     int gain = c->skills[0].active / 3;
@@ -8804,7 +8810,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Gregor:Firefist - S2 Coin power buff
-  if (isId(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->ID, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[1]) {
 
     int gain = c->skills[0].active / 6;
@@ -8823,7 +8829,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Gregor:Firefist - S3 Base power buff
-  if (isId(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->ID, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[2]) {
 
     int gain = c->skills[0].active / 6;
@@ -8842,7 +8848,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Gregor:Firefist - S3 Coin power buff
-  if (isId(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->ID, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[2]) {
 
     int gain = c->skills[1].active / 3;
@@ -8861,7 +8867,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Gregor:Firefist - S3 Final power buff
-  if (isId(c->name, "Gregor:Firefist") == 0 &&
+  if (isId(c->ID, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[2]) {
 
     int gain = (c->skills[0].active + c->skills[1].active) / 10;
@@ -8884,7 +8890,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------- Roland --------------------------
 
   // Roland – Shin (心) - The Black Silence
-  if (isId(c->name, "Fixer grade 9?") == 0 && isId(c2->name, "Binah") == 0 && c2->Passive == 1) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && isId(c2->ID, "Binah") == 0 && c2->Passive == 1) {
 
     int BaseBuff = ((abs(c2->Sanity - c->Sanity))/10);
      int DmgBuff = 10*((abs(c2->Sanity - c->Sanity))/10);
@@ -8903,7 +8909,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && c->HP <= c->MAX_HP * 0.5) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && c->HP <= c->MAX_HP * 0.5) {
     printf("\n%s: \"That's that, this is this....\" , Offense +10, Defense -5\n",
            c->name);
 
@@ -8914,7 +8920,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   //Roland Furioso
-  if (isId(c->name, "Fixer grade 9?") == 0 && chosenSkill->Copies != 0 && chosenSkill != &c->skills[9]) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && chosenSkill->Copies != 0 && chosenSkill != &c->skills[9]) {
 
     chosenSkill->Copies = -1;
 
@@ -8931,7 +8937,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 1 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[0]) && c->Passive >= 4) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[0]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 8) Boost = 8;
@@ -8945,7 +8951,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 2 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[1]) && c->Passive >= 4) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[1]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 5) Boost = 5;
@@ -8959,7 +8965,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 3 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[2]) && c->Passive >= 4) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[2]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 5) Boost = 5;
@@ -8973,7 +8979,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 4 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[3]) && c->Passive >= 3) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[3]) && c->Passive >= 3) {
 
     int Boost = c->Passive/3;
     if (Boost > 4) Boost = 4;
@@ -8987,7 +8993,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 5 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[4]) && c->Passive >= 4) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[4]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 4) Boost = 4;
@@ -9001,7 +9007,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 6 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[5]) && c->Passive >= 4) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[5]) && c->Passive >= 4) {
 
     int Boost = c->Passive/4;
     if (Boost > 10) Boost = 10;
@@ -9030,7 +9036,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 7 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[6]) && c->Passive >= 5) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[6]) && c->Passive >= 5) {
 
     int Boost = c->Passive/5;
     if (Boost > 3) Boost = 3;
@@ -9045,7 +9051,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 8 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[7]) && c->Passive >= 5) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[7]) && c->Passive >= 5) {
 
     int Boost = c->Passive/5;
     if (Boost > 3) Boost = 3;
@@ -9060,7 +9066,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 9 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[8]) && c->Passive >= 10) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[8]) && c->Passive >= 10) {
 
     int Boost = c->Passive/5;
     if (Boost > 2) Boost = 2;
@@ -9077,7 +9083,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 10 buff
-  if (isId(c->name, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[9]) && c->Passive >= 5) {
+  if (isId(c->ID, "Fixer grade 9?") == 0 && (chosenSkill == &c->skills[9]) && c->Passive >= 5) {
 
     int buff = c->Passive/5;
     if (buff > 5) buff = 5;
@@ -9091,7 +9097,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Roland – Skill 10 buff for shin (心)
-    if (isId(c->name, "Fixer grade 9?") == 0 && isId(c2->name, "Binah") == 0 && c2->Passive == 1 && (chosenSkill == &c->skills[9])) {
+    if (isId(c->ID, "Fixer grade 9?") == 0 && isId(c2->ID, "Binah") == 0 && c2->Passive == 1 && (chosenSkill == &c->skills[9])) {
 
       int buff = c->Passive/2;
       if (buff > 10) buff = 10;
@@ -9109,7 +9115,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------------- Hong lu:The Lord of Hongyuan ---------------------------
 
   // Hong lu:The Lord of Hongyuan - Skill 1 deal more damage on HP
-  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[0])) {
+  if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[0])) {
 
     int Boost = (c2->Rupture[0] + c->Poise[0]) / 6;
     if (Boost > 1) Boost = 1;
@@ -9126,7 +9132,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Hong lu:The Lord of Hongyuan - Skill 2 deal more damage on HP
-  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[1])) {
 
     int Boost = (c2->Rupture[0] + c->Poise[0]) / 6;
     if (Boost > 2) Boost = 2;
@@ -9143,7 +9149,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Hong lu:The Lord of Hongyuan - Skill 3 deal more damage on HP
-  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[2])) {
+  if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[2])) {
 
     int Boost = (c2->Rupture[0] + c->Poise[0]) / 4;
     if (Boost > 3) Boost = 3;
@@ -9159,7 +9165,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Hong lu:The Lord of Hongyuan - Skill 2 Gain
-  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[1])) {
 
     int gain = 3;
 
@@ -9177,7 +9183,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Hong lu:The Lord of Hongyuan - Skill 2 Gain
-  if (isId(c->name, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[2])) {
+  if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[2])) {
 
     c->Poise[0] += 5;
      c->Poise[1] += 3;
@@ -9196,7 +9202,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------------- Yi sang:Fell Bullet -----------------
 
   // Yi sang:Fell Bullet - Buff s3
-  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[2]) {
 
     int gain = c->Poise[0] / 5;
@@ -9226,7 +9232,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Yi sang:Fell Bullet - Buff s1
-  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[0]) {
 
     int gain = c->Poise[0] / 5;
@@ -9256,7 +9262,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
     // Yi sang:Fell Bullet - Buff s2
-    if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
         chosenSkill == &c->skills[1]) {
 
       int gain = c->Poise[0] / 5;
@@ -9274,7 +9280,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
   // Yi sang:Fell Bullet - Buff defenseskill 1
-  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->defenseSkill[0]) {
 
     int gain = c->Poise[0] / 2;
@@ -9292,7 +9298,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Yi sang:Fell Bullet - Poise s1
-  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[0]) {
 
      c->Poise[1] += 2;
@@ -9315,7 +9321,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Yi sang:Fell Bullet - Poise s2
-  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[1]) {
 
      c->Poise[0] += 2;
@@ -9329,7 +9335,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Yi sang:Fell Bullet - Poise s3
-  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[2]) {
 
      c->Poise[0] += c->Passive;
@@ -9343,7 +9349,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Yi sang:Fell Bullet - Poise s1
-  if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+  if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->defenseSkill[0]) {
 
     if (c->Passive < 7) {
@@ -9360,7 +9366,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
         // Yi sang:Fell Bullet - Fell Bullet Clash power buff
-    if (isId(c->name, "Yi sang:Fell Bullet") == 0 &&
+    if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
         c->skills[2].active > 0) {
 
       c->Poise[0] += 3;
@@ -9384,7 +9390,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // -------------------- Don Quixote:The Manager of La Manchaland ---------------------------
 
   // Don Quixote:The Manager of La Manchaland - S3-1 Buff S3-2
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
       chosenSkill == &c->skills[2] && c->Passive >= 15) {
 
     chosenSkill = &c->skills[5];
@@ -9398,7 +9404,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Empower Skill
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
       chosenSkill == &c->skills[0] && c->Passive >= 15) {
 
     int Hardblood = 10;
@@ -9411,7 +9417,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     sleep(1);
 
-  } else if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  } else if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              chosenSkill == &c->skills[1] && c->Passive >= 15) {
 
@@ -9427,7 +9433,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
   }
 
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
     0 &&
   c->Passive >= 15 && chosenSkill == &c->defenseSkill[0]) {
 
@@ -9448,7 +9454,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Don Quixote:The Manager of La Manchaland - Hardblood gains 2-4
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] ||
     chosenSkill == &c->skills[2] || chosenSkill == &c->defenseSkill[0])) {
@@ -9468,7 +9474,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Hardblood heal for counter-2 won
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       (chosenSkill == &c->defenseSkill[1])) {
 
@@ -9480,7 +9486,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland if HP ≤ 30 gains buff
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
       c->HP <= c->MAX_HP*0.5) {
 
     c->Passive += 3;
@@ -9497,7 +9503,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Skill 1/2 in both Buff Coin
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[0] ||  chosenSkill == &c->skills[1] || chosenSkill == &c->skills[3] ||  chosenSkill == &c->skills[4])) {
 
@@ -9520,7 +9526,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Skill 2 in both Buff Coin
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[1] ||  chosenSkill == &c->skills[4])) {
 
@@ -9538,7 +9544,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Skill 3 in both Buff Coin
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[2] ||  chosenSkill == &c->skills[5])) {
 
@@ -9561,7 +9567,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Skill 1-2 Buff dmg
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[3])) {
 
@@ -9580,7 +9586,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Don Quixote:The Manager of La Manchaland - Skill 3 both Buff dmg
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[5])) {
 
@@ -9625,7 +9631,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Don Quixote:The Manager of La Manchaland - Skill 3-2 Buff base
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") ==
                  0 &&
              (chosenSkill == &c->skills[5])) {
 
@@ -9640,7 +9646,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Don Quixote:The Manager of La Manchaland - Hardblood Buff
-  if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 && c->Passive >= 10 && c->Passive < 20) {
+  if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") == 0 && c->Passive >= 10 && c->Passive < 20) {
 
     int boost = (int)(c->Passive / 5);
 
@@ -9649,7 +9655,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     printf("\n%s has 10+ Hardblood, gains +1 Offense (%d) for every 5 stacks (%d)\n", c->name, boost, c->Passive);
 
     sleep(1);
-  } else if (isId(c->name, "Don Quixote:The Manager of La Manchaland") == 0 && c->Passive >= 20) {
+  } else if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") == 0 && c->Passive >= 20) {
 
     int boost = (int)(c->Passive / 5);
 
@@ -9668,7 +9674,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   //-----------------------Sancho:The Second Kindred of Don Quixote ---------------------
   
   // Sancho:The Second Kindred of Don Quixote - Hardblood gains 1
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1] ||
        chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3] ||
        chosenSkill == &c->skills[4] || chosenSkill == &c->skills[6] || 
@@ -9685,7 +9691,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
       sleep(1);
 
-    } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && (chosenSkill == &c->skills[5]) && c->HP > 1) {
+    } else if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && (chosenSkill == &c->skills[5]) && c->HP > 1) {
 
     int Hardblood = 2;
 
@@ -9704,7 +9710,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Hardblood gains 2 at start combat
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
 
     int Hardblood = 1;
 
@@ -9717,7 +9723,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
   
   // Sancho:The Second Kindred of Don Quixote - Hardblood gains 5 with skill 9
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (chosenSkill == &c->skills[9])) {
 
     int Hardblood = 5;
@@ -9732,7 +9738,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Hardblood Buff
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 10 && c->Passive < 20) {
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 10 && c->Passive < 20) {
 
     int boost = (int)(c->Passive / 6);
 
@@ -9742,7 +9748,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     printf("\n%s has 10+ Hardblood, gains +1 Offense and Defense(%d) for every 6 stacks(%d)\n", c->name, boost, c->Passive);
 
     sleep(1);
-  } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 20) {
+  } else if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && c->Passive >= 20) {
 
     int boost = 2 * (int)(c->Passive / 6);
     
@@ -9755,7 +9761,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 4/5 Buff Coin
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==
                  0 &&
              (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[4])) {
 
@@ -9789,7 +9795,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 8 Buff Coin
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==
                  0 &&
              (chosenSkill == &c->skills[7])) {
 
@@ -9813,7 +9819,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 9 Buff Base
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==
                  0 &&
              (chosenSkill == &c->skills[7])) {
 
@@ -9837,7 +9843,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - skill 11
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[10] && c->HP > 1) {
 
@@ -9862,7 +9868,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - skill 12
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
     chosenSkill == &c->skills[11] && c->HP > 1) {
 
   int boost = 0;
@@ -9886,7 +9892,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Sancho:The Second Kindred of Don Quixote - Ultimate skill 13
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[12] && c->HP > 1) {
 
@@ -9896,7 +9902,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     printf("\n%s consumes 5 Hardblood(%d) to gain Clash Power +5\n",
            c->name, c->Passive);
-    } else if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+    } else if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[12] && c->HP > 1) {
       
@@ -9912,7 +9918,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     sleep(1);
   }
   // Sancho:The Second Kindred of Don Quixote - Ultimate
-  if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
     chosenSkill == &c->skills[13]) {
 
@@ -9939,7 +9945,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
 
     // Sancho:The Second Kindred of Don Quixote - consumes Hardblood with s5
-    if (isId(c->name, "Sancho:The Second Kindred of Don Quixote") ==  0 &&
+    if (isId(c->ID, "Sancho:The Second Kindred of Don Quixote") ==  0 &&
         (chosenSkill == &c->skills[5]) && c->Passive >= 4) {
 
       c->Passive -= 4;
@@ -9958,7 +9964,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // -------------------- Lobotomy E.G.O::Solemn Lament Yi Sang --------------------
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - Clash power
-  if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+  if (isId(c->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
           0 && (chosenSkill == &c->defenseSkill[0])) {
 
     c->defenseSkill[0].active = 1;
@@ -9967,7 +9973,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang - Clash power
-  if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+  if (isId(c->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
           0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
     if (c->Passive >= 10) {
@@ -9993,7 +9999,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
     
   }  // Lobotomy E.G.O::Solemn Lament Yi Sang - Clash power
-  else if (isId(c->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
+  else if (isId(c->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") ==
             0 && (chosenSkill == &c->skills[2])) {
 
     if (c->Passive >= 5) {
@@ -10025,7 +10031,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ------------------------ Dawn Office Fixer Sinclair ----------------------------
   
   // Dawn Office Fixer Sinclair - Skill Buff S2
-  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20 && (chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20 && (chosenSkill == &c->skills[1])) {
 
     c->ClashPower += 1;
 
@@ -10037,7 +10043,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff base form S1
-  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->Sanity >= 10 && (chosenSkill == &c->skills[0])) {
+  if (isId(c->ID, "Dawn Office Fixer Sinclair") == 0 && c->Sanity >= 10 && (chosenSkill == &c->skills[0])) {
 
     int boost = c->Sanity/10;
     if (boost > 2) boost = 2;
@@ -10052,7 +10058,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff base form S3
-  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 10 && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
+  if (isId(c->ID, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 10 && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
 
     int boost = c->Sanity/10;
     if (boost > 2) boost = 2;
@@ -10067,7 +10073,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S2
-  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[1])) {
 
     updateSanity(c, -(5));
     
@@ -10081,7 +10087,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Dawn Office Fixer Sinclair - Skill Buff EGO form S4
-  if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
+  if (isId(c->ID, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[2])) {
 
     if (c->Sanity >= 20) {
     int boost = 2*(c->Sanity/20);
@@ -10098,7 +10104,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
     
   // Dawn Office Fixer Sinclair - Skill Buff base form
- if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20) {
+ if (isId(c->ID, "Dawn Office Fixer Sinclair") == 0 && !c->skills[3].active && c->Sanity >= 20) {
 
       c->ClashPower += c->Sanity/20;
 
@@ -10110,7 +10116,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   
   // Dawn Office Fixer Sinclair - Skill Buff Ego form
- if (isId(c->name, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && c->Sanity >= 20) {
+ if (isId(c->ID, "Dawn Office Fixer Sinclair") == 0 && c->skills[3].active && c->Sanity >= 20) {
 
       c->CoinPowerBoost += c->Sanity/20;
 
@@ -10126,7 +10132,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------------------- Heishou Pack - You Branch Adept Heathcliff -----------------------
   
   // Heishou Pack - You Branch Adept Heathcliff - Bloody Storm of Blades
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8) {
 
     int gain = ((c->MAX_HP - c->HP)/c->MAX_HP) / 0.2;
     if (gain > 3) gain = 3;
@@ -10140,7 +10146,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 4
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->Passive >= 20 && chosenSkill == &c->skills[2]) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->Passive >= 20 && chosenSkill == &c->skills[2]) {
 
     chosenSkill = &c->skills[3];
 
@@ -10150,7 +10156,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 1 and 2 Clash power
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->skills[0].active >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->skills[0].active >= 10 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
     int clashpower = c->skills[0].active/10;
      if (clashpower > 2) clashpower = 2;
@@ -10163,7 +10169,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 1 and 2 coin power
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
      c->CoinPowerBoost += 1;
 
@@ -10173,7 +10179,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill def base power
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 10 && (chosenSkill == &c->defenseSkill[0])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 10 && (chosenSkill == &c->defenseSkill[0])) {
 
      c->BasePowerBoost += 1;
 
@@ -10183,7 +10189,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill def coin power
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->defenseSkill[0]) && c->skills[2].active > 0) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->defenseSkill[0]) && c->skills[2].active > 0) {
 
       c->CoinPowerBoost += 1;
 
@@ -10193,7 +10199,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill def deal more damage on HP
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->defenseSkill[0])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->defenseSkill[0])) {
 
     float damageboost = c->skills[6].active / 3;
     if (damageboost > 30.0f) damageboost = 30.0f;
@@ -10206,7 +10212,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 coin power
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->skills[0].active + c->skills[1].active) >= 6 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
     int Buff = (c->skills[0].active + c->skills[1].active)/6;
      if (Buff > 2) Buff = 2;
@@ -10219,7 +10225,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 Clash power
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->HP <= c->MAX_HP * 0.8 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
     int clashpower = (c->MAX_HP - c->HP)/c->MAX_HP / 0.2;
      if (clashpower > 3) clashpower = 3;
@@ -10232,7 +10238,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 deal more damage on burn
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && c->skills[0].active > 0) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && c->skills[0].active > 0) {
 
     float damageboost = c->skills[0].active * 1.5f;
     if (damageboost > 30.0f) damageboost = 30.0f;
@@ -10244,7 +10250,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on burn
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3]) && c->skills[0].active > 0) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3]) && c->skills[0].active > 0) {
 
     int damageboost = c->skills[0].active * 3;
     if (damageboost > 30) damageboost = 30;
@@ -10256,7 +10262,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on HP
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3])) {
 
     float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
     float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
@@ -10272,7 +10278,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 coins
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && (c->skills[2].active > 0 || c->HP < c->MAX_HP*0.5)) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && (c->skills[2].active > 0 || c->HP < c->MAX_HP*0.5)) {
 
     c->skills[2].Unbreakable = c->skills[2].Coins;
 
@@ -10283,7 +10289,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 Gain 3 Bloodflame [血炎] 
-  if (isId(c->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3] || chosenSkill == &c->defenseSkill[0])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3] || chosenSkill == &c->defenseSkill[0])) {
 
     int gain = 3;
 
@@ -10304,7 +10310,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 // ------------------- King in Binds -------------------
 
   // King in Binds - Skill 1 Coin buff
-  if (isId(c->name, "King in Binds") == 0 && c->skills[1].active >= 6 && (chosenSkill == &c->skills[0])) {
+  if (isId(c->ID, "King in Binds") == 0 && c->skills[1].active >= 6 && (chosenSkill == &c->skills[0])) {
 
     c->CoinPowerBoost += 1;
 
@@ -10314,7 +10320,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // King in Binds - Skill 2 or 4 Coin buff
-  if (isId(c->name, "King in Binds") == 0 && c->skills[1].active >= 6 && (chosenSkill == &c->skills[1] || chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "King in Binds") == 0 && c->skills[1].active >= 6 && (chosenSkill == &c->skills[1] || chosenSkill == &c->skills[3])) {
 
     int gain = c->skills[1].active/6;
     if (gain > 2) gain = 2;
@@ -10327,7 +10333,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // King in Binds - Skill 3 Clash Power buff
-  if (isId(c->name, "King in Binds") == 0 && c->skills[3].active >= 1 && (chosenSkill == &c->skills[2])) {
+  if (isId(c->ID, "King in Binds") == 0 && c->skills[3].active >= 1 && (chosenSkill == &c->skills[2])) {
 
     c->ClashPower += 1;
 
@@ -10337,7 +10343,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // King in Binds - Skill 5 Clash Power buff
-  if (isId(c->name, "King in Binds") == 0 && c->skills[3].active >= 3 && (chosenSkill == &c->skills[4])) {
+  if (isId(c->ID, "King in Binds") == 0 && c->skills[3].active >= 3 && (chosenSkill == &c->skills[4])) {
 
     int gain = c->skills[1].active/3;
     if (gain > 3) gain = 3;
@@ -10350,7 +10356,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   }
 
   // King in Binds - Skill 6 buff
-  if (isId(c->name, "King in Binds") == 0 && (chosenSkill == &c->skills[5])) {
+  if (isId(c->ID, "King in Binds") == 0 && (chosenSkill == &c->skills[5])) {
 
     c->DefenseBoostNextTurn -= 5;
 
@@ -10380,7 +10386,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // ------------------ Sukuna:King of Curse ------------------
 
   // Sukuna:King of Curse fuga
-  if (isId(c->name, "Sukuna:King of Curse") ==
+  if (isId(c->ID, "Sukuna:King of Curse") ==
           0 && (chosenSkill == &c->skills[3]) && c->skills[3].active > 0) {
 
     printf("\n%s consumes all 'Binding Vow - Open' to gains 1%% damage for every consumed (%d)\n", c->name, c->skills[3].active);
@@ -10461,7 +10467,7 @@ void applyClashStartPassives(Character *p1, SkillStats *s1, Character *p2, Skill
   // --------------------- Clash Phase ----------------------
 
   // Heishou Pack - You Branch Adept Heathcliff passive gain on clash
-  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+  if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
 
     p1->Passive += 3;
     if (p1->Passive > 20) p1->Passive = 20;
@@ -10472,7 +10478,7 @@ void applyClashStartPassives(Character *p1, SkillStats *s1, Character *p2, Skill
   }
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 1 and 2 gain on clash
-  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1])) {
+  if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1])) {
 
     p1->skills[0].active++;
     if (p1->skills[0].active > 99) p1->skills[0].active = 99;
@@ -10485,7 +10491,7 @@ void applyClashStartPassives(Character *p1, SkillStats *s1, Character *p2, Skill
   }
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 1 and 2 gain on clash
-  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->defenseSkill[0])) {
+  if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->defenseSkill[0])) {
 
     p1->skills[1].active += 3;
     if (p1->skills[1].active > 99) p1->skills[1].active = 99;
@@ -10544,7 +10550,7 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
   // ------------------------- Counter -----------------------------------------
   
   // Don Quixote:The Manager of La Manchaland - Counterattack
-  if (isId(counterUnit->name, "Don Quixote:The Manager of La Manchaland") ==
+  if (isId(counterUnit->ID, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
       counterUnit->Passive >= 5 &&
       (s2 != &counterUnit->defenseSkill[0] && s2 != &counterUnit->defenseSkill[1] && s2 != &counterUnit->skills[3] && s2 != &counterUnit->skills[4] && s2 != &counterUnit->skills[5])) {
@@ -10577,7 +10583,7 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
 
     sleep(1);
 
-    if (isId(counterUnit->name, "Don Quixote:The Manager of La Manchaland") ==
+    if (isId(counterUnit->ID, "Don Quixote:The Manager of La Manchaland") ==
             0 &&
         counterUnit->Passive >= 10) {
 
@@ -10665,7 +10671,7 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
 
 
   // Counter Wild hunt
-    if (isId(counterUnit->name, "Heathcliff:Wild Hunt") == 0 && counterUnit->Sanity >= 15 && counterUnit->skills[0].active > 0 && !counterUnit->skills[2].active) {
+    if (isId(counterUnit->ID, "Heathcliff:Wild Hunt") == 0 && counterUnit->Sanity >= 15 && counterUnit->skills[0].active > 0 && !counterUnit->skills[2].active) {
 
        clearTurnSkillBuffs(counterUnit);
 
@@ -10745,7 +10751,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   // -------------- The One Who Grips Faust --------------
 
   // The One Who Grips Faust Skill 1 won
-  if (isId(p1->name, "The One Who Grips Faust") == 0 &&
+  if (isId(p1->ID, "The One Who Grips Faust") == 0 &&
       s1 == &p1->skills[0] && enemyCoins <= 0) {
 
     updateSanity(p2, -3);
@@ -10756,7 +10762,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // The One Who Grips Faust Skill 2 won
-  if (isId(p1->name, "The One Who Grips Faust") == 0 &&
+  if (isId(p1->ID, "The One Who Grips Faust") == 0 &&
       s1 == &p1->skills[1] && enemyCoins <= 0) {
 
     p1->skills[6].active += 1;
@@ -10767,7 +10773,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // The One Who Grips Faust Skill 2 won
-  if (isId(p1->name, "The One Who Grips Faust") == 0 &&
+  if (isId(p1->ID, "The One Who Grips Faust") == 0 &&
       (s1 == &p1->skills[2] || s1 == &p1->skills[3]) && enemyCoins <= 0) {
 
     p1->skills[6].active += 2;
@@ -10780,7 +10786,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   // --------------------------------------------------------
 
   // Heishou Pack - You Branch Adept Heathcliff Skill 4 won
-  if (isId(p1->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 &&
+  if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 &&
       s1 == &p1->skills[3] && enemyCoins <= 0) {
 
     p1->skills[0].active += 10;
@@ -10795,7 +10801,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   // ---------------------- Lobotomy E.G.O::Solemn Lament Yi Sang -------------------
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 1 won
-  if (isId(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
+  if (isId(p1->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
       s1 == &p1->skills[0] && enemyCoins <= 0) {
 
     int value = 2;
@@ -10827,7 +10833,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 2 won
-  if (isId(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
+  if (isId(p1->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
       s1 == &p1->skills[1] && enemyCoins <= 0) {
 
     int value = 1;
@@ -10859,7 +10865,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Lobotomy E.G.O::Solemn Lament Yi Sang Skill 2 won
-  if (isId(p1->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
+  if (isId(p1->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 &&
       s1 == &p1->skills[2] && enemyCoins <= 0) {
 
     int value = 3;
@@ -10891,7 +10897,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Sukuna:King of Curse - skill 8 Clash lost
-  if (isId(p2->name, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && s2 == &p2->skills[7]) {
+  if (isId(p2->ID, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && s2 == &p2->skills[7]) {
 
     p2->Protection -= 30;
     p2->DamageUp -= 80;
@@ -10904,7 +10910,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Sukuna:King of Curse - skill 6 Clash lost
-  if (isId(p2->name, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && (s2 == &p2->skills[5] || (s2 == &p2->skills[3] && p2->skills[3].Unbreakable > 0))) {
+  if (isId(p2->ID, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && (s2 == &p2->skills[5] || (s2 == &p2->skills[3] && p2->skills[3].Unbreakable > 0))) {
 
     p2->Paralyze += 1;
     p2->FinalPowerBoost -= 5;
@@ -10919,7 +10925,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   // -----------------------------------------------------------------
 
   // Jia Qiu S15 lost
-  if (isId(p2->name, "Jia Qiu") == 0 && enemyCoins <= 0 && s2 == &p2->skills[15]) {
+  if (isId(p2->ID, "Jia Qiu") == 0 && enemyCoins <= 0 && s2 == &p2->skills[15]) {
     for (int i = 0; i < p2->numSkills; i++) {
       p2->skills[i].Defense -= 24;
     }
@@ -10931,7 +10937,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Meursault:Blade Lineage Mentor Skill 3 won
-  if (isId(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if (isId(p1->ID, "Meursault:Blade Lineage Mentor") == 0 &&
       s1 == &p1->skills[2] && enemyCoins <= 0) {
     p1->AttackPowerBoostNextTurn += 5;
     printf("\n%s won the Clash, gains 5 Attack Power Up next turn\n", p1->name);
@@ -10940,7 +10946,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Meursault:Blade Lineage Mentor Skill 2 won
-  if (isId(p1->name, "Meursault:Blade Lineage Mentor") == 0 &&
+  if (isId(p1->ID, "Meursault:Blade Lineage Mentor") == 0 &&
       s1 == &p1->skills[1] && enemyCoins <= 0) {
     p1->FinalPowerBoostNextTurn += 1;
     printf("\n%s won the Clash, gains 1 Final Power Up next turn\n", p1->name);
@@ -10949,7 +10955,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Heathcliff:Wild Hunt – skill 3 heal sanity
-  if (isId(p1->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(p1->ID, "Heathcliff:Wild Hunt") == 0 &&
       s1 == &p1->skills[2] && enemyCoins <= 0) {
     updateSanity(p1, 10);
     if (p1->Sanity > 45) p1->Sanity = 45;
@@ -10959,7 +10965,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Heathcliff:Wild Hunt – skill 3 heal sanity
-  if (isId(p1->name, "Heathcliff:Wild Hunt") == 0 &&
+  if (isId(p1->ID, "Heathcliff:Wild Hunt") == 0 &&
       s1 == &p1->defenseSkill[0] && enemyCoins <= 0) {
     p1->OffenseBoostNextTurn += clashCount/3;
     printf("\n%s won the Clash, Gain Offense Level Up next turn equal to (# of Clashes/3) (%d)\n", p1->name, clashCount/3);
@@ -10970,7 +10976,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   //------------------------- Roland ---------------------------
 
   // gain Black Silence when lost
-  if (isId(p2->name, "Fixer grade 9?") == 0 && enemyCoins <= 0) {
+  if (isId(p2->ID, "Fixer grade 9?") == 0 && enemyCoins <= 0) {
     p2->Passive += 1;
     if (p2->Passive > 60) p2->Passive = 60;
     printf("\n%s lost the Clash, gains 1 Black Silence(%d - Max 60)\n", p2->name, p2->Passive);
@@ -10979,7 +10985,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // lose Black Silence
-  if (isId(p2->name, "Fixer grade 9?") == 0 &&
+  if (isId(p2->ID, "Fixer grade 9?") == 0 &&
       (s2 == &p2->skills[8] || s2 == &p2->skills[1] || s2 == &p2->skills[2]) && enemyCoins <= 0) {
     p2->Passive -= 3;
     if (p2->Passive < 0) p2->Passive = 0;
@@ -10990,7 +10996,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // lose Black Silence
-  if (isId(p2->name, "Fixer grade 9?") == 0 &&
+  if (isId(p2->ID, "Fixer grade 9?") == 0 &&
       (s2 == &p2->skills[4]) && enemyCoins <= 0 && p2->Passive >= 3) {
     p2->Passive -= 3;
     if (p2->Passive < 0) p2->Passive = 0;
@@ -11001,7 +11007,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   }
 
   // Lost Black Silence Furioso
-  if (isId(p2->name, "Fixer grade 9?") == 0 &&
+  if (isId(p2->ID, "Fixer grade 9?") == 0 &&
       (s2 == &p2->skills[9]) && enemyCoins <= 0) {
     p2->Passive -= 10;
     if (p2->Passive < 0) p2->Passive = 0;
@@ -11022,7 +11028,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 
   // ---------------------Sancho:The Second Kindred of Don Quixote ---------------------
   // Sancho:The Second Kindred of Don Quixote - Block
-  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") ==
+  if (isId(p2->ID, "Sancho:The Second Kindred of Don Quixote") ==
           0 &&
       p2->skills[12].active == 0 && p2->skills[13].active == 0 &&
       p2->Passive >= 5 && enemyCoins <= 0) {
@@ -11040,7 +11046,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
      sleep(1);
   }
   // Sancho:The Second Kindred of Don Quixote - Skill 8 and 9 lost
-  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(p2->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (s2 == &p2->skills[7] || s2 == &p2->skills[8]) && enemyCoins <= 0 && p2->Passive >= 4) {
 
     p2->Passive -= 4;
@@ -11052,7 +11058,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
      sleep(1);
   }
   // Sancho:The Second Kindred of Don Quixote - Skill 10 lost
-  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(p2->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (s2 == &p2->skills[9]) && enemyCoins <= 0) {
     p2->DamageUp -= 50;
     p2->Protection -= 30;
@@ -11061,7 +11067,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
      sleep(1);
   }
   // Sancho:The Second Kindred of Don Quixote - Skill 14 lost
-  if (isId(p2->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(p2->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (s2 == &p2->skills[13]) && enemyCoins <= 0) {
     p2->Passive -= 5;
     if (p2->Passive < 1) p2->Passive = 1;
@@ -11072,7 +11078,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   //-----------------------------------------
 
   // Sukuna:King of Curse – Skill 4 lost
-  if (isId(p2->name, "Sukuna:King of Curse") == 0 && s2 == &p2->skills[3] &&
+  if (isId(p2->ID, "Sukuna:King of Curse") == 0 && s2 == &p2->skills[3] &&
       enemyCoins <= 0) {
 
     updateSanity(p2, -(10));
@@ -11087,7 +11093,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 
   // --------------------- Lei heng ---------------------
   // Lei heng – Skill 4 lost
-  if (isId(p2->name, "Lei heng") == 0 && s2 == &p2->skills[3] &&
+  if (isId(p2->ID, "Lei heng") == 0 && s2 == &p2->skills[3] &&
       enemyCoins <= 0) {
 
     updateSanity(p2, -(10));
@@ -11098,7 +11104,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 
     sleep(1);
   } // Lei heng – Skill 3 lost
-  else if (isId(p2->name, "Lei heng") == 0 && s2 == &p2->skills[2] &&
+  else if (isId(p2->ID, "Lei heng") == 0 && s2 == &p2->skills[2] &&
       enemyCoins <= 0) {
 
     p2->FinalPowerBoost -= 4;
@@ -11108,7 +11114,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 
     sleep(1);
   } // Lei heng – Skill 6 lost
-  else if (isId(p2->name, "Lei heng") == 0 && s2 == &p2->skills[5] &&
+  else if (isId(p2->ID, "Lei heng") == 0 && s2 == &p2->skills[5] &&
       enemyCoins <= 0) {
 
     p2->FinalPowerBoost -= 2;
@@ -11122,7 +11128,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   //-----------------------------------------
 
   // Dawn Office Fixer Sinclair base form S3 won
-  if (isId(p1->name, "Dawn Office Fixer Sinclair") == 0 &&
+  if (isId(p1->ID, "Dawn Office Fixer Sinclair") == 0 &&
       (s1 == &p1->skills[3] || s1 == &p1->skills[2]) && enemyCoins <= 0) {
 
     updateSanity(p1, 10);
@@ -11135,7 +11141,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 
 
   // Erlking Heathcliff – lost the Clash
-  if (isId(p2->name, "Erlking Heathcliff") == 0 && enemyCoins <= 0) {
+  if (isId(p2->ID, "Erlking Heathcliff") == 0 && enemyCoins <= 0) {
 
     updateSanity(p2, -(5));
     if (p2->Sanity < -45) p2->Sanity = -45;
@@ -11149,11 +11155,11 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 
 
   // Jia Qiu – answer me lost the Clash
-  if (isId(p2->name, "Jia Qiu") == 0 && s2 == &p2->skills[14] && enemyCoins <= 0) {
+  if (isId(p2->ID, "Jia Qiu") == 0 && s2 == &p2->skills[14] && enemyCoins <= 0) {
 
     p2->skills[15].active += 1;
 
-    if (isId(p1->name, "Hong lu:The Lord of Hongyuan") == 0) {
+    if (isId(p1->ID, "Hong lu:The Lord of Hongyuan") == 0) {
 
       printf("\n%s lost the Clash, inflicts 1 Uncompromising Imposition (%d)\n", p2->name, p2->skills[15].active);
 
@@ -11169,7 +11175,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
 // --------------------- King in Binds --------------------------------
 
 // King in Binds skill 2, 3, 4, 5 lose
-if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->skills[2] || s2 == &p2->skills[3] || s2 == &p2->skills[4]) && enemyCoins <= 0) {
+if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->skills[2] || s2 == &p2->skills[3] || s2 == &p2->skills[4]) && enemyCoins <= 0) {
 
   int ReduceValue = 2;
   if (s2 == &p2->skills[1]) ReduceValue = 1;
@@ -11217,7 +11223,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   //---------------Sancho:The Second Kindred of Don Quixote ---------------------
 
   // Sancho:The Second Kindred of Don Quixote - Skill 7 won
-  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(p1->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
     s1 == &p1->skills[6] && playerCoins <= 0 && p1->HP > 1) {
 
     printf("\n%s won the Clash, consumes 4%% of Max HP(%d) to gain 1 Hardblood(%d) and deal 25%% more damage (this damage does not lower the unit's HP below 1)\n",
@@ -11233,7 +11239,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 8 and 9 won
-  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(p1->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
     (s1 == &p1->skills[7] || s1 == &p1->skills[8]) && playerCoins <= 0) {
 
     printf("\n%s won the Clash, deals 20%% more damage and more 20%% damage for every 10 Hardblood(%d)\n",
@@ -11245,7 +11251,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 10 won
-  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(p1->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
     (s1 == &p1->skills[9]) && playerCoins <= 0) {
 
     int ShieldGain = (int)(p1->MAX_HP * 0.15);
@@ -11259,7 +11265,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Sancho:The Second Kindred of Don Quixote - Skill 14 won
-  if (isId(p1->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(p1->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (s1 == &p1->skills[13]) && playerCoins <= 0) {
       p1->DamageUp += 10;
     if (p1->Passive < 1) p1->Passive = 1;
@@ -11272,7 +11278,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
 
 
   // Sukuna:King of Curse - Passive Clash win
-  if (isId(p1->name, "Sukuna:King of Curse") == 0 && playerCoins <= 0) {
+  if (isId(p1->ID, "Sukuna:King of Curse") == 0 && playerCoins <= 0) {
 
       p1->AttackPowerBoostNextTurn += 5;
 
@@ -11283,7 +11289,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Sukuna:King of Curse - skill 8 Clash win
-  if (isId(p1->name, "Sukuna:King of Curse") == 0 && playerCoins <= 0 && s1 == &p1->skills[7]) {
+  if (isId(p1->ID, "Sukuna:King of Curse") == 0 && playerCoins <= 0 && s1 == &p1->skills[7]) {
 
     updateSanity(p1, 10);
     if (p1->Sanity > 45) p1->Sanity = 45;
@@ -11300,7 +11306,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
 
   //-------------------------- Lei heng ------------------------------
   // Lei heng – skill 3
-  if (isId(p1->name, "Lei heng") == 0 && (s1 == &p1->skills[2]) &&
+  if (isId(p1->ID, "Lei heng") == 0 && (s1 == &p1->skills[2]) &&
     playerCoins <= 0) {
 
     printf(
@@ -11311,7 +11317,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Lei heng – inner strength gain
-  if (isId(p1->name, "Lei heng") == 0 && p1->skills[0].active == 2 &&
+  if (isId(p1->ID, "Lei heng") == 0 && p1->skills[0].active == 2 &&
       playerCoins <= 0) {
 
     p1->Passive += clashCount;
@@ -11323,7 +11329,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
 
      sleep(1);
 
-  } else if (isId(p1->name, "Lei heng") == 0 &&
+  } else if (isId(p1->ID, "Lei heng") == 0 &&
     p1->skills[0].active == 3 && playerCoins <= 0) {
 
     p1->Passive += clashCount * 2;
@@ -11340,7 +11346,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   //-------------------------- Erlking Heathcliff ------------------------------
 
   // Erlking Heathcliff – won the Clash
-  if (isId(p1->name, "Erlking Heathcliff") == 0 && playerCoins <= 0) {
+  if (isId(p1->ID, "Erlking Heathcliff") == 0 && playerCoins <= 0) {
 
     updateSanity(p1, 5);
     if (p1->Sanity > 45) p1->Sanity = 45;
@@ -11351,7 +11357,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Erlking Heathcliff – skill 5
-  if (isId(p1->name, "Erlking Heathcliff") == 0 && (s1 == &p1->skills[4]) &&
+  if (isId(p1->ID, "Erlking Heathcliff") == 0 && (s1 == &p1->skills[4]) &&
     playerCoins <= 0) {
 
     p1->DamageUpNextTurn += 10;
@@ -11365,7 +11371,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Erlking Heathcliff – Skill 6
-  if (isId(p1->name, "Erlking Heathcliff") == 0 && s1 == &p1->skills[5] &&
+  if (isId(p1->ID, "Erlking Heathcliff") == 0 && s1 == &p1->skills[5] &&
       playerCoins <= 0) {
 
     updateSanity(p1, -(5));
@@ -11387,7 +11393,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   //------------------------- Roland ---------------------------
 
   // gain Black Silence when won
-  if (isId(p1->name, "Fixer grade 9?") == 0 && playerCoins <= 0) {
+  if (isId(p1->ID, "Fixer grade 9?") == 0 && playerCoins <= 0) {
     p1->Passive += 3;
     if (p1->Passive > 60) p1->Passive = 60;
     printf("\n%s won the Clash, gains 3 Black Silence(%d - Max 60)\n", p1->name, p1->Passive);
@@ -11395,7 +11401,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
      sleep(1);
   }
 
-  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 3 && playerCoins <= 0 && s1 == &p1->skills[1]) {
+  if (isId(p1->ID, "Fixer grade 9?") == 0 && p1->Passive >= 3 && playerCoins <= 0 && s1 == &p1->skills[1]) {
     p1->Passive -= 3;
     p1->DamageUp += 50;
     if (p1->Passive < 0) p1->Passive = 0;
@@ -11404,7 +11410,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
      sleep(1);
   }
 
-  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 5 && playerCoins <= 0 && s1 == &p1->skills[3]) {
+  if (isId(p1->ID, "Fixer grade 9?") == 0 && p1->Passive >= 5 && playerCoins <= 0 && s1 == &p1->skills[3]) {
     p1->Passive -= 5;
     if (p1->Passive < 0) p1->Passive = 0;
     p2->ParalyzeNextTurn += 2;
@@ -11413,7 +11419,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
      sleep(1);
   }
 
-  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 2 && playerCoins <= 0 && s1 == &p1->skills[5]) {
+  if (isId(p1->ID, "Fixer grade 9?") == 0 && p1->Passive >= 2 && playerCoins <= 0 && s1 == &p1->skills[5]) {
     p1->Passive -= 3;
     if (p1->Passive < 0) p1->Passive = 0;
     p2->Protection -= 20;
@@ -11422,7 +11428,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
      sleep(1);
   }
 
-  if (isId(p1->name, "Fixer grade 9?") == 0 && p1->Passive >= 2 && playerCoins <= 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[4])) {
+  if (isId(p1->ID, "Fixer grade 9?") == 0 && p1->Passive >= 2 && playerCoins <= 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[4])) {
     p1->Passive -= 2;
     if (p1->Passive < 0) p1->Passive = 0;
     p1->DamageUpNextTurn += 15;
@@ -11431,7 +11437,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
      sleep(1);
   }
 
-  if (isId(p1->name, "Fixer grade 9?") == 0 && playerCoins <= 0 && (s1 == &p1->skills[8])) {
+  if (isId(p1->ID, "Fixer grade 9?") == 0 && playerCoins <= 0 && (s1 == &p1->skills[8])) {
     p1->Passive += 3;
     if (p1->Passive > 60) p1->Passive = 60;
     p1->ClashPowerNextTurn += 1;
@@ -11443,7 +11449,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   //------------------------------------------------------------
 
   // Dawn Office Fixer Sinclair base form S3 lost
-  if (isId(p2->name, "Dawn Office Fixer Sinclair") == 0 && !p2->skills[3].active &&
+  if (isId(p2->ID, "Dawn Office Fixer Sinclair") == 0 && !p2->skills[3].active &&
      (s2 == &p2->skills[3] || s2 == &p2->skills[2]) && playerCoins <= 0) {
 
     updateSanity(p2, -(10));
@@ -11455,7 +11461,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
   }
 
   // Dawn Office Fixer Sinclair EGO form S3 lost
-  if (isId(p2->name, "Dawn Office Fixer Sinclair") == 0 && p2->skills[3].active &&
+  if (isId(p2->ID, "Dawn Office Fixer Sinclair") == 0 && p2->skills[3].active &&
       (s2 == &p2->skills[3] || s2 == &p2->skills[2]) && playerCoins <= 0) {
 
     updateSanity(p2, -(30));
@@ -11472,7 +11478,7 @@ if (isId(p2->name, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->
 // --------------------- King in Binds --------------------------------
 
 // King in Binds skill 1, 2, 3, 5 win
-if (isId(p1->name, "King in Binds") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1] || s1 == &p1->skills[2] || s1 == &p1->skills[4]) && playerCoins <= 0) {
+if (isId(p1->ID, "King in Binds") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1] || s1 == &p1->skills[2] || s1 == &p1->skills[4]) && playerCoins <= 0) {
 
   int InfilctValue = 3;
   if (s1 == &p1->skills[2]) InfilctValue = 4;
@@ -11576,7 +11582,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
     // ----------------- On Clashing buff --------------------
 
-    if (isId(p2->name, "King in Binds") == 0) {
+    if (isId(p2->ID, "King in Binds") == 0) {
         int Clashpowerbuff = (clashCount + 1)/2;
 
       if (Clashpowerbuff > 0) {
@@ -11627,7 +11633,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
           SkillStats *s = sideSkills[side];
           int rem = sideRemCoins[side]; // จำนวนเหรียญที่เหลืออยู่ตอนนี้
 
-          if (i < rem && isId(c->name, "Meursault:The Thumb") == 0) {
+          if (i < rem && isId(c->ID, "Meursault:The Thumb") == 0) {
 
               // 1. ระบุจำนวนนัดที่สกิลนี้ "ต้องการ" (S1=1, S2=2, S3=3, S4=3)
               int ammoNeeded = (s == &c->skills[0]) ? 1 : (s == &c->skills[1] ? 2 : (s == &c->skills[2] ? 3 : 0));
@@ -11719,7 +11725,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
         int bonus = 0;
       
         // King in Binds Passive
-        int kingPassiveP2 = (isId(p2->name, "King in Binds") == 0) ? (clashCount / 2) : 0;
+        int kingPassiveP2 = (isId(p2->ID, "King in Binds") == 0) ? (clashCount / 2) : 0;
         
       // Check if this is enemy's last coin
       if (i == enemyCoins - 1 &&
@@ -11844,7 +11850,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       
 
-      if (isId(p2->name, "Meursault:Blade Lineage Mentor") == 0 && s2 == &p2->skills[2] && enemyCoins <= 0) {
+      if (isId(p2->ID, "Meursault:Blade Lineage Mentor") == 0 && s2 == &p2->skills[2] && enemyCoins <= 0) {
         Loser = p2; LoserSkill = s2;
       }
       
@@ -11932,7 +11938,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       
 
-      if (isId(p1->name, "Meursault:Blade Lineage Mentor") == 0 && s1 == &p1->skills[2] && playerCoins <= 0) {
+      if (isId(p1->ID, "Meursault:Blade Lineage Mentor") == 0 && s1 == &p1->skills[2] && playerCoins <= 0) {
           Loser = p1; LoserSkill = s1;
       }
 
@@ -11981,7 +11987,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
     }
 
-      if (isId(p1->name, "Muga Ryōshū") == 0) {
+      if (isId(p1->ID, "Muga Ryōshū") == 0) {
           int chance = 0;
           if (s1 == &p1->skills[2] || s1 == &p1->skills[3]) chance = 25;
           else if (s1 == &p1->skills[4]) chance = 50;
@@ -11992,7 +11998,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
           }
       }
 
-      if (isId(p2->name, "Muga Ryōshū") == 0) {
+      if (isId(p2->ID, "Muga Ryōshū") == 0) {
           int chance = 0;
           if (s2 == &p2->skills[2] || s2 == &p2->skills[3]) chance = 25;
           else if (s2 == &p2->skills[4]) chance = 50;
@@ -12177,7 +12183,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       
       printf("\nYield My Flesh.....\n");
       
-      if ((isId(Loser->name, "Meursault:Blade Lineage Mentor") == 0 &&
+      if ((isId(Loser->ID, "Meursault:Blade Lineage Mentor") == 0 &&
          Loser->HP <= Loser->MAX_HP * 0.6)) {
 
 
@@ -12600,12 +12606,12 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->immuneToPanicSkip = 1; // ไม่ติด Panic แม้ SP จะต่ำ
     player->SanityFreezeTurns = -1; // ล็อค SP ไว้ถาวร
     
-      player->skills[0] = (SkillStats){"Sever", 12, -1, 2, 2, -4, 1, 2, 0, 3, 1};
-    player->skills[1] = (SkillStats){"Paint", 12, -1, 2, 2, -4, 1, 2, 0, 3, 1};
-      player->skills[2] = (SkillStats){"Splatter", 15, -4, 3, 4, -4, 1, 3, 0, 2, 1};
-    player->skills[3] = (SkillStats){"Brushstroke", 15, -4, 3, 4, -4, 1, 3, 0, 2, 1};
-      player->skills[4] = (SkillStats){"Slay the Heavens - Tiansha [天殺]", 24, -6, 5, 6, -4, 1, 5, 0, 1, 1};
-      player->skills[5] = (SkillStats){"'Erasing Me, Erasing You.'", 36, -6, 5, 5, -4, 1, 5, 1, 0, 1}; 
+      player->skills[0] = (SkillStats){"Sever", 12, -1, 2, 2, -4, 1, 1, 2, 3, 1};
+    player->skills[1] = (SkillStats){"Paint", 12, -1, 2, 2, -4, 1, 1, 2, 3, 1};
+      player->skills[2] = (SkillStats){"Splatter", 15, -4, 3, 4, -4, 1, 1, 3, 2, 1};
+    player->skills[3] = (SkillStats){"Brushstroke", 15, -4, 3, 4, -4, 1, 1, 3, 2, 1};
+      player->skills[4] = (SkillStats){"Slay the Heavens - Tiansha [天殺]", 24, -6, 5, 6, -4, 1, 1, 5, 1, 1};
+      player->skills[5] = (SkillStats){"'Erasing Me, Erasing You.'", 36, -6, 5, 5, -4, 1, 1, 5, 0, 1}; 
 
     player->Passive = 0;          // Muga [無我]
     player->skills[0].active = 0; // Sever the Thread [切絲]
@@ -12861,6 +12867,11 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
         (SkillStats){"Furioso", 25, -3, 15, 6, -5, 1, 0, 15, 0, 1};
     enemy->numSkills = 10; // <-- important
   }
+
+
+  player->ID = player->name; // ID จะไม่โดน glitchText แตะต้อง
+  enemy->ID = enemy->name; // ID จะไม่โดน glitchText แตะต้อง
+  
   
 }
 
@@ -12896,7 +12907,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // --------------- Muga Ryōshū ---------------
 
   // Muga Ryōshū – gains Speed
-  if (isId(player->name, "Muga Ryōshū") == 0 && player->skills[0].active/3 > 0) {
+  if (isId(player->ID, "Muga Ryōshū") == 0 && player->skills[0].active/3 > 0) {
 
       applyDamage(enemy, player->skills[0].active/3, 0);
 
@@ -12907,14 +12918,14 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
     enemy->Bleed[0] += 3;
     enemy->Bleed[1] += 3;
 
-    printf("\n%s gains +3 Bleed Stack and +3 Bleed Count\n", enemy->name);
+    printf("\n%s gains +3 Bleed Stack (%d) and +3 Bleed Count (%d)\n", enemy->name, enemy->Bleed[0], enemy->Bleed[1]);
 
     sleep(1);
 
   }
 
   // Muga Ryōshū – gains Speed
-  if (isId(player->name, "Muga Ryōshū") == 0) {
+  if (isId(player->ID, "Muga Ryōshū") == 0) {
 
     if (player->skills[1].active == 0) {
       player->skills[1].active = 1;
@@ -12929,7 +12940,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
   }
 
-  if (isId(player->name, "Muga Ryōshū") == 0) {
+  if (isId(player->ID, "Muga Ryōshū") == 0) {
       // 1. Wading Through a Dream: รับ Muga ตามจำนวนเทิร์น
       player->Passive += TurnCount;
       if (player->Passive > 100) player->Passive = 100;
@@ -12962,7 +12973,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // ------------------------------------------------------------------------------------------
 
   // Erlking Heathcliff – always use skill 9 if HP ≤ 50
-  if (isId(player->name, "Erlking Heathcliff") == 0 && player->HP <= 50) {
+  if (isId(player->ID, "Erlking Heathcliff") == 0 && player->HP <= 50) {
 
       player->Speed = 1;
 
@@ -12971,7 +12982,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Sukuna:King of Curse Domain expansion
-  if (isId(enemy->name, "Sukuna:King of Curse") == 0 && enemy->skills[8].active <= 0 && (enemy->Passive == 1)) {
+  if (isId(enemy->ID, "Sukuna:King of Curse") == 0 && enemy->skills[8].active <= 0 && (enemy->Passive == 1)) {
 
       enemy->skills[8].active = 1;
 
@@ -13023,7 +13034,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
 
 // The One Who Grips Faust - Turn Start
-  if (isId(player->name, "The One Who Grips Faust") == 0) {
+  if (isId(player->ID, "The One Who Grips Faust") == 0) {
       // 1. Whistles Logic
       if (player->skills[3].active >= 3) {
           updateSanity(player, 15);
@@ -13045,14 +13056,14 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // The Middle Little Brother Sinclair - Passive Once per Turn reset
-  if (isId(player->name, "The Middle Little Brother Sinclair") == 0) {
+  if (isId(player->ID, "The Middle Little Brother Sinclair") == 0) {
 
     player->skills[3].active = 0;
 
   }
 
   //Roland Furioso
-  if (isId(enemy->name, "Fixer grade 9?") == 0) {
+  if (isId(enemy->ID, "Fixer grade 9?") == 0) {
 
     int allInactive = 1; // assume all inactive
 
@@ -13088,7 +13099,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // ------------------ The House of Spiders: The Index Nursefather Yi Sang ------------------
 
   // The House of Spiders: The Index Nursefather Yi Sang gains Wound-casing Mask at start
-  if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && player->skills[3].active == 0) {
+  if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && player->skills[3].active == 0) {
 
     player->skills[3].active = 1;
     
@@ -13100,7 +13111,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
 
   // The House of Spiders: The Index Nursefather Yi Sang - Index Target
-  if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+  if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
       // แปะสถานะ Target ไว้ที่ตัวศัตรู
         player->skills[11].active = 1; // Index Target
     enemy->Protection -= 10;
@@ -13109,14 +13120,14 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // The House of Spiders: The Index Nursefather Yi Sang focred Furioso
-  if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+  if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
       if (player->skills[1].active >= 9 && *playerSkill1 != 3 && *playerSkill2 != 3) {
           *playerSkill1 = 3; // บังคับให้ช่องที่ 1 เป็น Furioso ทันที
       }
   }
   
   // --- The House of Spiders: The Index Nursefather Yi Sang - Turn Start ---
-  if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+  if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
 
     // ตรวจสอบสถานะการทำงาน: ถ้า Staggered หรือ Panicked จะไม่รัน Prescript ใดๆ ทั้งสิ้น
     if (player->Stagger > 0 || isPanicked(player)) {
@@ -13229,7 +13240,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
     // ---------------- Sancho:The Second Kindred of Don Quixote -----------------------
 
   // Sancho:The Second Kindred of Don Quixote – heal HP at start
-  if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0) {
+  if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
 
     int healvalue = (((enemy->MAX_HP - enemy->HP) / enemy->MAX_HP) * 100)/2;
     if (healvalue > 50) healvalue = 50;
@@ -13246,7 +13257,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
     // Sancho:The Second Kindred of Don Quixote – heal sanity at -15 Sanity or less
-    if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->Sanity <= -15 && enemy->HP > 1) {
+    if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->Sanity <= -15 && enemy->HP > 1) {
 
       int healvalue = ((enemy->MAX_HP - enemy->HP) / enemy->MAX_HP * 100)/2;
       int consumed = 5 - (enemy->Sanity/5);
@@ -13266,8 +13277,8 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
     }
 
   // Sancho:The Second Kindred of Don Quixote with Don Quixote:The Manager of La Manchaland - Power down
-  if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
-    isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->skills[5].active == 0) {
+  if (isId(player->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
+    isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->skills[5].active == 0) {
 
     enemy->skills[5].active = 1;
 
@@ -13289,7 +13300,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // -------------------------- Heathcliff:Wild Hunt -------------------------
 
   // Heathcliff:Wild Hunt - Call of erlking
-    if (isId(player->name, "Heathcliff:Wild Hunt") == 0 && (player->HP <= player->MAX_HP * 0.5 || player->Sanity <= -45) && player->skills[0].active == 0 && !player->skills[1].active) {
+    if (isId(player->ID, "Heathcliff:Wild Hunt") == 0 && (player->HP <= player->MAX_HP * 0.5 || player->Sanity <= -45) && player->skills[0].active == 0 && !player->skills[1].active) {
 
       player->skills[1].active = 1;
       player->skills[0].active += 1;
@@ -13329,7 +13340,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
 
   // Erlking Heathcliff – always use skill 9 if HP ≤ 50
-  if (isId(enemy->name, "Erlking Heathcliff") == 0 && enemy->HP <= 50 &&
+  if (isId(enemy->ID, "Erlking Heathcliff") == 0 && enemy->HP <= 50 &&
     !enemy->skills[8].active && enemy->Passive == 2) {
 
     enemy->skills[8].active = 1;
@@ -13345,7 +13356,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // --------------------- Heishou Pack - You Branch Adept Heathcliff ------------------
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 Unbreakable coins reset
-  if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
+  if (isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
 
     player->skills[2].Unbreakable = 0;
 
@@ -13355,7 +13366,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Heal from anti death
-  if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player->skills[3].active == -2) {
+  if (isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player->skills[3].active == -2) {
 
     player->skills[3].active--;
 
@@ -13376,19 +13387,19 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // --------------------------------------------------------
 
   // Meursault:The Thumb - Skill 3 Unbreakable coins reset
-  if (isId(player->name, "Meursault:The Thumb") == 0) {
+  if (isId(player->ID, "Meursault:The Thumb") == 0) {
 
     player->skills[2].Unbreakable = 0;
 
   }
 
-  if (isId(player->name, "Meursault:The Thumb") == 0 && !player->skills[3].active && player->Passive == 0) {
+  if (isId(player->ID, "Meursault:The Thumb") == 0 && !player->skills[3].active && player->Passive == 0) {
 
     int amount = ((int)(12 * enemy->MAX_HP)) / 847;
     if (amount < 12) amount = 12;
 
-    if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->name, "Don Quixote") == 0) amount += 4; // pity for boss
-    if (isId(enemy->name, "Sukuna:King of Curse") == 0) amount += 6; // pity for boss
+    if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->ID, "Don Quixote") == 0) amount += 4; // pity for boss
+    if (isId(enemy->ID, "Sukuna:King of Curse") == 0) amount += 6; // pity for boss
 
     player->Passive = amount;
 
@@ -13401,7 +13412,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // ------------------- Dawn Office Fixer Sinclair -----------------------------
 
   // Dawn Office Fixer Sinclair - Ego
-  if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && !player->skills[3].active && player->HP <= player->MAX_HP * 0.3 && player->Sanity > -45 && player->skills[0].active) {
+  if (isId(player->ID, "Dawn Office Fixer Sinclair") == 0 && !player->skills[3].active && player->HP <= player->MAX_HP * 0.3 && player->Sanity > -45 && player->skills[0].active) {
 
     player->skills[0].active = 0;
      player->Sanity = 45;
@@ -13419,7 +13430,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
     sleep(1);
 
-  } else if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && !player->skills[3].active && player->Sanity >= 40) {
+  } else if (isId(player->ID, "Dawn Office Fixer Sinclair") == 0 && !player->skills[3].active && player->Sanity >= 40) {
 
      updateSanity(player, -(20));
     player->skills[2] = player->skills[5];
@@ -13436,7 +13447,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
     sleep(1);
 
-  } else if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active && player->Sanity <= 0) {
+  } else if (isId(player->ID, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active && player->Sanity <= 0) {
 
     int clashpowerbuff = 3 * player->Passive;
     if (clashpowerbuff > 20) clashpowerbuff = 20;
@@ -13463,7 +13474,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
     }
 
   // Dawn Office Fixer Sinclair - Volatile Passion
-  if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active) {
+  if (isId(player->ID, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active) {
 
       player->Passive += 1;
 
@@ -13480,7 +13491,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
   // ------------------- Jia Qiu -----------------------------
   // Jia Qiu - Power down
-  if (isId(enemy->name, "Jia Qiu") == 0) {
+  if (isId(enemy->ID, "Jia Qiu") == 0) {
 
     if (enemy->Passive == 0) {
 
@@ -13505,7 +13516,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Jia Qiu - Last attack at 85% HP
-    if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP < enemy->MAX_HP * 0.85 && enemy->Passive == 2 && enemy->skills[5].active == 0 && !isStaggered(enemy)) {
+    if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->HP < enemy->MAX_HP * 0.85 && enemy->Passive == 2 && enemy->skills[5].active == 0 && !isStaggered(enemy)) {
 
       *enemySkillIndex = 5;
 
@@ -13517,7 +13528,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   //--------------------- Lei heng -----------------------------
 
   // Lei heng – if HP ≤ 60%
-  if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP <= enemy->MAX_HP * 0.6 || (enemy->skills[1].active >= 1 && enemy->skills[2].active >= 3)) &&
+  if (isId(enemy->ID, "Lei heng") == 0 && (enemy->HP <= enemy->MAX_HP * 0.6 || (enemy->skills[1].active >= 1 && enemy->skills[2].active >= 3)) &&
     enemy->skills[0].active == 2 && enemy->skills[4].active == 0) {
 
     enemy->skills[4].active = 1; // Active 'Unrelenting Spirit [剛氣]'
@@ -13541,7 +13552,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Lei heng – if HP ≤ 40%
-  if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP <= enemy->MAX_HP * 0.4 || (enemy->skills[1].active >= 2 && enemy->skills[2].active >= 3)) &&
+  if (isId(enemy->ID, "Lei heng") == 0 && (enemy->HP <= enemy->MAX_HP * 0.4 || (enemy->skills[1].active >= 2 && enemy->skills[2].active >= 3)) &&
     enemy->skills[0].active == 2) {
 
     enemy->skills[0].active = 3; // Phase 4
@@ -13566,7 +13577,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Lei heng – skill 3 using first fight
-  if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[2].active == 0 && enemy->skills[0].active == 2) {
+  if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[2].active == 0 && enemy->skills[0].active == 2) {
 
     enemy->skills[2].active = 1; // Turn Count
     *enemySkillIndex = 2; 
@@ -13576,12 +13587,12 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Lei heng – skill 3 every 3 turns
-  else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[2].active > 0 && enemy->skills[2].active < 3) && enemy->skills[0].active == 2) {
+  else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[2].active > 0 && enemy->skills[2].active < 3) && enemy->skills[0].active == 2) {
 
     enemy->skills[2].active++; // Turn Count
 
   }
-  else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[2].active >= 3) && enemy->skills[0].active == 2) {
+  else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[2].active >= 3) && enemy->skills[0].active == 2) {
 
     *enemySkillIndex = 2; 
     enemy->skills[1].active++; // Overheat count
@@ -13590,7 +13601,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Lei heng – skill 6 using first fight
-  if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[5].active == 0 && enemy->skills[0].active == 3) {
+  if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[5].active == 0 && enemy->skills[0].active == 3) {
 
     enemy->skills[5].active = 1;
     *enemySkillIndex = 5; 
@@ -13600,12 +13611,12 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // Lei heng – skill 6 every 3 turns
-    else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 3) && enemy->skills[0].active == 3) {
+    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 3) && enemy->skills[0].active == 3) {
 
       enemy->skills[5].active++; // Turn Count
 
     }
-    else if (isId(enemy->name, "Lei heng") == 0 && (enemy->skills[5].active >= 3) && enemy->skills[0].active == 3) {
+    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[5].active >= 3) && enemy->skills[0].active == 3) {
 
       *enemySkillIndex = 5; 
       enemy->skills[1].active++; // Overheat count
@@ -13618,7 +13629,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // ------------------------- Sancho --------------------------
 
   // Sancho – skill 13 using first fight
-  if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
     enemy->HP <= enemy->MAX_HP * 0.6 && enemy->skills[12].active && !isStaggered(enemy)) {
 
     enemy->skills[12].active = 0;
@@ -13626,7 +13637,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
 
   }
   // Sancho – skill 14 using first fight
-  if (isId(enemy->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+  if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
     enemy->HP <= enemy->MAX_HP * 0.3 && enemy->skills[13].active && enemy->skills[12].active == 0 && !isStaggered(enemy)) {
 
     enemy->skills[13].active = 0;
@@ -13640,7 +13651,7 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   // ------------------------- King in Binds --------------------------
 
   // King in Binds – skill 6 using first fight
-  if (isId(enemy->name, "King in Binds") == 0 && enemy->skills[5].active == 0 && enemy->skills[0].active == 1) {
+  if (isId(enemy->ID, "King in Binds") == 0 && enemy->skills[5].active == 0 && enemy->skills[0].active == 1) {
 
     enemy->skills[5].active = 1;
     *enemySkillIndex = 5; 
@@ -13648,12 +13659,12 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   }
 
   // King in Binds – skill 6 every 4 turns
-    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 4) && enemy->skills[0].active == 1) {
+    else if (isId(enemy->ID, "King in Binds") == 0 && (enemy->skills[5].active > 0 && enemy->skills[5].active < 4) && enemy->skills[0].active == 1) {
 
       enemy->skills[5].active++; // Turn Count
 
     }
-    else if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[5].active >= 4) && enemy->skills[0].active == 1 && !isStaggered(enemy)) {
+    else if (isId(enemy->ID, "King in Binds") == 0 && (enemy->skills[5].active >= 4) && enemy->skills[0].active == 1 && !isStaggered(enemy)) {
 
       *enemySkillIndex = 5; 
       enemy->skills[5].active = 1;
@@ -13663,9 +13674,9 @@ void handleTurnStart(Character *player, Character *enemy, int *enemySkillIndex, 
   //-------------------------------------------------------------------------
 
   // Jia Qiu enemy heal
-  if (isId(player->name, "Jia Qiu") == 0 && (player->skills[15].active > 0) && enemy->HP <= 0) {
+  if (isId(player->ID, "Jia Qiu") == 0 && (player->skills[15].active > 0) && enemy->HP <= 0) {
 
-    if (isId(enemy->name, "Hong lu:The Lord of Hongyuan") == 0) {
+    if (isId(enemy->ID, "Hong lu:The Lord of Hongyuan") == 0) {
 
       player->skills[15].active -= 1;
 
@@ -13718,7 +13729,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     // ------------------ Before fight -----------------------
 
   // The One Who Grips Faust - Purify ready
-  if (isId(player->name, "The One Who Grips Faust") == 0 && player->skills[2].active >= 3 && (&player->skills[playerSkill1] == &player->skills[2] || &player->skills[playerSkill2] == &player->skills[2])) {
+  if (isId(player->ID, "The One Who Grips Faust") == 0 && player->skills[2].active >= 3 && (&player->skills[playerSkill1] == &player->skills[2] || &player->skills[playerSkill2] == &player->skills[2])) {
 
           printf("\n%s: \"Higher... Still higher! Let me advance... toward a purer body... Huhu!\"\n", player->name);
     
@@ -13728,14 +13739,14 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
 
     // Sukuna:King of Curse Chanting
-    if (isId(player->name, "Sukuna:King of Curse") == 0 && player->skills[4].active < 3 && TurnCount % 3 == 0) {
+    if (isId(player->ID, "Sukuna:King of Curse") == 0 && player->skills[4].active < 3 && TurnCount % 3 == 0) {
 
        *enemySkillIndex = 4;
 
     }
 
     // Sukuna:King of Curse World Cutting Slash
-    else if (isId(player->name, "Sukuna:King of Curse") == 0 && player->skills[4].active == 3 && !isStaggered(enemy)) {
+    else if (isId(player->ID, "Sukuna:King of Curse") == 0 && player->skills[4].active == 3 && !isStaggered(enemy)) {
 
      *enemySkillIndex = 7;
 
@@ -13754,7 +13765,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
      // ------------------ Jia Qiu -----------------------
 
     // Jia Qiu - Last attack at 10% HP
-      if (isId(player->name, "Jia Qiu") == 0 && player->HP < player->MAX_HP * 0.2 && player->Passive == 6) {
+      if (isId(player->ID, "Jia Qiu") == 0 && player->HP < player->MAX_HP * 0.2 && player->Passive == 6) {
 
         printf("\n%s: \"I expect you to fight to your deaths in this crucial struggle, reversible as they may be.\"\n",
           player->name);
@@ -13766,7 +13777,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       }
 
     // Jia Qiu - Taunt S14
-    if (isId(player->name, "Jia Qiu") == 0 && &player->skills[*enemySkillIndex] == &player->skills[14]) {
+    if (isId(player->ID, "Jia Qiu") == 0 && &player->skills[*enemySkillIndex] == &player->skills[14]) {
 
       printf("\n%s: \"It must lie there still, shrouded it may be.\"\n",
         player->name);
@@ -13774,7 +13785,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     }
 
     // Jia Qiu - Last attack at 30% HP
-    if (isId(player->name, "Jia Qiu") == 0 && player->HP < player->MAX_HP * 0.4 && player->Passive == 4) {
+    if (isId(player->ID, "Jia Qiu") == 0 && player->HP < player->MAX_HP * 0.4 && player->Passive == 4) {
 
       printf("\n%s: \"Do not fear the futility. There will be time for that once you have spoken your mind.\"\n",
         player->name);
@@ -13786,7 +13797,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     }
 
     // Jia Qiu - Last attack at 85% HP
-      if (isId(player->name, "Jia Qiu") == 0 && player->HP < player->MAX_HP * 0.85 && player->Passive == 2 && player->skills[5].active == 0 && !isStaggered(enemy)) {
+      if (isId(player->ID, "Jia Qiu") == 0 && player->HP < player->MAX_HP * 0.85 && player->Passive == 2 && player->skills[5].active == 0 && !isStaggered(enemy)) {
 
         *enemySkillIndex = 5;
 
@@ -13796,7 +13807,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     // -------------------------------------------------------------
 
   // The House of Spiders: The Index Nursefather Yi Sang – Before fight with Furioso-Replica with Sizzling Wound
-  if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 &&
+  if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 &&
       (&player->skills[playerSkill1] == &player->skills[3] ||
        (&player->skills[playerSkill2] == &player->skills[3])) && player->skills[3].active == 2) {
 
@@ -13814,7 +13825,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
     sleep(1);
 
-  } else if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (&player->skills[playerSkill1] == &player->skills[3] ||
+  } else if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (&player->skills[playerSkill1] == &player->skills[3] ||
        (&player->skills[playerSkill2] == &player->skills[3]))) { // The House of Spiders: The Index Nursefather Yi Sang – Before fight with Furioso-Replica without Sizzling Wound
 
         printf("\n%s: \"I shall replicate a furious heart.\"\n",
@@ -13825,14 +13836,14 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     }
 
     // Roland - Skill 9 Unbreakable coins reset
-  if (isId(player->name, "Fixer grade 9?") == 0 && player->skills[8].Unbreakable > 0) {
+  if (isId(player->ID, "Fixer grade 9?") == 0 && player->skills[8].Unbreakable > 0) {
 
     player->skills[8].Unbreakable = 0;
 
   }
 
     //Roland Furioso
-    if (isId(player->name, "Fixer grade 9?") == 0) {
+    if (isId(player->ID, "Fixer grade 9?") == 0) {
 
       int allInactive = 1; // assume all inactive
 
@@ -13859,7 +13870,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     } 
 
     // Lei heng – skill 3 and skill 6 Before fight
-      if (isId(player->name, "Lei heng") == 0 &&
+      if (isId(player->ID, "Lei heng") == 0 &&
           (&player->skills[*enemySkillIndex] == &player->skills[2] ||
            (&player->skills[*enemySkillIndex] == &player->skills[5]))) {
 
@@ -13871,11 +13882,11 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       }
 
       // Sancho – Before fight
-      if (isId(player->name, "Sancho:The Second Kindred of Don Quixote") == 0 &&
+      if (isId(player->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
           (&player->skills[*enemySkillIndex] == &player->skills[12] ||
            (&player->skills[*enemySkillIndex] == &player->skills[13]))) {
 
-        if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0) {
+        if (isId(player->ID, "Don Quixote:The Manager of La Manchaland") == 0) {
 
           printf("\n%s: \"My name is Sancho!\"\n",
                  player->name);
@@ -13898,7 +13909,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       }
 
     // Don Quixote:The Manager of La Manchaland – Before fight
-    if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0 &&
+    if (isId(player->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
         (&player->skills[playerSkill1] == &player->skills[2] ||
          (&player->skills[playerSkill2] == &player->skills[2])) && player->Passive >= 15) {
 
@@ -13907,7 +13918,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
       sleep(1);
 
-    } else if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0 && player->Passive >= 15) {
+    } else if (isId(player->ID, "Don Quixote:The Manager of La Manchaland") == 0 && player->Passive >= 15) {
 
       printf("\n%s: \"With your weapons... I will lead this bloody battle to victory.\"\n",
         player->name);
@@ -13988,7 +13999,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     }
 
     // King in Binds - Tremor
-    if (isId(enemy->name, "King in Binds") == 0 && (enemy->skills[3].active > 0 || enemy->skills[4].active > 0) && player->HP > 0) {
+    if (isId(enemy->ID, "King in Binds") == 0 && (enemy->skills[3].active > 0 || enemy->skills[4].active > 0) && player->HP > 0) {
 
         enemy->skills[4].active -= 1;
       if (enemy->skills[4].active <= 0) enemy->skills[4].active = 0;
@@ -14002,7 +14013,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       
 
       // Gregor:Firefist - Burn
-        if (isId(player->name, "Gregor:Firefist") == 0 && (player->skills[0].active > 0 || player->skills[1].active > 0) && enemy->HP > 0) {
+        if (isId(player->ID, "Gregor:Firefist") == 0 && (player->skills[0].active > 0 || player->skills[1].active > 0) && enemy->HP > 0) {
 
           int damage = player->skills[0].active > 0 ? player->skills[0].active : 1;
 
@@ -14023,7 +14034,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     // ----------------------- Heishou Pack - You Branch Adept Heathcliff ----------------
     
     // Heishou Pack - You Branch Adept Heathcliff - Burn
-    if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (player->skills[1].active > 0 || player->skills[0].active > 0) && player->HP > 0) {
+    if (isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (player->skills[1].active > 0 || player->skills[0].active > 0) && player->HP > 0) {
 
        int damage = player->skills[0].active > 0 ? player->skills[0].active : 1;
       
@@ -14049,7 +14060,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     }
 
     // Heishou Pack - You Branch Adept Heathcliff - Bloodflame
-    if (isId(player->name, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player->skills[2].active > 0) {
+    if (isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && player->skills[2].active > 0) {
 
       player->skills[2].active--;
 
@@ -14059,7 +14070,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     // -------------------------------------------------------------
     
     // Binah - Fairy
-    if (isId(player->name, "Binah") == 0 && player->skills[0].active > 0) {
+    if (isId(player->ID, "Binah") == 0 && player->skills[0].active > 0) {
 
       if (!player->Passive) {
 
@@ -14091,7 +14102,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     }
 
  // The One Who Grips Faust - Nail and Gaze
-    if (isId(player->name, "The One Who Grips Faust") == 0) {
+    if (isId(player->ID, "The One Who Grips Faust") == 0) {
 
       if (player->skills[2].active > 0) {
         // Nail Halving (ตะปูลดลงครึ่งหนึ่ง)
@@ -14134,10 +14145,15 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
 
 
+    // Muga Ryōshū – Reset sever value
+    if (isId(player->ID, "Muga Ryōshū") == 0) {
 
+      player->skills[10].active = 0;
+
+    }
     
     // Meursault:The Thumb Shin buffs (temporary, print once)
-    if (isId(player->name, "Meursault:The Thumb") == 0 && (playerSkillUsed == &player->defenseSkill[0] || player->Stagger > 0) && !player->skills[3].active) {
+    if (isId(player->ID, "Meursault:The Thumb") == 0 && (playerSkillUsed == &player->defenseSkill[0] || player->Stagger > 0) && !player->skills[3].active) {
 
       if (player->Stagger > 0) {
           player->Stagger = 0;
@@ -14151,8 +14167,8 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       int amount = ((int)(8 * player->MAX_HP)) / 847;
       if (amount < 8) amount = 8;
 
-      if (isId(player->name, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(player->name, "Don Quixote") == 0) amount += 2; // pity for boss
-      if (isId(player->name, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
+      if (isId(player->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(player->ID, "Don Quixote") == 0) amount += 2; // pity for boss
+      if (isId(player->ID, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
 
         player->skills[3].active = 1;
 
@@ -14168,7 +14184,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
       }
 
     // Sukuna:King of Curse Domain expansion
-    if (isId(enemy->name, "Sukuna:King of Curse") == 0 && enemy->skills[8].active > 0) {
+    if (isId(enemy->ID, "Sukuna:King of Curse") == 0 && enemy->skills[8].active > 0) {
 
       int dealvalue = player->MAX_HP*0.05;
 
@@ -14186,7 +14202,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     }
 
     // Don Quixote:The Manager of La Manchaland - Turn End passive
-    if (isId(player->name, "Don Quixote:The Manager of La Manchaland") == 0) {
+    if (isId(player->ID, "Don Quixote:The Manager of La Manchaland") == 0) {
 
      int gainmissing = ((player->MAX_HP - player->HP) / (player->MAX_HP * 0.15));
       if (gainmissing > 3) gainmissing = 3;
@@ -14205,7 +14221,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
     
 
     // Yi Sang:Fell Bullet - Pity buff
-    if (isId(player->name, "Yi Sang:Fell Bullet") == 0) {
+    if (isId(player->ID, "Yi Sang:Fell Bullet") == 0) {
 
       if (player->Passive >= 7) {
         player->skills[2].Copies = 3;
@@ -14217,7 +14233,7 @@ void handleBeforeFight(Character *player, Character *enemy, int *enemySkillIndex
 
 
 // The House of Spiders: The Index Nursefather Yi Sang Passive
-    if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+    if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
 
       if (player->skills[3].active == 2) {player->HP -= 4; printf("\n%s loses 4 HP due to Sizzling Wound\n", player->name);} // Sizzling Wound DOT
 
@@ -14348,7 +14364,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
     // The House of Spiders: The Index Nursefather Yi Sang Evade
-    if (isId(player->name, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && player->Passive < 2 && playerSkillUsed == &player->defenseSkill[0]) {
+    if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && player->Passive < 2 && playerSkillUsed == &player->defenseSkill[0]) {
       
       player->Passive = 2; 
 
@@ -14376,7 +14392,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
 
 
     // Erlking Heathcliff Phase 2
-    if (isId(enemy->name, "Erlking Heathcliff") == 0 && (enemy->HP <= enemy->MAX_HP * 0.7 || TurnCount >= 6) &&
+    if (isId(enemy->ID, "Erlking Heathcliff") == 0 && (enemy->HP <= enemy->MAX_HP * 0.7 || TurnCount >= 6) &&
         enemy->Passive == 0) {
 
       enemy->Passive = 1;
@@ -14400,7 +14416,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
     // Wild hunt – Gain
-    if (isId(player->name, "Heathcliff:Wild Hunt") == 0 && playerSkillUsed == &player->defenseSkill[0] && player->skills[0].active <= 0) {
+    if (isId(player->ID, "Heathcliff:Wild Hunt") == 0 && playerSkillUsed == &player->defenseSkill[0] && player->skills[0].active <= 0) {
 
       player->skills[0].active++;
       if (player->skills[0].active > 3) player->skills[0].active = 3;
@@ -14413,7 +14429,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
 
       sleep(1);
     } else if // Wild hunt – Lose
-       (isId(player->name, "Heathcliff:Wild Hunt") == 0 && playerSkillUsed == &player->defenseSkill[0] && player->skills[0].active > 0) {
+       (isId(player->ID, "Heathcliff:Wild Hunt") == 0 && playerSkillUsed == &player->defenseSkill[0] && player->skills[0].active > 0) {
 
          player->skills[0].active = 0;
          player->skills[2].Copies = 1;
@@ -14428,7 +14444,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       }
 
      // Heathcliff:Wild Hunt - Dullahan
-      if (isId(player->name, "Heathcliff:Wild Hunt") == 0 && player->skills[0].active > 0) {
+      if (isId(player->ID, "Heathcliff:Wild Hunt") == 0 && player->skills[0].active > 0) {
 
         player->skills[2].active = 0; // Reset Counter
 
@@ -14492,7 +14508,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     // -------------------------------- Lei heng --------------------------------
 
     // Lei heng – skill 3 and skill 6 turn end
-    if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[0].active == 3 && enemy->skills[3].active > 0) {
+    if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[0].active == 3 && enemy->skills[3].active > 0) {
 
       enemy->skills[5].active = 1;
 
@@ -14500,7 +14516,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       updateSanity(enemy, enemy->skills[3].active);
         enemy->skills[3].active = 0;
 
-    } else if (isId(enemy->name, "Lei heng") == 0 && enemy->skills[0].active == 2 && enemy->skills[3].active > 0) {
+    } else if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[0].active == 2 && enemy->skills[3].active > 0) {
 
       enemy->skills[2].active = 1;
 
@@ -14511,7 +14527,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     } 
 
     // Lei heng – HP < 90%
-    if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP < enemy->MAX_HP * 0.9 || TurnCount >= 2) && enemy->skills[0].active == 0) {
+    if (isId(enemy->ID, "Lei heng") == 0 && (enemy->HP < enemy->MAX_HP * 0.9 || TurnCount >= 2) && enemy->skills[0].active == 0) {
 
       GainNewPattern(enemy, player);
 
@@ -14533,7 +14549,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
     // Lei heng – HP < 80%
-    if (isId(enemy->name, "Lei heng") == 0 && (enemy->HP < enemy->MAX_HP * 0.8 || TurnCount >= 4) && enemy->skills[0].active == 1) {
+    if (isId(enemy->ID, "Lei heng") == 0 && (enemy->HP < enemy->MAX_HP * 0.8 || TurnCount >= 4) && enemy->skills[0].active == 1) {
 
       GainNewPattern(enemy, player);
 
@@ -14556,7 +14572,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
      // -------------------------------------------------------------
 
     // Dawn Office Fixer Sinclair - Volatile Passion
-    if (isId(player->name, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active) {
+    if (isId(player->ID, "Dawn Office Fixer Sinclair") == 0 && player->skills[3].active) {
 
         updateSanity(player, -((5 * player->Passive) > 40 ? 40 : (5 * player->Passive)));
 
@@ -14569,7 +14585,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     // ------------------------------ Roland -----------------------
 
     // Fixer grade 9? – heals every 3 turns on 0+ Sanity
-    if (isId(enemy->name, "Fixer grade 9?") == 0 && enemy->Sanity >= 0 && (TurnCount % 3) == 0) {
+    if (isId(enemy->ID, "Fixer grade 9?") == 0 && enemy->Sanity >= 0 && (TurnCount % 3) == 0) {
 
       float missingHPPercent = ((float)(enemy->MAX_HP - enemy->HP) / enemy->MAX_HP) * 100.0f;
       int gainpermissing = missingHPPercent/20;
@@ -14590,7 +14606,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
 
       sleep(1);
 
-    } else if (isId(enemy->name, "Fixer grade 9?") == 0 && enemy->Sanity < 0 && (TurnCount % 3) == 0) {
+    } else if (isId(enemy->ID, "Fixer grade 9?") == 0 && enemy->Sanity < 0 && (TurnCount % 3) == 0) {
 
       float missingHPPercent = ((float)(enemy->MAX_HP - enemy->HP) / enemy->MAX_HP) * 100.0f;
       int gainpermissing = missingHPPercent/30;
@@ -14612,7 +14628,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       }
 
     // Roland - Ultimate
-    if (isId(enemy->name, "Fixer grade 9?") == 0 && enemy->skills[9].active > 0) {
+    if (isId(enemy->ID, "Fixer grade 9?") == 0 && enemy->skills[9].active > 0) {
 
       enemy->skills[9].active -= 1;
       enemy->ClashPowerNextTurn -= enemy->skills[9].active;
@@ -14624,7 +14640,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
     // Roland - Ultimate
-    if (isId(enemy->name, "Fixer grade 9?") ==
+    if (isId(enemy->ID, "Fixer grade 9?") ==
             0 &&
       enemySkillUsed == &enemy->skills[9]) {
 
@@ -14641,7 +14657,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       //------------------------ Lobotomy E.G.O::Solemn Lament Yi Sang ---------------------------
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Reload
-    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && (player->Passive <= 0 || player->defenseSkill[0].active == 1)) {
+    if (isId(player->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && (player->Passive <= 0 || player->defenseSkill[0].active == 1)) {
 
       int Spend = (30 - player->Passive)/2;
 
@@ -14662,7 +14678,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
     // Lobotomy E.G.O::Solemn Lament Yi Sang - Butterfly
-    if (isId(player->name, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player->skills[0].active > 0) {
+    if (isId(player->ID, "Lobotomy E.G.O::Solemn Lament Yi Sang") == 0 && player->skills[0].active > 0) {
       
       player->skills[0].active = 0;
 
@@ -14676,7 +14692,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
   //--------------------------------------------------------------
 
     // Jia Qiu enemy heal sanity
-    if (isId(enemy->name, "Jia Qiu") == 0 && enemy->skills[15].active > 0) {
+    if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->skills[15].active > 0) {
 
       updateSanity(player, 5);
 
@@ -14686,9 +14702,9 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
     // Jia Qiu enemy heal
-    if (isId(player->name, "Jia Qiu") == 0 && (player->skills[15].active > 0) && enemy->HP <= 0) {
+    if (isId(player->ID, "Jia Qiu") == 0 && (player->skills[15].active > 0) && enemy->HP <= 0) {
 
-      if (isId(enemy->name, "Hong lu:The Lord of Hongyuan") == 0) {
+      if (isId(enemy->ID, "Hong lu:The Lord of Hongyuan") == 0) {
 
         player->skills[15].active -= 1;
 
@@ -14708,12 +14724,12 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
     // Jia Qiu Phase 2
-    if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.6 &&
+    if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.6 &&
         enemy->Passive == 2 && enemy->skills[15].active == 0) {
 
       printf("\n%s: \"Reflect upon yourself! Exhume your humanity, your righteousness from deep within!\"\n", enemy->name);
 
-      if (isId(player->name, "Hong lu:The Lord of Hongyuan") == 0) {
+      if (isId(player->ID, "Hong lu:The Lord of Hongyuan") == 0) {
 
         printf("\n%s: \"Phew... okay, fine. Then... As the Lord of Hongyuan, I hereby grant you audience.\"\n", player->name);
 
@@ -14754,7 +14770,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       // ------------------------------ Cap HP --------------------------
 
       // Don Quixote Phase 2
-      if (isId(enemy->name, "Don Quixote") == 0 && enemy->HP <= 0 &&
+      if (isId(enemy->ID, "Don Quixote") == 0 && enemy->HP <= 0 &&
           enemy->Passive == 0) {
 
         printf("\n%s: \"If that's what you really yearn for...\"\n", enemy->name);
@@ -14798,7 +14814,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
 
         clearDebuffsOnDeath(enemy, player);
 
-        if (isId(player->name,
+        if (isId(player->ID,
                        "Don Quixote:The Manager of La Manchaland") == 0) {
           printf(
               "\n%s: I shall show you. Even if it’s a false dream... I will still "
@@ -14810,7 +14826,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       }
 
       // Sukuna:King of Curse cursed reverse technique
-      if (isId(enemy->name, "Sukuna:King of Curse") == 0 && enemy->HP <= 0 && enemy->Passive == 0) {
+      if (isId(enemy->ID, "Sukuna:King of Curse") == 0 && enemy->HP <= 0 && enemy->Passive == 0) {
 
         enemy->Passive = 1;
 
@@ -14827,7 +14843,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       }
       
       // Jia Qiu Anti low
-      if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.4 &&
+      if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.4 &&
           enemy->Passive == 3) {
 
         enemy->Passive = 4;
@@ -14849,7 +14865,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       }
 
       // Jia Qiu LAST
-      if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
+      if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
           enemy->Passive == 5) {
 
         enemy->Passive = 6;
@@ -14871,7 +14887,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       }
 
       // Erlking Heathcliff Anti low
-      if (isId(enemy->name, "Erlking Heathcliff") == 0 && enemy->HP <= 50 &&
+      if (isId(enemy->ID, "Erlking Heathcliff") == 0 && enemy->HP <= 50 &&
           enemy->Passive == 1) {
 
         enemy->Passive = 2;
@@ -14901,7 +14917,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     // ----------------- King in Binds -----------------------
 
     // King in Binds Bandages of the King in Binds
-    if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
+    if (isId(enemy->ID, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
         enemy->Passive == 1) {
 
       enemy->skills[1].active += 2; // Sinking Stack
@@ -14913,7 +14929,7 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
 // King in Binds anti low
-if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
+if (isId(enemy->ID, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
     enemy->skills[0].active <= 0) {
 
   enemy->skills[0].active = 1;
@@ -14930,7 +14946,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
     // ---------------------- Anti death effect ----------------------
 
     // Erlking Heathcliff Faded promise for wild hunt
-    if (isId(enemy->name, "Erlking Heathcliff") == 0 && isId(player->name, "Heathcliff:Wild Hunt") == 0 && (enemy->skills[7].active == 1) && player->HP <= 0)  {
+    if (isId(enemy->ID, "Erlking Heathcliff") == 0 && isId(player->ID, "Heathcliff:Wild Hunt") == 0 && (enemy->skills[7].active == 1) && player->HP <= 0)  {
 
       enemy->skills[7].active--;
 
@@ -14943,7 +14959,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
     }
 
     // Hong lu:The Lord of Hongyuan - Passive
-    if ((isId(player->name, "Hong lu:The Lord of Hongyuan")) == 0 &&
+    if ((isId(player->ID, "Hong lu:The Lord of Hongyuan")) == 0 &&
              player->HP <= 0 && player->skills[5].active == 1) {
 
         player->skills[5].active--;
@@ -14962,7 +14978,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
     }
 
       // Heishou Pack - You Branch Adept Heathcliff - Anti death Passive
-      if ((isId(player->name, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
+      if ((isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
           player->HP <= 0 && player->skills[3].active == 0) {
 
           player->skills[3].active--;
@@ -14980,7 +14996,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
       }
 
       // Meursault:Blade Lineage Mentor - Passive
-      if (isId(player->name, "Meursault:Blade Lineage Mentor") == 0 &&
+      if (isId(player->ID, "Meursault:Blade Lineage Mentor") == 0 &&
           player->HP <= 0 && player->Passive == 0) {
 
           player->Passive--;
@@ -14995,7 +15011,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
       }
 
     // Erlking Heathcliff Faded promise for wild hunt
-    if (isId(enemy->name, "Erlking Heathcliff") == 0 && isId(player->name, "Heathcliff:Wild Hunt") == 0 && (enemy->skills[7].active == 0))  {
+    if (isId(enemy->ID, "Erlking Heathcliff") == 0 && isId(player->ID, "Heathcliff:Wild Hunt") == 0 && (enemy->skills[7].active == 0))  {
 
           enemy->skills[7].active -= 1;
 
@@ -15004,7 +15020,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
     }
 
     // Hong lu:The Lord of Hongyuan - Passive
-    if ((isId(player->name, "Hong lu:The Lord of Hongyuan")) == 0 && player->skills[5].active == 0) {
+    if ((isId(player->ID, "Hong lu:The Lord of Hongyuan")) == 0 && player->skills[5].active == 0) {
 
       player->skills[5].active--;
 
@@ -15013,7 +15029,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
     }
 
       // Heishou Pack - You Branch Adept Heathcliff - Anti death Passive
-      if ((isId(player->name, "Heishou Pack - You Branch Adept Heathcliff")) == 0 && player->skills[3].active == -1) {
+      if ((isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff")) == 0 && player->skills[3].active == -1) {
 
         player->skills[3].active--;
 
@@ -15022,14 +15038,14 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
       }
 
       // Meursault:Blade Lineage Mentor - Passive
-      if (isId(player->name, "Meursault:Blade Lineage Mentor") == 0 && player->Passive == -1) {
+      if (isId(player->ID, "Meursault:Blade Lineage Mentor") == 0 && player->Passive == -1) {
 
         player->Passive--;
 
       }
 
     // Binah - phase 2
-    if (isId(player->name, "Binah") == 0 && !player->Passive && player->HP <= player->MAX_HP*0.5) {
+    if (isId(player->ID, "Binah") == 0 && !player->Passive && player->HP <= player->MAX_HP*0.5) {
 
       player->Passive = 1;
 
@@ -15074,7 +15090,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
 
       sleep(1);
 
-      if (isId(enemy->name, "Fixer grade 9?") == 0) {
+      if (isId(enemy->ID, "Fixer grade 9?") == 0) {
       printf("\n%s gains 'Shin (心) - The Black Silence', Defense +50, Offense +15, +1 Base Power and +10%% damage for every 10 different Sanity, All Skills become Unbreakable Coins\n",
         enemy->name);
 
@@ -15107,18 +15123,18 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
 
 
         // Buff after panic (Only applies if they successfully recovered)
-        if (isId(player->name, "Erlking Heathcliff") == 0) {
+        if (isId(player->ID, "Erlking Heathcliff") == 0) {
             player->FinalPowerBoostNextTurn += 2;
           printf("\n%s gains 2 Final Power up next turn\n", player->name);
         } 
-        else if (isId(player->name, "Lei heng") == 0) {
+        else if (isId(player->ID, "Lei heng") == 0) {
           int healSanity = (player->MAX_HP - player->HP) / player->MAX_HP * 100;
             if (healSanity > 30) healSanity = 30;
 
               updateSanity(player, healSanity);
               printf("\n%s heals Sanity by this unit's missing HP (%d - Max 30)\n", player->name, player->Sanity);
           }
-        else if (isId(player->name, "Sancho:The Second Kindred of Don Quixote") == 0 && player->Passive >= 1) {
+        else if (isId(player->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && player->Passive >= 1) {
 
             player->Passive -= 3;
           if (player->Passive < 1) player->Passive = 1;
@@ -15127,7 +15143,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
 
               printf("\n%s consumes 3 Hardblood (%d) to gain 3 Final Power Up and +30%% damage next turn\n", player->name, player->Passive);
           }
-        else if (isId(player->name, "Sukuna:King of Curse") == 0) {
+        else if (isId(player->ID, "Sukuna:King of Curse") == 0) {
 
               player->ClashPowerNextTurn += 3;
 
@@ -15152,7 +15168,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
     clearTurnEffects(player);
 
     // Muga Ryōshū – End
-    if (isId(player->name, "Muga Ryōshū") == 0 && playerSkillUsed == &player->skills[5]) {
+    if (isId(player->ID, "Muga Ryōshū") == 0 && playerSkillUsed == &player->skills[5]) {
 
         enemy->HP = 0;
 
@@ -15160,10 +15176,10 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
 
     // -------------------------------------------------------- Lost CutScene --------------------------------------------------------
 
-    if (isId(player->name, "Muga Ryōshū") == 0 && playerSkillUsed != &player->skills[5]) {
+    if (isId(player->ID, "Muga Ryōshū") == 0 && playerSkillUsed != &player->skills[5]) {
     
     // Lost CutScene
-    if (isId(enemy->name, "Lei heng") == 0 && enemy->HP <= enemy->MAX_HP*0.2) {
+    if (isId(enemy->ID, "Lei heng") == 0 && enemy->HP <= enemy->MAX_HP*0.2) {
 
       enemy->HP = 1;
 
@@ -15184,7 +15200,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
 
       if (strstr(player->name, "Ryoshu") != NULL) {
         printf("\n%s: \"But... Yoshihide\"\n", enemy->name);
-      } else if (isId(player->name, "Meursault:The Thumb") == 0) {
+      } else if (isId(player->ID, "Meursault:The Thumb") == 0) {
         printf("\n%s: \"But... Chacuihu\"\n", enemy->name);
       } else {
        printf("\n%s: \"But... %s...\"\n", enemy->name, player->name);
@@ -15207,7 +15223,7 @@ if (isId(enemy->name, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 
       enemy->HP = 0;
 
 
-    } else if (isId(enemy->name, "Jia Qiu") == 0 && enemy->HP <= 0) {
+    } else if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->HP <= 0) {
 
       printf("\n%s: \"Fine, You win.\"\n", enemy->name);
 
@@ -15346,7 +15362,7 @@ void runKingInBindsBattle(
       else if (isPanicked(player)) printf("\n%s is in PANIC and cannot act!\n", player->name);
 
       // Lose Envy Resonance
-        if (isId(player->name, "The Middle Little Brother Sinclair") == 0) {
+        if (isId(player->ID, "The Middle Little Brother Sinclair") == 0) {
 
             player->Passive = 0;
 
@@ -15923,7 +15939,7 @@ void runKingInBindsBattle(
         else if (isPanicked(player)) printf("\n%s is in PANIC and cannot act!\n", player->name);
 
         // Lose Envy Resonance
-        if (isId(player->name, "The Middle Little Brother Sinclair") == 0) {
+        if (isId(player->ID, "The Middle Little Brother Sinclair") == 0) {
 
             player->Passive = 0;
 
