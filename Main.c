@@ -2461,7 +2461,7 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
     }
 
     // The House of Spiders: The Ring Nursefather Hong Lu - EVade
-    if (isId(defender->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && atk == &attacker->defenseSkill[0] && defender->skills[5].active == 1 && Evaded == 0) {
+    if (isId(defender->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && defender->skills[5].active == 1 && Evaded == 0) {
         Evaded = 1;
       IsStillEvaded = 1;
 
@@ -4253,7 +4253,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         
         evadePower = EvadeSkill.BasePower + defender->BasePowerBoost;
 
-        int IsHeadHit = tossCoinWithSanity(attacker);
+        int IsHeadHit = tossCoinWithSanity(defender);
 
         if (IsHeadHit) {
           // Check paralyze
@@ -4268,7 +4268,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       } else {
         evadePower = defSkill->BasePower + defender->BasePowerBoost;
 
-        int IsHeadHit = tossCoinWithSanity(attacker);
+        int IsHeadHit = tossCoinWithSanity(defender);
 
         if (IsHeadHit) {
           // Check paralyze
@@ -4309,14 +4309,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       // ---------------- On Evaded ----------------
       
-      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && atk == &attacker->defenseSkill[1] && defender->skills[5].active) {
+      if (isId(defender->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && defender->skills[5].active) {
         defender->skills[5].active = 0;
 
-        defender->Bind[1] += 1;
+        attacker->Bind[1] += 1;
         
         printf("\t [On Evade] Inflict 1 Bind next turn against the attacker (Once per turn)");
 
-          attacker->Haste[1] += 1;
+          defender->Haste[1] += 1;
 
         printf("\t [On Evade] Gain 1 Haste next turn (Once per turn)");
       }
@@ -4658,8 +4658,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       int Stack = 0;
       int Count = 0;
 
-      if (attacker->skills[14].active && attacker->Charge[0] >= 2 && (defender->Bleed[0] > 0 || defender->Bleed[1] > 0)) {
-      finalDamage *= 1.10;
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && attacker->skills[14].active && attacker->Charge[0] >= 2) {
+        
+        if ((defender->Bleed[0] > 0 || defender->Bleed[1] > 0)) {
+          finalDamage *= 1.10;
+        }
+          
         Stack++;
         Count++;
       }
@@ -7164,6 +7168,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
   }
 
+
     printf("\n(%d bonus) Damage Multiplier: %.2f", bonus,
        atk->DmgMutiplier);
 
@@ -7199,12 +7204,13 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
             // (เช็คว่าสกิล Anatomize หรือ Gather Ingredient ทำงาน)
             if (!(atk == &attacker->skills[1] && atk->Coins <= 1) && attacker->skills[2].active < 3) {
                 attacker->skills[2].active++;
-                updateSanity(attacker, 4);
-                printf("\n%s heals 4 SP (%d)\n", attacker->name, attacker->Sanity);
 
                 if (attacker->Sanity >= 45) {
                     attacker->DamageUpNextTurn += 10;
                     printf("\n%s gains +10%% Damage Up next turn\n", attacker->name);
+                } else {
+                  updateSanity(attacker, 4);
+                  printf("\n%s heals 4 Sanity (%d)\n", attacker->name, attacker->Sanity);
                 }
             }
         }
@@ -8711,8 +8717,10 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
   // -------------------------------------------------------------------------------------------------------------
 
   sleep(1);
-}
-}
+
+  } // closes if (attacker->HP > 0 && !isStaggered(attacker)) (depth 2→1)
+
+} // closes attackPhase (depth 1→0)
 
 
 
@@ -8924,9 +8932,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     }
 
-    if (c2->Bleed[0] >= 3) {
+    if (c2->Bleed[0] >= 4) {
 
-    int gain = c2->Bleed[0]/3;
+    int gain = c2->Bleed[0]/4;
     if (gain > 3) gain = 3;
 
     if (gain > 0) {
@@ -8960,9 +8968,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       }
     }
 
-    if (c2->Bleed[0] >= 3) {
+    if (c2->Bleed[0] >= 4) {
 
-    int gain = c2->Bleed[0]/3;
+    int gain = c2->Bleed[0]/4;
     if (gain > 4) gain = 4;
 
     if (gain > 0) {
@@ -16739,6 +16747,7 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
     if (isId(player->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
       // 1. Turn End: Reset Unbreak
       if (player->skills[5].active == 1) {
+        player->skills[5].active = 0;
       if (player->skills[2].Unbreakable > 0) player->skills[2].Unbreakable = 0; // Reset Unbreak
       if (player->defenseSkill[0].Unbreakable > 0) player->skills[2].Unbreakable = 0; // Reset Unbreak
       if (player->skills[3].Unbreakable > 0) player->skills[2].Unbreakable = 0; // Reset Unbreak
