@@ -69,6 +69,7 @@ typedef struct { // Character
   int BasePowerBoost;
   int ClashPower;
   float DamageUp;
+  float CriticalDamageUp;
   float Protection;
   int Paralyze;
   float DmgMutiplierBoost;
@@ -87,6 +88,7 @@ typedef struct { // Character
   int BasePowerBoostNextTurn;
   int ClashPowerNextTurn;
   float DamageUpNextTurn;
+float CriticalDamageUpNextTurn;
   float ProtectionNextTurn;
   int ParalyzeNextTurn;
   float DmgMutiplierBoostNextTurn;
@@ -94,14 +96,14 @@ typedef struct { // Character
   int DefenseBoostNextTurn;
 
   // Status
-  int Burn[2]; // [0] = Burn Stack, [1] = Burn Count
-  int Bleed[2]; // [0] = Bleed Stack, [1] = Bleed Count
-  int Tremor[3]; // [0] = Tremor Stack, [1] = Tremor Count, [2] = Tremor Burst Stack
+  int Burn[4]; // [0] = Burn Stack, [1] = Burn Count, [2] = Burn Stack next turn, [3] = Burn Count next turn
+  int Bleed[4]; // [0] = Bleed Stack, [1] = Bleed Count, [2] = Bleed Stack next turn, [3] = Bleed Count next turn
+  int Tremor[5]; // [0] = Tremor Stack, [1] = Tremor Count, [2] = Tremor Stack next turn, [3] = Tremor Count next turn, [4] = Tremor Burst Stack
 const char * TremorType;
-  int Rupture[2]; // [0] = Rupture Stack, [1] = Rupture Count
-  int Sinking[2]; // [0] = Sinking Stack, [1] = Sinking Count
-  int Poise[2]; // [0] = Poise Stack, [1] = Poise Count
-  int Charge[2]; // [0] = Charge Stack, [1] = Charge Count
+  int Rupture[4]; // [0] = Rupture Stack, [1] = Rupture Count, [2] = Rupture Stack next turn, [3] = Rupture Count next turn
+  int Sinking[4]; // [0] = Sinking Stack, [1] = Sinking Count, [2] = Sinking Stack next turn, [3] = Sinking Count next turn
+  int Poise[4]; // [0] = Poise Stack, [1] = Poise Count, [2] = Poise Stack next turn, [3] = Poise Count next turn
+  int Charge[4]; // [0] = Charge Stack, [1] = Charge Count, [2] = Charge Stack next turn, [3] = Charge Count next turn
 
 } Character;
 
@@ -146,6 +148,7 @@ void initializeCharacterBuffs(Character *c) {
   c->BasePowerBoost = 0;
   c->ClashPower = 0;
   c->DamageUp = 0;
+  c->CriticalDamageUp = 0;
   c->Protection = 0;
   c->Paralyze = 0;
   c->DmgMutiplierBoost = 0;
@@ -168,6 +171,7 @@ void initializeCharacterBuffs(Character *c) {
   c->BasePowerBoostNextTurn = 0;
   c->ClashPowerNextTurn = 0;
   c->DamageUpNextTurn = 0;
+  c->CriticalDamageUpNextTurn = 0;
   c->ProtectionNextTurn = 0;
   c->ParalyzeNextTurn = 0;
   c->DmgMutiplierBoostNextTurn = 0;
@@ -186,6 +190,7 @@ void clearTurnEffects(Character *c) {
   c->BasePowerBoost = 0;
   c->ClashPower = 0;
   c->DamageUp = 0;
+  c->CriticalDamageUp = 0;
   c->Protection = 0;
   c->Paralyze = 0;
   c->DmgMutiplierBoost = 0;
@@ -208,6 +213,7 @@ void clearTurnEffects(Character *c) {
   c->DefensePowerBoost = c->DefensePowerBoostNextTurn;
     c->ClashPower = c->ClashPowerNextTurn;
     c->DamageUp = c->DamageUpNextTurn;
+    c->CriticalDamageUp = c->CriticalDamageUpNextTurn;
     c->Protection = c->ProtectionNextTurn;
     c->Paralyze += c->ParalyzeNextTurn;
     c->DmgMutiplierBoost = c->DmgMutiplierBoostNextTurn;
@@ -223,11 +229,62 @@ void clearTurnEffects(Character *c) {
   c->BasePowerBoostNextTurn = 0;
   c->ClashPowerNextTurn = 0;
   c->DamageUpNextTurn = 0;
+  c->CriticalDamageUpNextTurn = 0;
   c->ProtectionNextTurn = 0;
   c->ParalyzeNextTurn = 0;
   c->DmgMutiplierBoostNextTurn = 0;
   c->OffenseBoostNextTurn = 0;
   c->DefenseBoostNextTurn = 0;
+
+  // Apply next turn status stacks/counts → current
+  if (c->Burn[2] > 0 || c->Burn[3] > 0) {
+    c->Burn[0] += c->Burn[2];
+    c->Burn[1] += c->Burn[3];
+    c->Burn[2] = 0;
+    c->Burn[3] = 0;
+  }
+
+  if (c->Bleed[2] > 0 || c->Bleed[3] > 0) {
+    c->Bleed[0] += c->Bleed[2];
+    c->Bleed[1] += c->Bleed[3];
+    c->Bleed[2] = 0;
+    c->Bleed[3] = 0;
+  }
+
+  if (c->Tremor[2] > 0 || c->Tremor[3] > 0) {
+    c->Tremor[0] += c->Tremor[2];
+    c->Tremor[1] += c->Tremor[3];
+    c->Tremor[2] = 0;
+    c->Tremor[3] = 0;
+  }
+
+  if (c->Rupture[2] > 0 || c->Rupture[3] > 0) {
+    c->Rupture[0] += c->Rupture[2];
+    c->Rupture[1] += c->Rupture[3];
+    c->Rupture[2] = 0;
+    c->Rupture[3] = 0;
+  }
+
+  if (c->Sinking[2] > 0 || c->Sinking[3] > 0) {
+    c->Sinking[0] += c->Sinking[2];
+    c->Sinking[1] += c->Sinking[3];
+    c->Sinking[2] = 0;
+    c->Sinking[3] = 0;
+  }
+
+  if (c->Poise[2] > 0 || c->Poise[3] > 0) {
+    c->Poise[0] += c->Poise[2];
+    c->Poise[1] += c->Poise[3];
+    c->Poise[2] = 0;
+    c->Poise[3] = 0;
+  }
+
+  if (c->Charge[2] > 0 || c->Charge[3] > 0) {
+    c->Charge[0] += c->Charge[2];
+    c->Charge[1] += c->Charge[3];
+    c->Charge[2] = 0;
+    c->Charge[3] = 0;
+  }
 }
 
 void clearTurnSkillBuffs(Character *c) {
@@ -238,6 +295,7 @@ void clearTurnSkillBuffs(Character *c) {
   c->BasePowerBoost = 0;
   c->ClashPower = 0;
   c->DamageUp = 0;
+  c->CriticalDamageUp = 0;
   c->DmgMutiplierBoost = 0;
   c->OffenseBoost = 0;
   c->DefenseBoost = 0;
@@ -257,17 +315,17 @@ const char* getSkillTypeName(int type) {
 
 
 
-void inflictStatus(int status[2], int potencyAdd, int countAdd) {
+void inflictStatus(int status[2], int potencyAdd, int countAdd, int MinStack, int MaxStack, int MinCount, int MaxCount) {
 
     // 1. บวกค่าเข้าไปก่อน
     status[0] += potencyAdd;
     status[1] += countAdd;
 
     // Cap 0-99
-    if (status[0] > 99) status[0] = 99;
-    if (status[1] > 99) status[1] = 99;
-    if (status[0] < 0)  status[0] = 0;
-    if (status[1] < 0)  status[1] = 0;
+  if (status[0] < MinStack) status[0] = MinStack;
+  if (status[0] > MaxStack) status[0] = MaxStack;
+  if (status[1] < MinCount) status[1] = MinCount;
+  if (status[1] > MaxCount) status[1] = MaxCount;
 }
 
 // ฟังก์ชันกลางสำหรับหักดาเมจเข้าเกราะและเลือด // true damage = 1, normal damage = 0
@@ -380,9 +438,9 @@ int isStaggered(Character *c) {
 
 void MoveStagger(Character *attacker, Character *defender, int StaggerBar, int StaggerMoveAmount, int PrintType) {
 
-  defender->Tremor[2] += StaggerMoveAmount;
+  defender->Tremor[4] += StaggerMoveAmount;
 
-  if (defender->Tremor[2] >= StaggerBar && defender->Stagger <= 0) {
+  if (defender->Tremor[4] >= StaggerBar && defender->Stagger <= 0) {
 
     defender->Stagger += 2;
 
@@ -396,7 +454,7 @@ void MoveStagger(Character *attacker, Character *defender, int StaggerBar, int S
 
     }
 
-      defender->Tremor[2] = 0;
+      defender->Tremor[4] = 0;
 
   }
 }
@@ -943,6 +1001,72 @@ void GainNewPattern(Character *c, Character *c2) {
 
 
 
+// --------------------- The House of Spiders: The Ring Nursefather Hong Lu ---------------------
+
+void CorpusTheater(Character *c, Character *c2) {
+  
+    if (c->skills[4].active <= 0) return;
+
+  if (c->skills[7].active == 1) return; 
+
+    // 3. ลด Stack ของ Corpus Theater
+    c->skills[4].active--;
+  c->skills[7].active = 1;
+
+    // 4. สุ่มผลลัพธ์ 1 ใน 3 อย่าง (Next Turn)
+    int r = rand() % 3;
+
+    switch(r) {
+        case 0:
+            // ผลที่ 1: รับ Bleed Stack +3 (เพิ่มเข้าไปในเทิร์นหน้าหรือปัจจุบันตามความเหมาะสม)
+              c2->Bleed[2] += 3;
+            printf("\t [Corpus Theater] +3 Bleed Stack next turn (%d)", c->skills[4].active);
+            break;
+        case 1:
+            // ผลที่ 2: รับ 1 Bind (ความเร็วลดลงในเทิร์นหน้า)
+              c2->Bind[1] += 1;
+            printf("\t [Corpus Theater] +1 Bind next turn (%d)", c->skills[4].active);
+            break;
+        case 2:
+            // ผลที่ 3: รับ 1 Defense Power Down
+              c2->DefensePowerBoost -= 1;
+            printf("\t [Corpus Theater] +1 Defense Power Down next turn (%d)", c->skills[4].active);
+            break;
+    }
+    sleep(1);
+}
+
+int countNegativeEffectTypes(Character *c) {
+    int count = 0;
+
+    // 1. นับสถานะพื้นฐาน (Potency หรือ Count ต้องมากกว่า 0)
+    if (c->Burn[0] > 0 || c->Burn[1] > 0) count++;
+    if (c->Bleed[0] > 0 || c->Bleed[1] > 0) count++;
+    if (c->Tremor[0] > 0 || c->Tremor[1] > 0) count++;
+    if (c->Rupture[0] > 0 || c->Rupture[1] > 0) count++;
+    if (c->Sinking[0] > 0 || c->Sinking[1] > 0) count++;
+
+    // 2. นับสถานะผิดปกติอื่นๆ
+    if (c->Paralyze > 0 || c->ParalyzeNextTurn > 0) count++;
+    if (c->Bind[0] > 0 || c->Bind[1] > 0) count++;
+
+    // 3. นับค่าพลังที่ติดลบ (Debuff จาก Level/Power)
+    if (c->OffenseBoost < 0 || c->OffenseBoostNextTurn < 0) count++;
+    if (c->DefenseBoost < 0 || c->DefenseBoostNextTurn < 0) count++;
+    if (c->AttackPowerBoost < 0) count++;
+    if (c->FinalPowerBoost < 0) count++;
+    if (c->DamageUp < 0) count++; // Damage Down
+    if (c->Protection < 0) count++; // Fragile (รับดาเมจแรงขึ้น)
+
+    return count;
+}
+
+// ------------------------------------------------------------------------------------
+
+
+
+
+
 // --------------------- Muga Ryoshu ---------------------
 
 const char* glitchText(const char* original, int percent) {
@@ -965,28 +1089,10 @@ const char* glitchText(const char* original, int percent) {
 void severCoin(Character *attacker, Character *defender, SkillStats *atkSkill, SkillStats *defSkill) {
     if (!defSkill || defSkill->Coins <= 0) return;
 
-    // 1. ตัดเหรียญและ Glitch ชื่อสกิลศัตรู
-  defSkill->name = glitchText(defSkill->name, (100/defSkill->Coins)); 
     defSkill->Coins--;
 
   if (defSkill->Unbreakable > defSkill->Coins) {
       defSkill->Unbreakable = defSkill->Coins;
-  }
-
-  // 2. สุ่มเลือกสกิลของ Ryōshū (Attacker) เพื่อ Glitch ชื่อ
-  int glitcheableIndices[MAX_SKILLS];
-  int count = 0;
-
-  for (int i = 0; i < attacker->numSkills; i++) {
-      // เงื่อนไข: ไม่ใช่ท่าไม้ตาย (index 5), สกิลมีชื่ออยู่จริง, และสกิลยังไม่พัง (Copies >= 0)
-      if (i != 5 && attacker->skills[i].name != NULL && attacker->skills[i].Copies >= 0) {
-          glitcheableIndices[count++] = i;
-      }
-  }
-
-  if (count > 0) {
-      int randomIdx = glitcheableIndices[rand() % count];
-      attacker->skills[randomIdx].name = glitchText(attacker->skills[randomIdx].name, 5); // หายทีละ 10% เพื่อให้เห็นผลชัดขึ้น
   }
 
     printf("\n\x1b[1;35m[SEVERED]\x1b[0m %s used '%s' to delete a coin!\n", attacker->name, atkSkill->name);
@@ -995,7 +1101,6 @@ void severCoin(Character *attacker, Character *defender, SkillStats *atkSkill, S
     if (defSkill->Coins <= 0) {
         defSkill->Copies = -1; 
       
-        defender->name = glitchText(defender->name, (100/(defender->numDefenseSkills + defender->numSkills))); // ชื่อศัตรูเริ่มหาย
         printf("\n\x1b[1;31m[ERASED]\x1b[0m %s's Skill is collapsing...\n", defender->name);
     }
 }
@@ -1388,6 +1493,7 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
   defender->Bleed[1] = 0; // [0] = Stack, [1] = Count
   defender->Tremor[0] = 0; // [0] = Stack, [1] = Count
   defender->Tremor[1] = 0; // [0] = Stack, [1] = Count
+  defender->Tremor[4] = 0; // Tremor store / Stagger Threshold
   defender->Rupture[0] = 0; // [0] = Stack, [1] = Count
   defender->Rupture[1] = 0; // [0] = Stack, [1] = Count
   defender->Sinking[0] = 0; // [0] = Stack, [1] = Count
@@ -1438,6 +1544,11 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
   // Muga Ryōshū
   if (isId(attacker->ID, "Muga Ryōshū") == 0) {
       attacker->skills[0].active = 0; // Sever the thread
+  }
+
+  // The House of Spiders: The Ring Nursefather Hong Lu
+  if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+      attacker->skills[4].active = 0;  // Corpus Theater Stacks (เริ่มที่ 3)
   }
 
 
@@ -1989,18 +2100,33 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
   if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 &&
       (atk == &attacker->skills[2])) {
 
-      int DamageBuff = 2 * abs(attacker->Sanity);
+      int DamageBuff = 3 * attacker->Poise[0];
     if (DamageBuff > 75) DamageBuff = 75;
 
     attacker->DamageUp += DamageBuff;
 
-      printf("\n%s deals 2%% more damage for further Sanity from 0 (%d%% - Max 75%%)\n", attacker->name, DamageBuff);
+      printf("\n%s deals +3%% damage for Poise Stack (%d) on self (%d%% - Max 75%%)\n", attacker->name, attacker->Poise[0], DamageBuff);
 
       sleep(1);
     
   }
 
-  // Meursault:Blade Lineage Mentor - To claim thier bones
+    // Meursault:Blade Lineage Mentor - To claim thier bones
+    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 &&
+        (atk == &attacker->defenseSkill[1])) {
+
+        int DamageBuff = 2 * attacker->Poise[0];
+      if (DamageBuff > 50) DamageBuff = 50;
+
+      attacker->DamageUp += DamageBuff;
+
+        printf("\n%s deals +2%% damage for Poise Stack (%d) on self (%d%% - Max 50%%)\n", attacker->name, attacker->Poise[0], DamageBuff);
+
+        sleep(1);
+
+    }
+
+  // Meursault:Blade Lineage Mentor - Deal more on missing
   if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 &&
       (atk == &attacker->defenseSkill[0] || atk == &attacker->defenseSkill[1] || atk == &attacker->skills[2])) {
 
@@ -2291,6 +2417,15 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
 
      }
 
+    // The House of Spiders: The Ring Nursefather Hong Lu - Skill 3
+    if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && atk == &attacker->skills[2]) {
+
+          printf("\n%s consumes 4 Corpus Ingredient Count (%d)\n", attacker->name, attacker->Charge[1]);
+
+        sleep(1);
+
+    }
+
   //----------------------------------------------------------------
 
     // --- [The One Who Grips Faust - Such Filth Setup] ---
@@ -2320,6 +2455,21 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
       printf("\n%s consumes all Fanatic (%d) to use 'Such Filth'\n", defender->name, defender->Passive);
 
       defender->Passive = 0; // จ่าย Fanatic ทั้งหมดทันที
+
+      sleep(1);
+
+    }
+
+    // The House of Spiders: The Ring Nursefather Hong Lu - EVade
+    if (isId(defender->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && atk == &attacker->defenseSkill[0] && defender->skills[5].active == 1 && Evaded == 0) {
+        Evaded = 1;
+      IsStillEvaded = 1;
+
+      printf("\n%s consumeed Corpus Ingredient, use '%s'\n", defender->name, defender->defenseSkill[1].name);
+
+      sleep(1);
+
+      printf("\n%s: \"Vandalism is prohibited!\"\n", defender->name);
 
       sleep(1);
 
@@ -2595,7 +2745,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (PoiseChance > 100) PoiseChance = 100;
 
     // Poise // 0 Stack 1 Count
-    if (attacker->Poise[0] > 0 || attacker->Poise[1] > 0) {
+    if ((attacker->Poise[0] > 0 || attacker->Poise[1] > 0) && !Evaded) {
 
       if (attacker->Poise[0] <= 0 && attacker->Poise[1] > 0) attacker->Poise[1]++;
 
@@ -2772,8 +2922,73 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     // ------------------------------------------------
 
+      // -------------------------- The House of Spiders: The Ring Nursefather Hong Lu ----------------------------------
 
-    
+      // The House of Spiders: The Ring Nursefather Hong Lu Skill Tanut Skill 2-2
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[2])) {
+
+        if (i == remainingCoins - 2) {
+        printf("\n\n%s \"From there...\"\n", attacker->name);
+
+        sleep(1);
+        }
+
+        if (i == remainingCoins - 1) {
+          printf("\n\n%s \"Please observe...!\"\n", attacker->name);
+
+          sleep(1);
+          }
+        
+      }
+
+      // The House of Spiders: The Ring Nursefather Hong Lu Skill Tanut Skill 3-1
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[3])) {
+
+        if (i == 0) {
+        printf("\n\n%s \"Do you hear it?\"\n", attacker->name);
+
+        sleep(1);
+        }
+
+        if (i == 1) {
+          printf("\n\n%s \"The euphonious harmony of the humerus pair and 24 ribs...!\"\n", attacker->name);
+
+          sleep(1);
+          }
+
+        if (i == 3) {
+          printf("\n\n%s \"Tibia's Melody!!\"\n", attacker->name);
+
+          sleep(1);
+          }
+
+      }
+      
+      // The House of Spiders: The Ring Nursefather Hong Lu Skill 2-2 Boost
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
+
+        int count = countNegativeEffectTypes(defender);
+        int boost = count * 15;
+        if (boost > 50) boost = 50;
+
+        attacker->DamageUp += boost;
+
+        printf("\n%s deals +15%% damage for every type of negative effect (%d) on target (%d%% - Max 50%%)", attacker->name, count, boost);
+      }
+
+      // The House of Spiders: The Ring Nursefather Hong Lu Skill 3 Boost
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[4]) && i == remainingCoins - 1) {
+
+        int count = countNegativeEffectTypes(defender);
+        int boost = count * 10;
+        if (boost > 30) boost = 30;
+
+        attacker->DamageUp += boost;
+
+        printf("\n%s deals +10%% damage for every type of negative effect (%d) on target (%d%% - Max 30%%)", attacker->name, count, boost);
+      }
+
+      // --------------------------------------------------------------------------------------------------------
 
     // --------------------------------- Don Quixote:The Manager of La Manchaland ---------------------------------------
 
@@ -3791,6 +4006,27 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       sleep(1);
     }
 
+      // Meursault:Blade Lineage Mentor - Skill 4
+      if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") ==
+                     0 &&
+                 (atk == &attacker->skills[3])) {
+
+        if (i == 0) {
+
+        printf("\n\n%s: \"Yield My Flesh...\"\n", attacker->name);
+
+        sleep(1);
+        }
+
+        if (i == remainingCoins - 1) {
+
+        printf("\n\n%s: \"To Claim Their Bones!\"\n", attacker->name);
+
+        sleep(1);
+        }
+        
+      }
+
     // Hong lu:The Lord of Hongyuan S2 Last coins
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
 
@@ -3811,14 +4047,23 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
     // Meursault:Blade Lineage Mentor S2 Last coins
-    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 2) {
+    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 2 && IsCritical) {
 
         attacker->DamageUp += 60;
 
-         printf("\n%s's this coin deal +60%% damage", attacker->name);
+         printf("\n%s's this coin deal +60%% damage on Critical Hit", attacker->name);
 
       sleep(1);
     }
+
+      // Meursault:Blade Lineage Mentor S3/S4 Last coins
+      if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[2] || atk == &attacker->defenseSkill[1]) && IsCritical) {
+
+          Damage *= 1.3;
+
+           printf("\n%s's this coin deal +30%% damage on Critical Hit", attacker->name);
+
+      }
 
     // Fixer grade 9? S8 Last coins
     if (isId(attacker->ID, "Fixer grade 9?") == 0 && (atk == &attacker->skills[7]) && i == remainingCoins - 1) {
@@ -3969,7 +4214,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     
 
     if (IsCritical) {
-      Damage *= 1.2;
+      Damage *= (1 + ((20 + attacker->CriticalDamageUp) / 100));
     }
 
      double damageUp = 1.0 + (attacker->DamageUp / 100.0);       // increase by DamageUp%
@@ -4002,6 +4247,24 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
             evadePower += (10 + fanaticUsed) + defender->CoinPowerBoost + defender->DefensePowerBoost + defender->FinalPowerBoost + PowerUp;
         }
 
+      } else if (isId(defender->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+
+      SkillStats EvadeSkill = defender->defenseSkill[1];
+        
+        evadePower = EvadeSkill.BasePower + defender->BasePowerBoost;
+
+        int IsHeadHit = tossCoinWithSanity(attacker);
+
+        if (IsHeadHit) {
+          // Check paralyze
+          if (attacker->Paralyze > 0) { // ← Character's paralyze
+                evadePower += 0; // สกิลอื่นโดน Paralyze ปกติ
+                defender->Paralyze--;
+          } else {
+              evadePower += CoinBuff + EvadeSkill.CoinPower + defender->CoinPowerBoost + defender->DefensePowerBoost + defender->FinalPowerBoost + PowerUp;
+            if (evadePower <= 0) evadePower = 0;
+          }
+        }
       } else {
         evadePower = defSkill->BasePower + defender->BasePowerBoost;
 
@@ -4042,6 +4305,24 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     if (IsStillEvaded && Evaded) {
       printf(" %d (Evaded)", evadePower);
+
+
+      // ---------------- On Evaded ----------------
+      
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && atk == &attacker->defenseSkill[1] && defender->skills[5].active) {
+        defender->skills[5].active = 0;
+
+        defender->Bind[1] += 1;
+        
+        printf("\t [On Evade] Inflict 1 Bind next turn against the attacker (Once per turn)");
+
+          attacker->Haste[1] += 1;
+
+        printf("\t [On Evade] Gain 1 Haste next turn (Once per turn)");
+      }
+
+      // ------------------------------------------------
+      
     } else if (IsStillEvaded && !Evaded) {
       printf(" %d (Cancel)", evadePower);
       IsStillEvaded = 0;
@@ -4137,33 +4418,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       
 
-// --------------- Meursault:Blade Lineage Mentor -----------------
-
-    // Meursault:Blade Lineage Mentor - Gain on attack
-    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
-
-      int gain = 5;
-
-      attacker->DamageUp += gain;
-      attacker->DamageUpNextTurn += gain;
-
-      printf(" +%d%% damage this turn and next turn", gain);
-
-    }
-
-    // Meursault:Blade Lineage Mentor - Gain on attack
-    if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 0 && !Evaded) {
-
-      int gain = 15;
-
-        attacker->DamageUp += gain;
-      attacker->DamageUpNextTurn += gain;
-
-      printf(" +%d%% damage this turn and next turn", gain);
-
-    }
-
-    // ---------------------------------------------------------
 
     // -------------------------------- Heishou Pack - You Branch Adept Heathcliff --------------------------------
 
@@ -4176,7 +4430,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         attacker->Passive += gain;
       if (attacker->Passive > 20) attacker->Passive = 20;
 
-      printf(" +%d Battleblood Instinct (%d)", gain, attacker->Passive);
+      printf("\t +%d Battleblood Instinct (%d)", gain, attacker->Passive);
 
     }
 
@@ -4204,7 +4458,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // Heishou Pack - You Branch Adept Heathcliff Skill 3 coins
     if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1) {
 
-          inflictStatus(attacker->Burn, 2, 0);
+          inflictStatus(attacker->Burn, 2, 0, 0, 99, 0, 99);
 
       printf("\n%s applies +2 Burn Stack(%d) on self", attacker->name, attacker->Burn[0]);
 
@@ -4214,7 +4468,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // Heishou Pack - You Branch Adept Heathcliff Skill 2 Last coins
     if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
 
-          inflictStatus(attacker->Burn, 3, 0);
+          inflictStatus(attacker->Burn, 3, 0, 0, 99, 0, 99);
 
       printf("\n%s applies +3 Burn Stack(%d) and +1 Burn Count(%d) on self", attacker->name, attacker->Burn[0], attacker->Burn[1]);
 
@@ -4399,6 +4653,203 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // ----------------------- Inflict Status -----------------------
 
 
+// --------------- The House of Spiders: The Ring Nursefather Hong Lu -----------------
+
+      int Stack = 0;
+      int Count = 0;
+
+      if (attacker->skills[14].active && attacker->Charge[0] >= 2 && (defender->Bleed[0] > 0 || defender->Bleed[1] > 0)) {
+      finalDamage *= 1.10;
+        Stack++;
+        Count++;
+      }
+
+// The House of Spiders: The Ring Nursefather Hong Lu - Inflict on attack Skill 1
+if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
+
+  if (i == remainingCoins - 2) {
+    Stack += 4;
+  inflictStatus(defender->Bleed, Stack, 0, 0, 99, 0, 99);
+  printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", Stack, defender->Bleed[0]);
+    CorpusTheater(attacker, defender);
+}
+
+  if (i == remainingCoins - 1) {
+    attacker->DefenseBoostNextTurn += 2;
+    printf("\t [On Hit] Gain Defense Level Up 2 next turn");
+  defender->DefenseBoostNextTurn -= 2;
+  printf("\t [On Hit] Inflict Defense Level Down 2 on enemy next turn");
+}
+
+}
+
+      // The House of Spiders: The Ring Nursefather Hong Lu - Inflict on attack Skill 2-1
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
+
+        if (i == remainingCoins - 3) {
+          Count += 2;
+        inflictStatus(defender->Bleed, 0, Count, 0, 99, 0, 99);
+        printf("\t [On Hit] Bleed Count +%d on enemy (%d)", Count, defender->Bleed[1]);
+          CorpusTheater(attacker, defender);
+      }
+
+        if (i == remainingCoins - 2) {
+          attacker->Haste[1] += 1;
+          printf("\t [On Hit] Haste +1 next turn");
+        defender->Bind[1] += 1;
+        printf("\t [On Hit] Bind +1 on enemy next turn");
+      }
+
+        if (i == remainingCoins - 1) {
+          inflictStatus(attacker->Charge, 0, 4, 0, 99, 0, 20);
+            printf("\t [On Hit] Corpus Ingredient Count +4 (%d)", attacker->Charge[1]);
+        }
+
+      }
+
+      // The House of Spiders: The Ring Nursefather Hong Lu - Inflict on attack Skill 2-2
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[2]) && !Evaded) {
+
+        if (i == remainingCoins - 2) {
+          Stack += 2;
+        inflictStatus(defender->Bleed, Stack, 0, 0, 99, 0, 99);
+        printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", Stack, defender->Bleed[0]);
+          CorpusTheater(attacker, defender);
+      }
+
+        if (i == remainingCoins - 1) {
+          updateSanity(attacker, 5);
+          printf("\t [On Hit] Heal 5 Sanity on self (%d)", attacker->Sanity);
+          updateSanity(defender, -5);
+          printf("\t [On Hit] Deal 5 Sanity Damage (%d)", defender->Sanity);
+          attacker->skills[4].active = 3;
+          printf("\t [On Hit] Inflict Corpus Theater");
+      }
+
+      }
+
+       // The House of Spiders: The Ring Nursefather Hong Lu - Inflict on attack Skill Defense
+        if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->defenseSkill[0]) && !Evaded) {
+          
+          if (i == remainingCoins - 2) {
+              Count += 1;
+            inflictStatus(defender->Bleed, 0, Count, 0, 99, 0, 99);
+            printf("\t [On Hit] Bleed Count +%d on enemy (%d)", Count, defender->Bleed[1]);
+              CorpusTheater(attacker, defender);
+          }
+          
+          if (i == remainingCoins - 1) {
+            Stack += 2;
+          inflictStatus(defender->Bleed, Stack, 0, 0, 99, 0, 99);
+          printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", Stack, defender->Bleed[0]);
+            CorpusTheater(attacker, defender);
+        }
+
+        }
+
+       // The House of Spiders: The Ring Nursefather Hong Lu - Inflict on attack Skill 3-1
+        if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[3]) && !Evaded) {
+
+          if (i == remainingCoins - 4) {
+            Stack += 4;
+          inflictStatus(defender->Bleed, Stack, 0, 0, 99, 0, 99);
+          printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", Stack, defender->Bleed[0]);
+            CorpusTheater(attacker, defender);
+          }
+
+          if (i == remainingCoins - 3) {
+            attacker->Haste[1] += 1;
+            printf("\t [On Hit] Haste +1 next turn");
+          defender->Bind[1] += 1;
+          printf("\t [On Hit] Bind +1 on enemy next turn");
+          }
+
+          if (i == remainingCoins - 2) {
+            attacker->DamageUpNextTurn += 10;
+            printf("\t [On Hit] Damage Up +10%% next turn");
+          defender->DamageUpNextTurn -= 10;
+          printf("\t [On Hit] Damage Down 10%% on enemy next turn");
+          }
+
+          if (i == remainingCoins - 1) {
+            Count += 1;
+          inflictStatus(defender->Bleed, 0, Count, 0, 99, 0, 99);
+          printf("\t [On Hit] Bleed Count +%d on enemy (%d)", Count, defender->Bleed[1]);
+            CorpusTheater(attacker, defender);
+          }
+
+        }
+
+       // The House of Spiders: The Ring Nursefather Hong Lu - Inflict on attack Skill 3-2
+        if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[4]) && !Evaded) {
+
+          if (i == remainingCoins - 5) {
+            Stack += 4;
+          inflictStatus(defender->Bleed, Stack, 0, 0, 99, 0, 99);
+          printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", Stack, defender->Bleed[0]);
+            CorpusTheater(attacker, defender);
+          }
+
+          if (i == remainingCoins - 4) {
+            attacker->Haste[1] += 1;
+            printf("\t [On Hit] Haste +1 next turn");
+          defender->Bind[1] += 1;
+          printf("\t [On Hit] Bind +1 on enemy next turn");
+          }
+
+          if (i == remainingCoins - 3) {
+            attacker->DamageUpNextTurn += 10;
+            printf("\t [On Hit] Damage Up +10%% next turn");
+          defender->DamageUpNextTurn -= 10;
+          printf("\t [On Hit] Damage Up -10%% on enemy next turn");
+          }
+
+          if (i == remainingCoins - 2) {
+            Count += 1;
+          inflictStatus(defender->Bleed, 0, Count, 0, 99, 0, 99);
+          printf("\t [On Hit] Bleed Count +%d on enemy (%d)", Count, defender->Bleed[1]);
+            CorpusTheater(attacker, defender);
+          }
+
+          if (i == remainingCoins - 1) {
+          inflictStatus(defender->Burn, 5, 0, 0, 99, 0, 99);
+          printf("\t [On Hit] Burn Stack +5 on enemy (%d)", defender->Burn[0]);
+            attacker->skills[4].active = 3;
+            printf("\t [On Hit] Inflict Corpus Theater");
+          }
+
+        }
+
+// --------------------------------------------------------------------
+
+      // --------------- Meursault:Blade Lineage Mentor -----------------
+
+      // Meursault:Blade Lineage Mentor - Gain on attack Skill 1
+      if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
+
+        inflictStatus(attacker->Poise, 1, 0, 0, 99, 0, 99);
+        printf("\t [On Hit] Poise Stack +1 (%d)", attacker->Poise[0]);
+
+      }
+
+      // Meursault:Blade Lineage Mentor - Gain on attack
+      if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->skills[1]) && i == 0 && !Evaded) {
+
+        inflictStatus(attacker->Poise, 3, 0, 0, 99, 0, 99);
+        printf("\t [On Hit] Poise Stack +3 (%d)", attacker->Poise[0]);
+
+      }
+
+      // Meursault:Blade Lineage Mentor - Gain on attack
+      if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") == 0 && (atk == &attacker->defenseSkill[0]) && i == 0 && !Evaded) {
+
+        inflictStatus(attacker->Poise, 2, 0, 0, 99, 0, 99);
+        printf("\t [On Hit] Poise Stack +2 (%d)", attacker->Poise[0]);
+
+      }
+
+      // ---------------------------------------------------------
+
 
        // ----------------- Meursault:The Thumb -----------------
 
@@ -4412,12 +4863,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
 
             if (inflictStack > 0) {
-                inflictStatus(&defender->Tremor[0], inflictStack, 0); // Status, Stack, Count
+                inflictStatus(&defender->Tremor[0], inflictStack, 0, 0, 99, 0, 99); // Status, Stack, Count
             printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
             }
 
             if (inflictCount > 0) {
-              inflictStatus(defender->Tremor, 0, inflictCount);
+              inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
               printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
               }
 
@@ -4430,12 +4881,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (attacker->skills[3].active && attacker->skills[2].active < 8) { inflictStack += 1; inflictCount += 1; }
       if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
         if (inflictStack > 0) {
-        inflictStatus(defender->Tremor, inflictStack, 0);
+        inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
         }
 
         if (inflictCount > 0) {
-          inflictStatus(defender->Tremor, 0, inflictCount);
+          inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
           printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
           }
 
@@ -4453,12 +4904,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
           
             if (inflictStack > 0) {
-            inflictStatus(defender->Tremor, inflictStack, 0);
+            inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
             printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
             }
           
             if (inflictCount > 0) {
-              inflictStatus(defender->Tremor, 0, inflictCount);
+              inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
               printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
               }
           
@@ -4471,12 +4922,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (attacker->skills[3].active && attacker->skills[2].active < 8) { inflictStack += 1; inflictCount += 1; }
       if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
         if (inflictStack > 0) {
-        inflictStatus(defender->Tremor, inflictStack, 0);
+        inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
         }
           
         if (inflictCount > 0) {
-          inflictStatus(defender->Tremor, 0, inflictCount);
+          inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
           printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
           }
 
@@ -4487,12 +4938,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active) { inflictStack += 2; inflictCount += 1; }
             
           if (inflictStack > 0) {
-          inflictStatus(defender->Burn, inflictStack, 0);
+          inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
           }
             
           if (inflictCount > 0) {
-            inflictStatus(defender->Burn, 0, inflictCount);
+            inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
             printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
             }
             
@@ -4515,12 +4966,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
 
             if (inflictStack > 0) {
-            inflictStatus(defender->Tremor, inflictStack, 0);
+            inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
             printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
             }
 
             if (inflictCount > 0) {
-              inflictStatus(defender->Tremor, 0, inflictCount);
+              inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
               printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
               }
 
@@ -4533,12 +4984,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (attacker->skills[3].active && attacker->skills[2].active < 8) { inflictStack += 1; inflictCount += 1; }
       if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
         if (inflictStack > 0) {
-        inflictStatus(defender->Tremor, inflictStack, 0);
+        inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
         }
 
         if (inflictCount > 0) {
-          inflictStatus(defender->Tremor, 0, inflictCount);
+          inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
           printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
           }
 
@@ -4549,12 +5000,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active) { inflictStack += 2; inflictCount += 1; }
 
           if (inflictStack > 0) {
-          inflictStatus(defender->Burn, inflictStack, 0);
+          inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
           }
 
           if (inflictCount > 0) {
-            inflictStatus(defender->Burn, 0, inflictCount);
+            inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
             printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
             }
 
@@ -4569,12 +5020,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
             
           if (inflictStack > 0) {
-          inflictStatus(defender->Tremor, inflictStack, 0);
+          inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
           }
 
           if (inflictCount > 0) {
-            inflictStatus(defender->Tremor, 0, inflictCount);
+            inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
             printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
             }
 
@@ -4585,12 +5036,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
             if (attacker->skills[3].active) { inflictStack += 2; inflictCount += 1; }
 
             if (inflictStack > 0) {
-            inflictStatus(defender->Burn, inflictStack, 0);
+            inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
             printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
             }
 
             if (inflictCount > 0) {
-              inflictStatus(defender->Burn, 0, inflictCount);
+              inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
               printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
               }
 
@@ -4622,12 +5073,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
             if (attacker->skills[3].active && attacker->skills[2].active < 8) { inflictStack += 1; inflictCount += 1; }
           if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
             if (inflictStack > 0) {
-            inflictStatus(defender->Tremor, inflictStack, 0);
+            inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
             printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
             }
 
             if (inflictCount > 0) {
-              inflictStatus(defender->Tremor, 0, inflictCount);
+              inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
               printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
               }
 
@@ -4638,12 +5089,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
               if (attacker->skills[3].active) { inflictStack += 2; inflictCount += 1; }
 
               if (inflictStack > 0) {
-              inflictStatus(defender->Burn, inflictStack, 0);
+              inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
               printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
               }
 
               if (inflictCount > 0) {
-                inflictStatus(defender->Burn, 0, inflictCount);
+                inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
                 printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
                 }
 
@@ -4658,12 +5109,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (attacker->skills[3].active && attacker->skills[2].active < 8) { inflictStack += 1; inflictCount += 1; }
       if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
         if (inflictStack > 0) {
-        inflictStatus(defender->Tremor, inflictStack, 0);
+        inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
         }
 
         if (inflictCount > 0) {
-          inflictStatus(defender->Tremor, 0, inflictCount);
+          inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
           printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
           }
 
@@ -4674,12 +5125,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active) { inflictStack += 2; inflictCount += 1; }
 
           if (inflictStack > 0) {
-          inflictStatus(defender->Burn, inflictStack, 0);
+          inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
           }
 
           if (inflictCount > 0) {
-            inflictStatus(defender->Burn, 0, inflictCount);
+            inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
             printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
             }
 
@@ -4726,12 +5177,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active && attacker->skills[2].active < 8) { inflictStack += 1; inflictCount += 1; }
         if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
           if (inflictStack > 0) {
-          inflictStatus(defender->Tremor, inflictStack, 0);
+          inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
           }
 
           if (inflictCount > 0) {
-            inflictStatus(defender->Tremor, 0, inflictCount);
+            inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
             printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
             }
 
@@ -4744,12 +5195,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[3].active && attacker->skills[2].active < 8) { inflictStack += 1; inflictCount += 1; }
         if (attacker->skills[3].active && attacker->skills[2].active >= 8) { inflictStack += 2; inflictCount += 2; }
           if (inflictStack > 0) {
-          inflictStatus(defender->Tremor, inflictStack, 0);
+          inflictStatus(defender->Tremor, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Tremor Stack +%d on enemy (%d)", inflictStack, defender->Tremor[0]);
           }
 
           if (inflictCount > 0) {
-            inflictStatus(defender->Tremor, 0, inflictCount);
+            inflictStatus(defender->Tremor, 0, inflictCount, 0, 99, 0, 99);
             printf("\t [On Hit] Tremor Count +%d on enemy (%d)", inflictCount, defender->Tremor[1]);
             }
 
@@ -4764,12 +5215,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
               if (attacker->skills[3].active) { inflictStack += 2; inflictCount += 1; }
 
               if (inflictStack > 0) {
-              inflictStatus(defender->Burn, inflictStack, 0);
+              inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
               printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
               }
 
               if (inflictCount > 0) {
-                inflictStatus(defender->Burn, 0, inflictCount);
+                inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
                 printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
                 }
 
@@ -4786,12 +5237,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
             if (attacker->skills[3].active) { inflictStack += 2; inflictCount += 1; }
 
             if (inflictStack > 0) {
-            inflictStatus(defender->Burn, inflictStack, 0);
+            inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
             printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
             }
 
             if (inflictCount > 0) {
-              inflictStatus(defender->Burn, 0, inflictCount);
+              inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
               printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
               }
 
@@ -4842,7 +5293,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[9].active == 1) inflict = 4; 
           if (attacker->skills[9].active == 2) inflict = 5; 
           if (attacker->skills[2].active > 0) inflict++;
-          inflictStatus(defender->Bleed, inflict, 0);
+          inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflict, defender->Bleed[0]);
         } 
 
@@ -4851,13 +5302,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[2].active > 0) inflictStack++;
           
           if (inflictStack > 0) {
-          inflictStatus(defender->Bleed, inflictStack, 0);
+          inflictStatus(defender->Bleed, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflictStack, defender->Bleed[0]);
           }
           
           int inflict = 2;
           if (attacker->skills[9].active == 2) inflict = 3; 
-          inflictStatus(defender->Bleed, 0, inflict);
+          inflictStatus(defender->Bleed, 0, inflict, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Count +%d on enemy (%d)", inflict, defender->Bleed[1]);
         }
 
@@ -4875,7 +5326,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         int inflictBleed = 0;
         if (attacker->skills[2].active > 0) inflict++;
         if (inflictBleed > 0) {
-        inflictStatus(defender->Bleed, inflict, 0);
+        inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflict, defender->Bleed[0]);
       }
 
@@ -4889,7 +5340,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[9].active == 1) inflict = 4; 
           if (attacker->skills[9].active == 2) inflict = 5; 
           if (attacker->skills[2].active > 0) inflict++;
-          inflictStatus(defender->Bleed, inflict, 0);
+          inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflict, defender->Bleed[0]);
         } 
 
@@ -4898,13 +5349,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[2].active > 0) inflictStack++;
 
           if (inflictStack > 0) {
-          inflictStatus(defender->Bleed, inflictStack, 0);
+          inflictStatus(defender->Bleed, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflictStack, defender->Bleed[0]);
           }
           
           int inflict = 2;
           if (attacker->skills[9].active == 2) inflict = 3; 
-          inflictStatus(defender->Bleed, 0, inflict);
+          inflictStatus(defender->Bleed, 0, inflict, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Count +%d on enemy (%d)", inflict, defender->Bleed[1]);
         } 
 
@@ -4914,7 +5365,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[2].active > 0) inflictStack++;
 
           if (inflictStack > 0) {
-          inflictStatus(defender->Bleed, inflictStack, 0);
+          inflictStatus(defender->Bleed, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflictStack, defender->Bleed[0]);
           }
           
@@ -4923,7 +5374,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
             if (attacker->skills[9].active == 1) inflict = 4; 
             if (attacker->skills[9].active == 2) inflict = 5; 
             if (attacker->skills[2].active > 0) inflict++;
-            inflictStatus(defender->Bleed, inflict, 0);
+            inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
             printf("\t [On Hit without Cracking] Bleed Stack +%d on enemy (%d)", inflict, defender->Bleed[0]);
           }
         }
@@ -4934,14 +5385,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (attacker->skills[2].active > 0) inflictStack++;
 
           if (inflictStack > 0) {
-          inflictStatus(defender->Bleed, inflictStack, 0);
+          inflictStatus(defender->Bleed, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflictStack, defender->Bleed[0]);
           }
           
           if (Unbreakable <= 0) {
             int inflict = 2;
             if (attacker->skills[9].active == 2) inflict = 3; 
-            inflictStatus(defender->Bleed, 0, inflict);
+            inflictStatus(defender->Bleed, 0, inflict, 0, 99, 0, 99);
             printf("\t [On Hit without Cracking] Bleed Count +%d on enemy (%d)", inflict, defender->Bleed[1]);
           }
         }
@@ -4972,13 +5423,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           int inflict = 2;
           if (attacker->skills[9].active >= 1) inflict += 2;
           if (attacker->skills[9].active >= 2) inflict += 2;
-          inflictStatus(defender->Burn, inflict, 0);
+          inflictStatus(defender->Burn, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflict, defender->Burn[0]);
         }
 
         if (i == remainingCoins - 3) {
           int inflict = 2;
-          inflictStatus(defender->Bind, 0, inflict);
+          inflictStatus(defender->Bind, 0, inflict, 0, 99, 0, 99);
           printf("\t [On Hit] Bind +%d on enemy next turn (Speed -(Stack) for one turn)", inflict);
         } 
 
@@ -5064,7 +5515,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           int inflictStack = 10;
           int inflictCount = 2;
-          inflictStatus(defender->Burn, inflictStack, inflictCount);
+          inflictStatus(defender->Burn, inflictStack, inflictCount, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d (%d) and Burn Count +%d (%d) on enemy", inflictStack, defender->Burn[0], inflictCount, defender->Burn[1]);
 
         }
@@ -5088,7 +5539,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if ((i == remainingCoins - 3) || (i == remainingCoins - 1)) {
 
           int inflictStack = 10;
-          inflictStatus(defender->Burn, inflictStack, 0);
+          inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
 
         }
@@ -5096,7 +5547,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (i == remainingCoins - 2) {
 
           int inflictCount = 4;
-          inflictStatus(defender->Burn, 0, inflictCount);
+          inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[0]);
 
         }
@@ -5109,7 +5560,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           if (i == remainingCoins - 5) {
 
             int inflictStack = 5;
-            inflictStatus(defender->Burn, inflictStack, 0);
+            inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
             printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
 
         }
@@ -5117,8 +5568,8 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (i == remainingCoins - 4) {
 
           int inflictCount = 3;
-          inflictStatus(defender->Burn, 0, inflictCount);
-          printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[0]);
+          inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
+          printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
 
           if (Unbreakable <= 0) {
             int deal = 10;
@@ -5135,7 +5586,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if ((i == remainingCoins - 3) || (i == remainingCoins - 2)) {
 
           int inflictStack = 10;
-          inflictStatus(defender->Burn, inflictStack, 0);
+          inflictStatus(defender->Burn, inflictStack, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflictStack, defender->Burn[0]);
 
           if (Unbreakable <= 0 && (i == remainingCoins - 3)) {
@@ -5172,21 +5623,21 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           int inflict = 3;
           if (attacker->skills[9].active == 1) inflict = 4; 
           if (attacker->skills[9].active == 2) inflict = 5; 
-          inflictStatus(defender->Bleed, inflict, 0);
+          inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Bleed Stack +%d on enemy (%d)", inflict, defender->Bleed[0]);
         } else if (i == remainingCoins - 2 && attacker->skills[9].active == 3) {
           int inflict = 10;
-          inflictStatus(defender->Burn, inflict, 0);
+          inflictStatus(defender->Burn, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Stack +%d on enemy (%d)", inflict, defender->Burn[0]);
         }
 
         if (i == remainingCoins - 1 && attacker->skills[9].active != 3) {
-          attacker->Tremor[2] -= 10;
-          if (attacker->Tremor[2] < 0) attacker->Tremor[2] = 0;
+          attacker->Tremor[4] -= 10;
+          if (attacker->Tremor[4] < 0) attacker->Tremor[4] = 0;
           printf("\t [On Hit] Lower user's Stagger Threshold by 10");
         } else if (i == remainingCoins - 1 && attacker->skills[9].active == 3) {
           int inflict = 2;
-          inflictStatus(defender->Burn, 0, inflict);
+          inflictStatus(defender->Burn, 0, inflict, 0, 99, 0, 99);
           printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflict, defender->Burn[1]);
         }
 
@@ -5200,9 +5651,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->defenseSkill[0] && !Evaded) {
 
       if (i == remainingCoins - 1) {
-          inflictStatus(attacker->Poise, 2, 0);
+          inflictStatus(attacker->Poise, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Poise Stack +2 (%d)", attacker->Poise[0]);
-        inflictStatus(attacker->Poise, 0, 2);
+        inflictStatus(attacker->Poise, 0, 2, 0, 99, 0, 99);
         printf("\t [On Hit] Poise Count +2 (%d)", attacker->Poise[1]);
       }
 
@@ -5212,13 +5663,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[0] && !Evaded) {
 
       if (i == remainingCoins - 1) {
-          inflictStatus(attacker->Poise, 0, 1);
+          inflictStatus(attacker->Poise, 0, 1, 0, 99, 0, 99);
         printf("\t [On Hit] Poise Count +1 (%d)", attacker->Poise[1]);
 
         if (IsCritical) {
           int inflict = 1;
           if (attacker->skills[2].active > 0) inflict += 1;
-          inflictStatus(defender->Bleed, 0, inflict);
+          inflictStatus(defender->Bleed, 0, inflict, 0, 99, 0, 99);
           printf("\t [On Crit] Bleed Count +%d on enemy (%d)", inflict, defender->Bleed[1]);
 
           attacker->Passive += 1;
@@ -5235,13 +5686,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[1] && !Evaded) {
 
       if (i == remainingCoins - 2) {
-          inflictStatus(attacker->Poise, 2, 0);
+          inflictStatus(attacker->Poise, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Poise Stack +2 (%d)", attacker->Poise[0]);
 
         if (IsCritical) {
           int inflict = 2;
           if (attacker->skills[2].active > 0) inflict += 1;
-          inflictStatus(defender->Bleed, inflict, 0);
+          inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Crit] Bleed Stack +%d on enemy (%d)", inflict, defender->Bleed[0]);
         }
 
@@ -5249,7 +5700,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 1) {
         
-        inflictStatus(attacker->Poise, 2, 0);
+        inflictStatus(attacker->Poise, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Poise Stack +2 (%d)", attacker->Poise[0]);
 
         attacker->Passive += 1;
@@ -5260,7 +5711,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         if (IsCritical) {
           int inflict = 2;
           if (attacker->skills[2].active > 0) inflict += 1;
-          inflictStatus(defender->Bleed, inflict, 0);
+          inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Crit] Bleed Stack +%d on enemy (%d)", inflict, defender->Bleed[0]);
 
           attacker->Passive += 2;
@@ -5277,23 +5728,23 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Yi sang:Fell Bullet") == 0 && atk == &attacker->skills[2] && !Evaded) {
 
       if (i == remainingCoins - 1) {
-            inflictStatus(defender->Bleed, 3, 0);
+            inflictStatus(defender->Bleed, 3, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Bleed Stack +3 (%d)", defender->Bleed[0]);
 
         int inflict = 1;
         if (attacker->skills[2].active > 0) inflict += 1;
-        inflictStatus(defender->Bleed, 0, inflict);
+        inflictStatus(defender->Bleed, 0, inflict, 0, 99, 0, 99);
         printf("\t [On Hit] Bleed Count +%d on enemy (%d)", inflict, defender->Bleed[1]);
 
         if (IsCritical) {
           int inflict = 5;
           if (attacker->skills[2].active > 0) inflict += 1;
-          inflictStatus(defender->Bleed, inflict, 0);
+          inflictStatus(defender->Bleed, inflict, 0, 0, 99, 0, 99);
           printf("\t [On Crit] Bleed Stack +%d (%d)", inflict, defender->Bleed[0]);
 
           inflict = 3;
           if (attacker->skills[2].active > 0) inflict += 1;
-          inflictStatus(defender->Bleed, 0, inflict);
+          inflictStatus(defender->Bleed, 0, inflict, 0, 99, 0, 99);
           printf("\t [On Crit] Bleed Count +%d on enemy (%d)", inflict, defender->Bleed[1]);
         }
 
@@ -5324,12 +5775,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[0] && !Evaded) {
 
       if (i == remainingCoins - 2) {
-          inflictStatus(attacker->Poise, 0, 3);
+          inflictStatus(attacker->Poise, 0, 3, 0, 99, 0, 99);
         printf("\t [On Hit] Poise Count +3 (%d)", attacker->Poise[1]);
       }
 
       if (i == remainingCoins - 1) {
-        inflictStatus(defender->Rupture, 0, 2);
+        inflictStatus(defender->Rupture, 0, 2, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Count +2 on enemy (%d)", defender->Rupture[1]);
       }
 
@@ -5339,22 +5790,22 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[1] && !Evaded) {
 
       if (i == remainingCoins - 4) {
-        inflictStatus(defender->Rupture, 0, 2);
+        inflictStatus(defender->Rupture, 0, 2, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Count +2 on enemy (%d)", defender->Rupture[1]);
       }
 
       if (i == remainingCoins - 3) {
-          inflictStatus(attacker->Poise, 0, 2);
+          inflictStatus(attacker->Poise, 0, 2, 0, 99, 0, 99);
         printf("\t [On Hit] Poise Count +2 (%d)", attacker->Poise[1]);
       }
 
       if (i == remainingCoins - 2) {
-        inflictStatus(defender->Rupture, 1, 0);
+        inflictStatus(defender->Rupture, 1, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Stack +1 on enemy (%d)", defender->Rupture[0]);
       }
 
       if (i == remainingCoins - 1) {
-        inflictStatus(defender->Rupture, 2, 0);
+        inflictStatus(defender->Rupture, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Stack +2 on enemy (%d)", defender->Rupture[0]);
       }
 
@@ -5364,7 +5815,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[2] && !Evaded) {
 
       if (i == remainingCoins - 1) {
-        inflictStatus(defender->Rupture, 0, 5);
+        inflictStatus(defender->Rupture, 0, 5, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Count +5 on enemy (%d)", defender->Rupture[1]);
       }
 
@@ -5373,7 +5824,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // Hong lu:The Lord of Hongyuan - Skill 4 Inflict
       if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[3] && !Evaded) {
 
-          inflictStatus(defender->Rupture, 1, 0);
+          inflictStatus(defender->Rupture, 1, 0, 0, 99, 0, 99);
           printf("\t [On Hit] Rupture Stack +1 on enemy (%d)", defender->Rupture[0]);
 
         if (i == remainingCoins - 1) {
@@ -5389,12 +5840,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[4] && !Evaded) {
 
       if (i == remainingCoins - 2) {
-        inflictStatus(defender->Rupture, 0, 1);
+        inflictStatus(defender->Rupture, 0, 1, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Count +1 on enemy (%d)", defender->Rupture[1]);
       }
 
       if (i == remainingCoins - 1) {
-        inflictStatus(defender->Rupture, 2, 0);
+        inflictStatus(defender->Rupture, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Stack +2 on enemy (%d)", defender->Rupture[0]);
         defender->ProtectionNextTurn -= 10;
         printf("\t [On Hit] Target takes +10%% damage next turn");
@@ -5406,17 +5857,17 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[6] && !Evaded) {
 
       if (i == remainingCoins - 3) {
-        inflictStatus(defender->Rupture, 0, 2);
+        inflictStatus(defender->Rupture, 0, 2, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Count +2 on enemy (%d)", defender->Rupture[1]);
       }
 
       if (i == remainingCoins - 2) {
-        inflictStatus(defender->Rupture, 1, 0);
+        inflictStatus(defender->Rupture, 1, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Stack +1 on enemy (%d)", defender->Rupture[0]);
       }
 
       if (i == remainingCoins - 1) {
-        inflictStatus(defender->Rupture, 2, 0);
+        inflictStatus(defender->Rupture, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Stack +2 on enemy (%d)", defender->Rupture[0]);
       }
 
@@ -5426,7 +5877,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[7] && !Evaded) {
 
       if (i == remainingCoins - 1) {
-        inflictStatus(defender->Rupture, 0, 2);
+        inflictStatus(defender->Rupture, 0, 2, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Count +2 on enemy (%d)", defender->Rupture[1]);
       }
 
@@ -5436,16 +5887,16 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[8] && !Evaded) {
 
       if (i == remainingCoins - 3) {
-        inflictStatus(defender->Rupture, 2, 0);
+        inflictStatus(defender->Rupture, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Stack +2 on enemy (%d)", defender->Rupture[0]);
-        inflictStatus(defender->Tremor, 2, 0);
+        inflictStatus(defender->Tremor, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Tremor Stack +2 on enemy (%d)", defender->Tremor[0]);
       }
 
       if (i == remainingCoins - 2) {
         defender->Bind[1] += 1;
         printf("\t [On Hit] Bind +1 on enemy next turn (%d) (Speed -(Stack) for one turn)", defender->Bind[1]);
-        inflictStatus(defender->Tremor, 0, 1);
+        inflictStatus(defender->Tremor, 0, 1, 0, 99, 0, 99);
         printf("\t [On Hit] Tremor Count +1 on enemy (%d)", defender->Tremor[1]);
       }
 
@@ -5458,11 +5909,11 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // Heshin Packs - You - Skill 10 Inflict
     if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 && atk == &attacker->skills[9] && !Evaded) {
 
-        inflictStatus(defender->Burn, 2, 0);
+        inflictStatus(defender->Burn, 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit] Burn Stack +2 on enemy (%d)", defender->Burn[0]);
 
       if (i == remainingCoins - 1) {
-        inflictStatus(defender->Rupture, 0, 3);
+        inflictStatus(defender->Rupture, 0, 3, 0, 99, 0, 99);
         printf("\t [On Hit] Rupture Count +3 on enemy (%d)", defender->Rupture[1]);
       }
 
@@ -5485,7 +5936,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     if (i == remainingCoins - 1) {
-        inflictStatus(defender->Bleed, 2, 0);
+        inflictStatus(defender->Bleed, 2, 0, 0, 99, 0, 99);
        printf("\t [On Hit] Bleed Stack +2 on enemy (%d)", defender->Bleed[0]);
     }
 
@@ -5497,14 +5948,14 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (i == remainingCoins - 3) {
       attacker->skills[2].active += 2; // Nail
       printf("\t [On Hit] Nail +2 on enemy (%d)", attacker->skills[2].active);
-        inflictStatus(defender->Bleed, 0, 2);
+        inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
        printf("\t [On Hit] Bleed Count +2 on enemy (%d)", defender->Bleed[1]);
     }
 
     if (i == remainingCoins - 2) {
       attacker->skills[2].active += 3; // Nail
       printf("\t [On Hit] Nail +3 on enemy (%d)", attacker->skills[2].active);
-        inflictStatus(defender->Bleed, 2, 0);
+        inflictStatus(defender->Bleed, 2, 0, 0, 99, 0, 99);
        printf("\t [On Hit] Bleed Stack +2 on enemy (%d)", defender->Bleed[0]);
     }
 
@@ -5526,12 +5977,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     if (i == remainingCoins - 3) {
       attacker->skills[2].active += 2; // Nail
       printf("\t [On Hit] Nail +2 on enemy (%d)", attacker->skills[2].active);
-        inflictStatus(defender->Bleed, 0, 1);
+        inflictStatus(defender->Bleed, 0, 1, 0, 99, 0, 99);
        printf("\t [On Hit] Bleed Count +1 on enemy (%d)", defender->Bleed[1]);
     }
 
     if (i == remainingCoins - 2) {
-      inflictStatus(defender->Bleed, 2, 0);
+      inflictStatus(defender->Bleed, 2, 0, 0, 99, 0, 99);
        printf("\t [On Hit] Bleed Stack +2 on enemy (%d)", defender->Bleed[0]);
       if (IsHeadHit) {
       attacker->skills[2].active += 2; // Nail
@@ -5582,7 +6033,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           Stack = 2;
         }
 
-      inflictStatus(defender->Burn, Stack, Count);
+      inflictStatus(defender->Burn, Stack, Count, 0, 99, 0, 99);
 
       if (Count > 0 && Stack > 0) {
         printf("\t [On Hit] Burn Stack +%d on enemy (%d) \t [On Hit] Burn Count +%d on enemy (%d)", Stack, defender->Burn[0], Count, defender->Burn[1]);
@@ -5614,7 +6065,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         }
       }
 
-      inflictStatus(defender->Burn, Stack, Count);
+      inflictStatus(defender->Burn, Stack, Count, 0, 99, 0, 99);
 
         if (Count > 0 && Stack > 0) {
           printf("\t [On Hit] Burn Stack +%d on enemy (%d) \t [On Hit] Burn Count +%d on enemy (%d)", Stack, defender->Burn[0], Count, defender->Burn[1]);
@@ -5643,7 +6094,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
           }
         }
 
-        inflictStatus(defender->Burn, Stack, Count);
+        inflictStatus(defender->Burn, Stack, Count, 0, 99, 0, 99);
 
         if (Count > 0 && Stack > 0) {
           printf("\t [On Hit] Burn Stack +%d on enemy (%d) \t [On Hit] Burn Count +%d on enemy (%d)", Stack, defender->Burn[0], Count, defender->Burn[1]);
@@ -5668,7 +6119,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         Stack = 1;
       }
 
-        inflictStatus(defender->Burn, Stack, Count);
+        inflictStatus(defender->Burn, Stack, Count, 0, 99, 0, 99);
 
       if (Count > 0 && Stack > 0) {
         printf("\t [On Hit] Burn Stack +%d on enemy (%d) \t [On Hit] Burn Count +%d on enemy (%d)", Stack, defender->Burn[0], Count, defender->Burn[1]);
@@ -6064,18 +6515,18 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 2) {
       
-      inflictStatus(defender->Bleed, bleedstackinf + 1, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 1, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 1, defender->Bleed[0]);
-        inflictStatus(defender->Bleed, 0, 2);
+        inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +2 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 1) {
 
-        inflictStatus(defender->Bleed, bleedstackinf + 3, 0);
+        inflictStatus(defender->Bleed, bleedstackinf + 3, 0, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf +3, defender->Bleed[0]);
-          inflictStatus(defender->Bleed, 0, 1);
+          inflictStatus(defender->Bleed, 0, 1, 0, 99, 0, 99);
             printf("\t [On Hit without Cracking] Bleed Count +1 on target (%d)", defender->Bleed[1]);
 
         }
@@ -6090,18 +6541,18 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 2) {
 
-      inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
-        inflictStatus(defender->Bleed, 0, 1);
+        inflictStatus(defender->Bleed, 0, 1, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +1 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 1) {
 
-        inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+        inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
-          inflictStatus(defender->Bleed, 0, 2);
+          inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
             printf("\t [On Hit without Cracking] Bleed Count +2 on target (%d)", defender->Bleed[1]);
 
         }
@@ -6116,27 +6567,27 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 3) {
 
-      inflictStatus(defender->Bleed, bleedstackinf + 1, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 1, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 1, defender->Bleed[0]);
-        inflictStatus(defender->Bleed, 0, 1);
+        inflictStatus(defender->Bleed, 0, 1, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +1 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 2) {
 
-      inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
-        inflictStatus(defender->Bleed, 0, 1);
+        inflictStatus(defender->Bleed, 0, 1, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +1 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 1) {
 
-        inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+        inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
-          inflictStatus(defender->Bleed, 0, 3);
+          inflictStatus(defender->Bleed, 0, 3, 0, 99, 0, 99);
             printf("\t [On Hit without Cracking] Bleed Count +3 on target (%d)", defender->Bleed[1]);
 
         }
@@ -6151,27 +6602,27 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 3) {
 
-      inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
-        inflictStatus(defender->Bleed, 0, 1);
+        inflictStatus(defender->Bleed, 0, 1, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +1 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 2) {
 
-      inflictStatus(defender->Bleed, bleedstackinf + 1, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 1, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 1, defender->Bleed[0]);
-        inflictStatus(defender->Bleed, 0, 2);
+        inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +2 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 1) {
 
-        inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+        inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
-          inflictStatus(defender->Bleed, 0, 2);
+          inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
             printf("\t [On Hit without Cracking] Bleed Count +2 on target (%d)", defender->Bleed[1]);
 
         }
@@ -6186,37 +6637,37 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 5) {
 
-        inflictStatus(defender->Bleed, 0, 2);
+        inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +2 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 4) {
 
-        inflictStatus(defender->Bleed, 0, 2);
+        inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Count +2 on target (%d)", defender->Bleed[1]);
 
       }
 
       if (i == remainingCoins - 3) {
 
-      inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
 
       }
 
       if (i == remainingCoins - 2) {
 
-      inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+      inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
         printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
 
       }
 
       if (i == remainingCoins - 1) {
 
-        inflictStatus(defender->Bleed, bleedstackinf + 2, 0);
+        inflictStatus(defender->Bleed, bleedstackinf + 2, 0, 0, 99, 0, 99);
           printf("\t [On Hit without Cracking] Bleed Stack +%d on target (%d)", bleedstackinf + 2, defender->Bleed[0]);
-          inflictStatus(defender->Bleed, 0, 2);
+          inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
             printf("\t [On Hit without Cracking] Bleed Count +2 on target (%d)", defender->Bleed[1]);
 
         }
@@ -6243,7 +6694,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // King in Binds skill 1, 3 Debuff
     if (isId(attacker->ID, "King in Binds") == 0 && (atk == &attacker->skills[0] || atk == &attacker->skills[2]) && !Evaded) {
 
-      inflictStatus(defender->Sinking, 2, 0);
+      inflictStatus(defender->Sinking, 2, 0, 0, 99, 0, 99);
 
         printf("\t [On Hit] Sinking Stack +2 on target (%d)",  defender->Sinking[0]);
 
@@ -6254,13 +6705,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 3) {
 
-          inflictStatus(defender->Sinking, 0, 2);
+          inflictStatus(defender->Sinking, 0, 2, 0, 99, 0, 99);
 
         printf("\t [On Hit] Sinking Count +2 on target (%d)", defender->Sinking[1]);
 
       } else {
 
-            inflictStatus(defender->Sinking, 3, 0);
+            inflictStatus(defender->Sinking, 3, 0, 0, 99, 0, 99);
 
           printf("\t [On Hit] Sinking Stack +3 on target (%d)", defender->Sinking[0]);
 
@@ -6273,7 +6724,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       if (i == remainingCoins - 2) {
 
-        inflictStatus(defender->Tremor, 0, 3);
+        inflictStatus(defender->Tremor, 0, 3, 0, 99, 0, 99);
 
         printf("\t [On Hit] Tremor Count +3 on target (%d)", defender->Tremor[1]);
 
@@ -6288,7 +6739,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     // King in Binds skill 6 Debuff
     if (isId(attacker->ID, "King in Binds") == 0 && (atk == &attacker->skills[5]) && !Evaded) {
 
-          inflictStatus(defender->Tremor, defender->Sinking[0], 0);
+          inflictStatus(defender->Tremor, defender->Sinking[0], 0, 0, 99, 0, 99);
 
         printf("\t [On Hit] Inflict Tremor Stack equal to Sinking Stack on target (%d)", defender->Tremor[0]);
 
@@ -6322,7 +6773,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           TremorBurst(attacker, defender, defender->MAX_HP/4, &totalDamage, 1);
 
-        inflictStatus(defender->Tremor, 5, 5);
+        inflictStatus(defender->Tremor, 5, 5, 0, 99, 0, 99);
 
         printf(" \tTremor Stack +5 (%d) and Tremor Count +5 (%d) on target", defender->Tremor[0], defender->Tremor[1]);
 
@@ -6664,6 +7115,23 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       // ------------------------------------------------------------------------------
 
+      // The House of Spiders: The Ring Nursefather Hong Lu Skill Tanut Skill 3-2
+      if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[4])) {
+
+        if (i == remainingCoins - 1) {
+          printf("\n\n%s \"The gallery's closing hour is here\"\n", attacker->name);
+
+          sleep(2);
+
+          printf("\n%s \"everyone. Good-bye!\"\n", attacker->name);
+
+          sleep(2);
+
+          attacker->Passive = -1; // Reset
+          }
+
+      }
+
     // The Middle Little Brother Sinclair Skill 3 after Last coins
     if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && (atk == &attacker->skills[2] || (atk == &attacker->skills[3] && attacker->Passive >= 4)) && attacker->Passive > 0 && i == remainingCoins - 1) {
 
@@ -6708,12 +7176,74 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   
   //---------------- After Attack Buff ----------------------------
 
+    // ----------------- The House of Spiders: The Ring Nursefather Hong Lu -----------------
+    if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+
+        attacker->skills[7].active = 0; // Once per Skill Reset
+      attacker->skills[5].active = 0; // Reset Evade
+
+      if (atk == &attacker->skills[4]) {
+        attacker->skills[8].active = 1; // Somatic Frisson-inspiring Melody
+        attacker->MinSpeed++;
+        attacker->MaxSpeed++;
+        updateSanity(attacker, 10);
+        printf("\n%s heals 10 Sanity (%d) and apply 'Somatic Frisson-inspiring Melody' on self\n", attacker->name, attacker->Sanity);
+      }
+      
+        // เก็บสถานะว่ามีการทำดาเมจ HP/Shield หรือยัง (Passive 1)
+        if (totalDamage > 0 && !Evaded) {
+          inflictStatus(attacker->Charge, 0, 5, 0, 99, 0, 20);
+          printf("\n%s gains +5 Corpus Ingredient Count (%d)\n", attacker->name, attacker->Charge[1]);
+
+            // 5. A Maestro's Critique (ฮีล 4 SP เมื่อลงสถานะลบสำเร็จ)
+            // (เช็คว่าสกิล Anatomize หรือ Gather Ingredient ทำงาน)
+            if (!(atk == &attacker->skills[1] && atk->Coins <= 1) && attacker->skills[2].active < 3) {
+                attacker->skills[2].active++;
+                updateSanity(attacker, 4);
+                printf("\n%s heals 4 SP (%d)\n", attacker->name, attacker->Sanity);
+
+                if (attacker->Sanity >= 45) {
+                    attacker->DamageUpNextTurn += 10;
+                    printf("\n%s gains +10%% Damage Up next turn\n", attacker->name);
+                }
+            }
+        }
+
+        // Kill Bonus
+        if (defender->HP <= 0) {
+          inflictStatus(attacker->Charge, 0, 3, 0, 99, 0, 20);
+            printf("\n%s gains +3 Corpus Ingredient Count (%d)\n", attacker->name, attacker->Charge[1]);
+        }
+    }
+
+    // The House of Spiders: The Ring Nursefather Hong Lu - Inflict on attack Skill 2
+    if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
+
+      int count = countNegativeEffectTypes(defender);
+
+      if (count >= 3) {
+
+      printf("\n%s has 3+ types of negative effects (%d), use '%s' Skill against the target (Once per turn)\n", defender->name, count, attacker->skills[2].name);
+
+      sleep(1);
+
+      // โจมตีซ้ำ
+      attackPhase(attacker, &attacker->skills[2], atkTempOffense, atkTempDefense, 
+                  defender, defSkill, defTempOffense, defTempDefense, 
+                  attacker->skills[2].Coins, 0, clashCount);
+
+      }
+
+    }
+
+    // -------------------------------------------------------------------------------------
+
     // The Middle Nursefather - Matthias Count Hit
     if (isId(defender->ID, "The Middle Nursefather - Matthias") == 0 && !Evaded) {
         defender->skills[4].active++; // นับจำนวน Hit
 
         // สะสมดาเมจไว้ใช้ Mad Rampage เทิร์นหน้า
-        defender->skills[3].active += totalDamage; 
+        defender->skills[11].active += totalDamage;
 
     }
 
@@ -7086,7 +7616,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   // Heishou Pack - You Branch Adept Heathcliff Skill 3 after attack
   if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2])) {
 
-        inflictStatus(attacker->Burn, 0, 2);
+        inflictStatus(attacker->Burn, 0, 2, 0, 99, 0, 99);
 
        printf("\n%s gains 2 Burn Count (%d)\n", attacker->name,attacker->Burn[1]);
 
@@ -7778,7 +8308,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
   }
 
   // Hong lu:The Lord of Hongyuan - Mao
-  if (isId(attacker->ID, "Heshin Packs - Mao") == 0 &&
+  if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       atk == &attacker->skills[6] && !Evaded) {
 
     defender->ClashPowerNextTurn -= 1;
@@ -7788,7 +8318,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
 
   } // Hong lu:The Lord of Hongyuan - Si
-  else if (isId(attacker->ID, "Heshin Packs - Si") == 0 &&
+  else if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       atk == &attacker->skills[7] && !Evaded) {
 
     int randomlost = rand() % 2 + 1;
@@ -7810,7 +8340,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     sleep(1);
 
   } // Hong lu:The Lord of Hongyuan - Wu
-  else if (isId(attacker->ID, "Heshin Packs - Wu") == 0 &&
+  else if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0 &&
       atk == &attacker->skills[8] && !Evaded) {
 
     defender->ProtectionNextTurn -= 20;
@@ -8224,6 +8754,233 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   *tempDefense += chosenSkill->Defense;
 
 
+  
+
+
+
+
+  // --------------- The House of Spiders: The Ring Nursefather Hong Lu ----------------
+
+  // The House of Spiders: The Ring Nursefather Hong Lu - Consumed and loses / Buff Passive
+  if (isId(c->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+
+    if (c->Passive > 0) {
+    c->Passive -= 1;
+    if (c->Passive < 0) c->Passive = 0;
+    printf("\n%s loses 1 Viewing the Tableau (%d)\n", c->name, c->Passive);
+
+    sleep(1);
+    }
+
+    if (c->skills[8].active == 1) {
+
+      c->ClashPower += 1;
+      c->DamageUp += 10;
+      
+      printf("\n%s has Somatic Frisson-inspiring Melody gains following effect:"
+        "\n - Min & Max Speed +1 "
+        "\n - Base Attack Skills gain Clash Power +1 and deal +10%% damage\n", c->name);
+    }
+
+    int Consumed = 0;
+    int Gain = 0;
+
+    if (c->Charge[1] >= 10) {
+
+      if (chosenSkill == &c->skills[1]) {
+         c->skills[5].active = 1;
+        Consumed += 5;
+        inflictStatus(c->Charge, 0, -5, 0, 99, 0, 20);
+
+        printf("\n%s at 10+ Corpus Ingredient Count, consume 5 Corpus Ingredient Count (%d) to gain the following effects:", c->name, c->Charge[1]);
+
+        c->ClashPower += 1;
+        chosenSkill->Unbreakable = 1;
+        
+        printf("\n - Clash Power +1"
+          "\n - Convert the final Coin on this Skill to Unbreakable Coin\n");
+        
+      } else if (chosenSkill == &c->skills[3]) {
+         c->skills[5].active = 1;
+        Consumed += (c->Charge[1] > 20 ? 20 : c->Charge[1]);
+
+        printf("\n%s at 10+ Corpus Ingredient Count (%d), consume up to 20 Corpus Ingredient Count (%d) to gain the following effects:", c->name, c->Charge[1], Consumed);
+
+        inflictStatus(c->Charge, 0, -Consumed, 0, 99, 0, 20);
+
+        c->FinalPowerBoost += 2;
+        c->DamageUp += 1 * Consumed;
+        chosenSkill->Unbreakable = chosenSkill->Coins;
+
+        if (c->Charge[0] >= 5) {
+          c->DamageUp += 60;
+        } else if (c->Charge[0] >= 3) {
+            c->DamageUp += 30;
+          }
+
+        printf("\n - Final Power +2"
+         "\n - Deal +1%% damage for every Corpus Ingredient Count consumed"
+          "\n - At 3+/5+ Corpus Ingredient Stack, gain +30%%/+60%% Damage (%d)"
+          "\n - Convert all Coins on this Skill to Unbreakable Coins\n", c->Charge[0]);
+
+        } else if (chosenSkill == &c->skills[4]) {
+         c->skills[5].active = 1;
+        Consumed += (c->Charge[1] > 20 ? 20 : c->Charge[1]);
+
+        printf("\n%s at 10+ Corpus Ingredient Count (%d), consume up to 20 Corpus Ingredient Count (%d) to gain the following effects:", c->name, c->Charge[1], Consumed);
+
+          inflictStatus(c->Charge, 0, -Consumed, 0, 99, 0, 20);
+
+        c->FinalPowerBoost += 2;
+        c->DamageUp += 1 * Consumed;
+
+          if (c->Charge[0] >= 5) {
+            c->DamageUp += 60;
+          } else if (c->Charge[0] >= 3) {
+              c->DamageUp += 30;
+            }
+
+          printf("\n - Final Power +2"
+           "\n - Deal +1%% damage for every Corpus Ingredient Count consumed"
+            "\n - At 3+/5+ Corpus Ingredient Stack, gain +30%%/+60%% Damage (%d)\n", c->Charge[0]);
+
+      } else if (chosenSkill == &c->defenseSkill[0]) {
+         c->skills[5].active = 1;
+        Consumed += 5;
+        inflictStatus(c->Charge, 0, -5, 0, 99, 0, 20);
+
+        printf("\n%s at 10+ Corpus Ingredient Count, consume 5 Corpus Ingredient Count (%d) to gain the following effects:", c->name, c->Charge[1]);
+
+        c->ClashPower += 1;
+        chosenSkill->Unbreakable = 1;
+        
+        printf("\n - Clash Power +1"
+          "\n - Convert the final Coin on this Skill to Unbreakable Coin\n");
+        
+      }
+
+      sleep(1);
+      
+    }
+
+    c->skills[6].active += Consumed; // Count Consumed
+
+    if (c->skills[6].active >= 10) {
+    Gain = c->skills[6].active / 10;
+      c->skills[6].active -= Gain * 10; // Count Consumed
+      inflictStatus(c->Charge, Gain, 0, 0, 99, 0, 20);
+      printf("\n%s gains +%d Corpus Ingredient Stack (%d)\n", c->name, Gain, c->Charge[0]);
+
+      sleep(1);
+
+      if (c->Charge[0] >= 2 && !c->skills[14].active) {
+        c->skills[14].active = 1; // Flagged
+        printf("\n%s gains Artwork: Tibia\n", c->name);
+
+        sleep(1);
+
+        printf("\n%s: \"Ah...! Marvelous art...!\"\n", c->name);
+
+        sleep(1);
+      }
+    }
+
+  }
+
+  // The House of Spiders: The Ring Nursefather Hong Lu - Artwork: Tibia
+  if (isId(c->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+
+    int tibStack = c->Charge[0];
+    if (tibStack >= 2) {
+        int baseBoost = 1;
+        if (tibStack >= 4) baseBoost++;
+        if (tibStack >= 5) baseBoost++;
+        c->BasePowerBoost += baseBoost;
+        printf("\n%s gains +%d Base Power from Artwork: Tibia (Corpus Ingredient Stack: %d)\n", c->name, baseBoost, tibStack);
+
+      sleep(1);
+    }
+
+  }
+
+  // The House of Spiders: The Ring Nursefather Hong Lu - Skill 1/4
+  if (isId(c->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[3])) {
+
+    if (chosenSkill == &c->skills[0]) {
+
+    int count = countNegativeEffectTypes(c2);
+
+    if (count > 0) {
+      int gain = count*10;
+      if (gain > 30) gain = 30;
+
+      if (gain > 0) {
+        
+      printf("\n%s deals +10%% damage (%d%% - Max 30%%) for every type of negative effects on target (%d)\n", c->name, gain, count);
+
+      sleep(1);
+      }
+    }
+
+    }
+
+    if (c2->Bleed[0] >= 3) {
+
+    int gain = c2->Bleed[0]/3;
+    if (gain > 3) gain = 3;
+
+    if (gain > 0) {
+
+      c->FinalPowerBoost += gain;
+
+     printf("\n%s gains +1 Final Power (%d - Max 3) for every 4 Bleed Stack on target (%d)\n", c->name, gain, c2->Bleed[0]);
+
+      sleep(1);
+
+    }
+
+  }
+    
+  }
+
+  // The House of Spiders: The Ring Nursefather Hong Lu - Skill 2
+  if (isId(c->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && chosenSkill == &c->skills[1]) {
+
+    int count = countNegativeEffectTypes(c2);
+
+    if (count > 0) {
+      int gain = count*10;
+      if (gain > 30) gain = 30;
+
+      if (gain > 0) {
+
+      printf("\n%s deals +10%% damage (%d%% - Max 30%%) for every type of negative effects on target (%d)\n", c->name, gain, count);
+
+      sleep(1);
+      }
+    }
+
+    if (c2->Bleed[0] >= 3) {
+
+    int gain = c2->Bleed[0]/3;
+    if (gain > 4) gain = 4;
+
+    if (gain > 0) {
+
+      c->FinalPowerBoost += gain;
+
+     printf("\n%s gains +1 Final Power (%d - Max 4) for every 4 Bleed Stack on target (%d)\n", c->name, gain, c2->Bleed[0]);
+
+      sleep(1);
+
+    }
+
+  }
+
+  }
+
+    // ----------------------------------------------------------------
+  
   // --------------- The Middle Nursefather - Matthias ----------------
 
   // The Middle Nursefather - Matthias - Passive
@@ -8574,6 +9331,8 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     sleep(1);
 
+    if (chosenSkill == &c->skills[2]) {
+
     int gain = (c2->Bleed[0] + c->skills[2].active)/8;
     if (gain > 1) gain = 1;
 
@@ -8599,6 +9358,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
       sleep(1);
       }
+    }
   }
 
   // The One Who Grips Faust - Skill 4
@@ -9093,6 +9853,19 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     }
   }
 
+  // The Middle Little Brother Sinclair - Skill 3 buff Book
+  if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->skills[2] && c->skills[1].active > 0 && c->skills[2].active == 0) {
+
+    int dmgvalue = c->skills[1].active;
+    if (dmgvalue > 30) dmgvalue = 30;
+
+     c->DamageUp += dmgvalue;
+
+    printf("\n%s deals +1%% damage for 'Book of Vengeance [Sinclair]' (%d%% - Max 30%%)\n", c->name, c->skills[1].active);
+
+    sleep(1);
+  }
+
   // The Middle Little Brother Sinclair - Skill 4 Buff
   if (isId(c->ID, "The Middle Little Brother Sinclair") == 0 && chosenSkill == &c->defenseSkill[0]) {
 
@@ -9448,58 +10221,58 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 &&
        c->HP <= c->MAX_HP * 0.6)) {
 
-      printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0\n",c->name);
+      printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 5+ Poise Stack or 7+ Poise Stack on self (%d)\n",c->name, c->Poise[0]);
 
     int PowerBuff;
     int ProtectionBuff;
       int DamageBuff;
 
-      if (abs(c->Sanity) >= 30 && chosenSkill != &c->skills[2]) {
+      if (c->Poise[0] >= 7 && chosenSkill != &c->skills[2]) {
 
         PowerBuff = (4/chosenSkill->Coins) < 1 ? 1 : (4/chosenSkill->Coins);
         DamageBuff = (50/chosenSkill->Coins);
 
         c->CoinPowerBoost += PowerBuff;
-        c->DamageUp += DamageBuff;
+        c->CriticalDamageUp += DamageBuff;
 
-        printf("At 30+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", c->Sanity, PowerBuff, DamageBuff);
+        printf("At 7+ Poise Stack (%d), gain %d Coin Power and gain +%d%% damage on Critical Hit\n", c->Poise[0], PowerBuff, DamageBuff);
 
         sleep(1);
       }
         
-    else if (abs(c->Sanity) >= 10 && chosenSkill != &c->skills[2]) {
+    else if (c->Poise[0] >= 5 && chosenSkill != &c->skills[2]) {
 
       PowerBuff = (3/chosenSkill->Coins) < 1 ? 1 : (3/chosenSkill->Coins);
       DamageBuff = (30/chosenSkill->Coins);
 
       c->CoinPowerBoost += PowerBuff;
-      c->DamageUp += DamageBuff;
+      c->CriticalDamageUp += DamageBuff;
       
-      printf("At 10+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", c->Sanity, PowerBuff, DamageBuff);
+      printf("At 5+ Poise Stack (%d), gain %d Coin Power and gain +%d%% damage on Critical Hit\n", c->Poise[0], PowerBuff, DamageBuff);
       
       sleep(1);
-    } else if (abs(c->Sanity) >= 30 && chosenSkill == &c->skills[2]) {
+    } else if (c->Poise[0] >= 7 && chosenSkill == &c->skills[2]) {
 
       ProtectionBuff = 50;
           DamageBuff = 50;
 
           c->Protection += ProtectionBuff;
-          c->DamageUp += DamageBuff;
+          c->CriticalDamageUp += DamageBuff;
 
-          printf("At 30+ Sanity(%d) further from 0, take -%d damage and gain %d%% more damage\n", c->Sanity, ProtectionBuff, DamageBuff);
+          printf("At 7+ Poise Stack (%d), take -%d damage and gain +%d%% damage on Critical Hit\n", c->Poise[0], ProtectionBuff, DamageBuff);
 
           sleep(1);
         }
 
-      else if (abs(c->Sanity) >= 10 && chosenSkill == &c->skills[2]) {
+      else if (c->Poise[0] >= 5 && chosenSkill == &c->skills[2]) {
 
           ProtectionBuff = 25;
         DamageBuff = 30;
 
         c->Protection += ProtectionBuff;
-        c->DamageUp += DamageBuff;
+        c->CriticalDamageUp += DamageBuff;
 
-        printf("At 10+ Sanity(%d) further from 0, take -%d damage and gain %d%% more damage\n", c->Sanity, ProtectionBuff, DamageBuff);
+        printf("At 5+ Poise Stack (%d), take -%d damage and gain +%d%% damage on Critical Hit\n", c->Poise[0], ProtectionBuff, DamageBuff);
 
         sleep(1);
       } 
@@ -9511,17 +10284,12 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   //        Meursault:Blade Lineage Mentor - Skill 1 buff
   if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[0])) {
 
-    float P_HPDifferent = (c->MAX_HP - c->HP) / c->MAX_HP; // 0.0 - 1.0
-     float E_HPDifferent = (c2->MAX_HP - c2->HP) / c2->MAX_HP; // 0.0 - 1.0
-
-    int HPDifferent = (P_HPDifferent - E_HPDifferent) * 100;
-
-    int boost = (int)(abs(HPDifferent) / 5);
+    int boost = c->Poise[0] / 5;
     if (boost > 0) {
 
     c->CoinPowerBoost += 1;
 
-      printf("\n%s at 5%% HP different, Coin Power +1\n", c->name);
+      printf("\n%s at 5+ Poise Stack on self (%d), Coin Power +1\n", c->name, c->Poise[0]);
 
       sleep(1);
     }
@@ -9531,17 +10299,42 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   //        Meursault:Blade Lineage Mentor - Skill 2 buff
   if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[1])) {
 
-    float P_HPDifferent = (c->MAX_HP - c->HP) / c->MAX_HP; // 0.0 - 1.0
-     float E_HPDifferent = (c2->MAX_HP - c2->HP) / c2->MAX_HP; // 0.0 - 1.0
-
-    int HPDifferent = (P_HPDifferent - E_HPDifferent) * 100;
-
-    int boost = (int)(abs(HPDifferent) / 7);
+    int boost = c->Poise[0] / 7;
     if (boost > 0) {
 
     c->CoinPowerBoost += 1;
 
-      printf("\n%s at 7%% HP different, Coin Power +1\n", c->name);
+      printf("\n%s at 7+ Poise Stack on self (%d), Coin Power +1\n", c->name, c->Poise[0]);
+
+      sleep(1);
+    }
+
+  }
+
+  //        Meursault:Blade Lineage Mentor - Skill 1 Gain
+  if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[0])) {
+
+    int boost = 2;
+    if (boost > 0) {
+
+    c->Poise[1] += boost;
+
+      printf("\n%s gains +%d Poise Count (%d)\n", c->name, boost, c->Poise[1]);
+
+      sleep(1);
+    }
+
+  }
+
+  //        Meursault:Blade Lineage Mentor - Skill 2 Gain
+  if ((isId(c->ID, "Meursault:Blade Lineage Mentor") == 0 && chosenSkill == &c->skills[1])) {
+
+    int boost = 3;
+    if (boost > 0) {
+
+      c->Poise[1] += boost;
+
+      printf("\n%s gains +%d Poise Count (%d)\n", c->name, boost, c->Poise[1]);
 
       sleep(1);
     }
@@ -10521,6 +11314,18 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
      }
   }
 
+  // Hong lu:The Lord of Hongyuan - Skill Defense Gain
+  if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->defenseSkill[0])) {
+
+
+    c->AttackSkillPowerBoostNextTurn += 2;
+
+      printf("\n%s gains +2 Attack Skill Power Up next turn\n", c->name);
+
+    sleep(1);
+
+  }
+
   // Hong lu:The Lord of Hongyuan - Skill 2 Gain
   if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[1])) {
 
@@ -10528,7 +11333,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
      if (gain > 0) {
 
-    inflictStatus(c->Poise, gain, 0);
+    inflictStatus(c->Poise, gain, 0, 0, 99, 0, 99);
        if (c->Poise[1] > 99) c->Poise[1] = 99;
 
       printf("\n%s gains +3 Poise Stack (%d)\n", c->name, c->Poise[0]);
@@ -10541,7 +11346,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // Hong lu:The Lord of Hongyuan - Skill 2 Gain
   if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->skills[2])) {
 
-    inflictStatus(c->Poise, 5, 3);
+    inflictStatus(c->Poise, 5, 3, 0, 99, 0, 99);
 
       printf("\n%s gains +5 Poise Stack (%d) and +3 Poise Count (%d)\n", c->name, c->Poise[0], c->Poise[1]);
 
@@ -10677,7 +11482,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[1]) {
 
-     inflictStatus(c->Poise, 2, 0);
+     inflictStatus(c->Poise, 2, 0, 0, 99, 0, 99);
     if (c->Poise[1] > 99) c->Poise[1] = 99;
 
       printf("\n%s gains +2 Poise Stack (%d)\n", c->name, c->Poise[0]);
@@ -10690,7 +11495,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
       chosenSkill == &c->skills[2]) {
 
-     inflictStatus(c->Poise, c->Passive, 0);
+     inflictStatus(c->Poise, c->Passive, 0, 0, 99, 0, 99);
     if (c->Poise[1] > 99) c->Poise[1] = 99;
 
       printf("\n%s gains +1 Poise Stack (%d) for every Torn Memory on self (%d)\n", c->name, c->Poise[0], c->Passive);
@@ -10720,7 +11525,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
     if (isId(c->ID, "Yi sang:Fell Bullet") == 0 &&
         c->skills[2].active > 0) {
 
-      inflictStatus(c->Poise, 3, 1);
+      inflictStatus(c->Poise, 3, 1, 0, 99, 0, 99);
 
         printf("\n%s gains +3 Poise Stack (%d) and +1 Poise Count (%d)\n", c->name, c->Poise[0], c->Poise[1]);
 
@@ -11854,7 +12659,7 @@ void applyClashStartPassives(Character *p1, SkillStats *s1, Character *p2, Skill
   // Heishou Pack - You Branch Adept Heathcliff Skill 1 and 2 gain on clash
   if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->defenseSkill[0])) {
 
-      inflictStatus(p1->Burn, 0, 3);
+      inflictStatus(p1->Burn, 0, 3, 0, 99, 0, 99);
 
     printf("\n%s gains +3 Burn Count on self (%d)\n", p1->name, p1->Burn[1]);
 
@@ -12150,7 +12955,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 &&
       s1 == &p1->skills[3] && enemyCoins <= 0) {
 
-      inflictStatus(p1->Burn, 10, 0);
+      inflictStatus(p1->Burn, 10, 0, 0, 99, 0, 99);
 
     printf("\n%s won the Clash, %s gains 10 Burn Stack (%d)\n", p1->name, p1->name, p1->Burn[0]);
 
@@ -12299,8 +13104,8 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   // Meursault:Blade Lineage Mentor Skill 3 won
   if (isId(p1->ID, "Meursault:Blade Lineage Mentor") == 0 &&
       s1 == &p1->skills[2] && enemyCoins <= 0) {
-    p1->AttackPowerBoostNextTurn += 5;
-    printf("\n%s won the Clash, gains 5 Attack Power Up next turn\n", p1->name);
+    p1->Poise[0] += 5;
+    printf("\n%s won the Clash, gains 5 Poise Stack (%d)\n", p1->name, p1->Poise[0]);
 
      sleep(1);
   }
@@ -12923,9 +13728,9 @@ if (isId(p1->ID, "King in Binds") == 0 && (s1 == &p1->skills[0] || s1 == &p1->sk
   if (s1 == &p1->skills[2]) InfilctValue = 4;
   if (s1 == &p1->skills[4]) InfilctValue = 2;
 
-  inflictStatus(p1->Sinking, 0, InfilctValue);
+  inflictStatus(p2->Sinking, 0, InfilctValue, 0, 99, 0, 99);
 
-  printf("\n%s won the Clash, infilct +%d Sinking Count (%d)\n", p1->name, InfilctValue, p1->Sinking[1]);
+  printf("\n%s won the Clash, infilct +%d Sinking Count (%d)\n", p1->name, InfilctValue, p2->Sinking[1]);
 
    sleep(1);
 }
@@ -13496,15 +14301,15 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       } else {
         // --- [Clashable Guard Win Effect] ---
-        p1->Tremor[2] += result.enemyFinalPower;
+        p1->Tremor[4] += result.enemyFinalPower;
         printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                 p2->name, p2->name, p1->name, result.enemyFinalPower);
         sleep(1);
-        if (p1->Tremor[2] > 50 && p1->Stagger <= 0) {
+        if (p1->Tremor[4] > 50 && p1->Stagger <= 0) {
               p1->Stagger += 2;
           printf("\n%s Staggered for one turn\n", p1->name);
           sleep(1);
-              p1->Tremor[2] = 0;
+              p1->Tremor[4] = 0;
         }
        }
 
@@ -13544,15 +14349,15 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
      } else {
       // --- [Clashable Guard Win Effect] ---
-      p2->Tremor[2] += result.playerFinalPower;
+      p2->Tremor[4] += result.playerFinalPower;
       printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
               p1->name, p1->name, p2->name, result.playerFinalPower);
       sleep(1);
-      if (p2->Tremor[2] > 50 && p2->Stagger <= 0) {
+      if (p2->Tremor[4] > 50 && p2->Stagger <= 0) {
           p2->Stagger += 2;
         printf("\n%s Staggered for one turn\n", p2->name);
         sleep(1);
-          p2->Tremor[2] = 0;
+          p2->Tremor[4] = 0;
       }
 
      }
@@ -13600,15 +14405,15 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
     } else {
       // --- [Clashable Guard Win Effect] ---
-      Winner->Tremor[2] += result.playerFinalPower;
+      Winner->Tremor[4] += result.playerFinalPower;
       printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
         Winner->name, Winner->name, Loser->name, result.playerFinalPower);
         sleep(1);
-      if (Loser->Tremor[2] > 50 && p1->Stagger <= 0) {
+      if (Loser->Tremor[4] > 50 && p1->Stagger <= 0) {
             Loser->Stagger += 2;
         printf("\n%s Staggered for one turn\n", p2->name);
         sleep(1);
-          Loser->Tremor[2] = 0;
+          Loser->Tremor[4] = 0;
       }
 
       // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
@@ -13618,28 +14423,28 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
     if (Loser->HP > 0) {
 
       // ----------- Clear yield my flesh Remembrance for claim their bones ----------------
-        Loser->DamageUp = 0;
+        Loser->CriticalDamageUp = 0;
         Loser->DmgMutiplierBoost = 0;
         Loser->OffenseBoost = 0;
         Loser->DefenseBoost = 0;
 
       if (Loser->Stagger > 0) {
       Loser->Stagger = 0;
-      Loser->Tremor[2] += Loser->MAX_HP/4;
+      Loser->Tremor[4] += Loser->MAX_HP/4;
       }
-      
-      printf("\nYield My Flesh.....\n");
       
       if ((isId(Loser->ID, "Meursault:Blade Lineage Mentor") == 0 &&
          Loser->HP <= Loser->MAX_HP * 0.6)) {
 
 
-        printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0\n",Loser->name);
+        printf("\n%s HP at 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 5+ Poise Stack or 7+ Poise Stack on self (%d)\n", Loser->name, Loser->Poise[0]);
 
         int PowerBuff = 0;
         int DamageBuff = 0;
 
-        if (abs(Loser->Sanity) >= 30) {
+        if (Loser->Poise[0] >= 7) {
+
+          PowerBuff = 1;
 
           PowerBuff = (3/Loser->defenseSkill[1].Coins) < 1 ? 1 : (3/Loser->defenseSkill[1].Coins);
           DamageBuff = (100/Loser->defenseSkill[1].Coins);
@@ -13647,11 +14452,11 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
           Loser->CoinPowerBoost += PowerBuff;
           Loser->DamageUp += DamageBuff;
 
-          printf("At 30+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", Loser->Sanity, PowerBuff, DamageBuff);
+          printf("At 7+ Poise Stack (%d), gain %d Coin Power and gain %d%% more damage\n", Loser->Poise[0], PowerBuff, DamageBuff);
 
           sleep(1);
         }
-      else if (abs(Loser->Sanity) >= 10) {
+      else if (Loser->Poise[0] >= 5) {
 
         PowerBuff = (3/Loser->defenseSkill[1].Coins) < 1 ? 1 : (3/Loser->defenseSkill[1].Coins);
         DamageBuff = (50/Loser->defenseSkill[1].Coins);
@@ -13659,7 +14464,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
         Loser->CoinPowerBoost += PowerBuff;
         Loser->DamageUp += DamageBuff;
 
-        printf("At 10+ Sanity(%d) further from 0, gain %d Coin Power and gain %d%% more damage\n", Loser->Sanity, PowerBuff, DamageBuff);
+        printf("At 5+ Poise Stack (%d), gain %d Coin Power and gain %d%% more damage\n", Loser->Poise[0], PowerBuff, DamageBuff);
 
         sleep(1);
       } 
@@ -13678,12 +14483,11 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       fullPlayer->defenseSkill[1].active = 0;
 
        Winner->ParalyzeNextTurn += 5;
+      Winner->Bleed[0] += 3;
 
-      printf("\nTo Claim Their Bones!\n");
-
-      printf("\n%s inflicts 5 Paralyze next turn (Fix the Power of 5 Coins to 0 for one "
-             "turn) to %s\n",
-             Loser->name, Winner->name);
+      printf("\n%s inflicts +3 Bleed Stack (%d) and 5 Paralyze next turn (Fix the Power of 5 Coins to 0 for one "
+             "turn)\n",
+             Loser->name, Winner->Bleed[0]);
 
       updateSanity(Loser, 15);
       if (Loser->Sanity > 45) Loser->Sanity = 45;
@@ -13774,7 +14578,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
     player->defenseSkill[0] = (SkillStats){"Overthrow", 8, 10, 1, 5, 3, 1, 0, 0, 0, 0, 3};
     player->defenseSkill[1] =
-      (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 2, 1, 0, 0, 0, 3};
+      (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 1, 1, 0, 0, 0, 3};
 
     player->numDefenseSkills = 2; // <-- important
     
@@ -14040,6 +14844,33 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
 
     player->numDefenseSkills = 1; // <-- important
     
+      player->numSkills = 5;
+    } else if (pIndex == 13) {
+    player->name = "The House of Spiders: The Ring Nursefather Hong Lu";
+      player->HP = 101; 
+    player->MAX_HP = 101;
+    player->MinSpeed = 4;
+    player->MaxSpeed = 7;
+      player->skills[0] = (SkillStats){"Anatomize", 3, 4, 2, 2, 2, 1, 0, 0, 3, 1};
+      player->skills[1] = (SkillStats){"Gather Ingredient - Blood-bathed Objet", 4, 4, 3, 3, 2, 1, 0, 0, 2, 1};
+    player->skills[2] = (SkillStats){"Installation Art no. 3: Improvised Ribcage", 5, 4, 2, 3, 2, 1, 0, 0, 0, 0};
+      player->skills[3] = (SkillStats){"Tibia's Melody - Anatomization of the Unanatomized by the Anatomized", 4, 3, 4, 4, 2, 1, 0, 1, 1, 1}; 
+      player->skills[4] = (SkillStats){"Closing Time - Installation Art no. 1: Your Flesh and Bones as the Gallery's Seats", 3, 4, 5, 5, 2, 2, 0, 5, 0, 1}; 
+    // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable
+    player->Passive = 21;          // Viewing the Tableau (เริ่มที่ 21)
+    player->skills[2].active = 0;  // Maestro's Critique Turn Counter (Max 3)
+    player->skills[3].active = 0;  // First Stagger Recovery Flag (0=unused, 1=used)
+    player->skills[4].active = 0;  // Corpus Theater Stacks (เริ่มที่ 3)
+     player->skills[5].active = 0;  // Consumes for evade flag (0=unused, 1=used)
+    player->skills[6].active = 0;  // Consumes Count
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[1] = (SkillStats){"Curating the Exhibition", 4, 10, 1, 0, 2, 1, 0, 0, 0, 0, 2};
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    player->defenseSkill[0] = (SkillStats){"Please. Vandalism is Prohibited.", 4, 4, 2, 2, 2, 1, 0, 0, 0, 1, 5};
+
+    player->numDefenseSkills = 2; // <-- important
+
       player->numSkills = 5;
     } else if (pIndex == 99) {
     player->name = "Muga Ryōshū";
@@ -14397,6 +15228,87 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
 
 
+
+  // ------------- The House of Spiders: The Ring Nursefather Hong Lu -------------
+
+  // The House of Spiders: The Ring Nursefather Hong Lu Passive
+  if (isId(player->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+
+    if ((player->Passive == 21 || (player->Passive <= 0 && player->skills[8].active == 1))) {
+
+      player->Passive = 21;
+
+    printf("\n%s gains 21 Viewing the Tableau\n", player->name);
+
+    sleep(1);
+
+    }
+
+      // Skill Replacement (เมื่อ Tableau หมด)
+      if (player->Passive == 0) {
+          // แทนที่สกิลแถวบน (สกิล 0) ด้วยสกิล 4 (Closing Time)
+          if (*playerSkill1 != 4) *playerSkill1 = 4;
+          printf("\n%s Replacing Skill with 'Closing Time - Installation Art no. 1: Your Flesh and Bones as the Gallery's Seats'\n", player->name);
+
+        sleep(1);
+
+        printf("\n%s: \"Preparations for the exhibition have covered all corners.\"\n", player->name);
+
+        sleep(1);
+      }
+
+  }
+
+  // --------------------------------------------------------------------------------------------------------
+  
+  // ------------- Hong lu:The Lord of Hongyuan -------------
+  
+  // Hong lu:The Lord of Hongyuan - Heishou Bolus Contamination [黑獸丸染] Buff
+  if (isId(player->ID, "Hong lu:The Lord of Hongyuan") == 0) {
+
+     player->MinSpeed = 4;
+    player->MaxSpeed = 8;
+
+    if (player->Passive >= 1) {
+
+      player->MaxSpeed += player->Passive;
+      player->DamageUp += player->Passive*2;
+
+      printf("\n%s at 1+ Heishou Bolus Contamination [黑獸丸染], gains +1 Max Speed and +2%% Damage Up for every Stack (%d)", player->name, player->Passive);
+
+     }
+
+    if (player->Passive >= 2) {
+
+      player->MinSpeed += player->Passive;
+      player->DefenseBoost += player->Passive;
+
+      printf("\n%s at 2+ Heishou Bolus Contamination [黑獸丸染], gains +1 Min Speed and +1 Defense Level Up for every Stack (%d)", player->name, player->Passive);
+
+     }
+
+    if (player->Passive >= 3) {
+
+      player->OffenseBoost += player->Passive;
+
+      printf("\n%s at 3+ Heishou Bolus Contamination [黑獸丸染], gains +1 Offense Level Up for every Stack (%d)", player->name, player->Passive);
+
+     }
+
+    if (player->Passive >= 4) {
+
+      player->OffenseBoost += 4;
+      player->DamageUp += 10;
+
+      printf("\n%s at 4+ Heishou Bolus Contamination [黑獸丸染], gains +4 more Offense Level Up and +10%% Damage Up (%d)", player->name, player->Passive);
+
+     }
+
+    printf("\n");
+
+    sleep(1);
+  }
+
    // ------------- Meursault:The Thumb -------------
   
   // Shin buffs
@@ -14483,27 +15395,27 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
     float hpRate = enemy->HP / enemy->MAX_HP;
     
-    if (hpRate <= 0.7 && enemy->skills[9].active == 0) {
+    if (hpRate <= 0.7 && enemy->skills[9].active == 0 && enemy->skills[4].Coins > 0) {
   
       if(enemySkillEffective) *enemySkillEffective = &enemy->skills[4];
 
-    } else if (hpRate <= 0.5 && enemy->skills[9].active == 1) {
+    } else if (hpRate <= 0.5 && enemy->skills[9].active == 1 && enemy->skills[5].Coins > 0) {
       
         if(enemySkillEffective) *enemySkillEffective = &enemy->skills[5];
 
-      } else if (hpRate <= 0.2 && enemy->skills[9].active == 2) {
+      } else if (hpRate <= 0.2 && enemy->skills[9].active == 2 && enemy->skills[6].Coins > 0) {
      
       if(enemySkillEffective) *enemySkillEffective = &enemy->skills[6];
 
     } // The Middle Nursefather - Matthias - at 10 The Middle - Grudge
-    else if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0 && enemy->skills[0].active == 10 && (enemy->skills[9].active != 3)) {
+    else if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0 && enemy->skills[0].active == 10 && enemy->skills[2].Coins > 0 && (enemy->skills[9].active != 3)) {
       if(enemySkillEffective) *enemySkillEffective = &enemy->skills[2];
     }
   }
 
   if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0 && enemy->skills[9].active == 3 && *enemySkillEffective != &enemy->skills[6]) {
      
-            inflictStatus(player->Burn, 5, 2);
+            inflictStatus(player->Burn, 5, 2, 0, 99, 0, 99);
     
           printf("\n%s gains +5 Burn Stack (%d) and +2 Burn Count (%d)\n", player->name, player->Burn[0], player->Burn[1]);
 
@@ -14556,7 +15468,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
       sleep(1);
 
-    inflictStatus(enemy->Bleed, 3, 1);
+    inflictStatus(enemy->Bleed, 3, 1, 0, 99, 0, 99);
 
     printf("\n%s gains +3 Bleed Stack (%d) and +1 Bleed Count (%d)\n", enemy->name, enemy->Bleed[0], enemy->Bleed[1]);
 
@@ -14582,6 +15494,23 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
   if (isId(player->ID, "Muga Ryōshū") == 0) {
       // 1. Wading Through a Dream: รับ Muga ตามจำนวนเทิร์น
+
+    // ยิ่ง Muga เยอะ ระดับการ Glitch ยิ่งสูง
+    int intensity = player->Passive/10; 
+
+    if (intensity > 0) {
+
+      for (int i = 0; i < player->numSkills; i++) {
+          // เงื่อนไข: ไม่ใช่ท่าไม้ตาย (index 5), สกิลมีชื่ออยู่จริง, และสกิลยังไม่พัง (Copies >= 0)
+          if (i != 5 && player->skills[i].name != NULL && player->skills[i].Copies >= 0) {
+             player->skills[i].name = glitchText(player->skills[i].name, intensity);
+          }
+      }
+
+            player->name = glitchText(player->name, intensity/2); // ชื่อ
+    }
+    // ----------------------
+    
       player->Passive += TurnCount;
       if (player->Passive > 100) player->Passive = 100;
     printf("\n%s gains +%d Muga [無我] (%d)\n", player->name, TurnCount, player->Passive);
@@ -15246,7 +16175,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
     enemy->skills[2].active++; // Turn Count
 
   }
-  else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[2].active >= 5) && enemy->skills[0].active == 2) {
+  else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[2].active >= 5) && enemy->skills[0].active == 2 && enemy->skills[2].Coins > 0) {
 
     if(enemySkillEffective) *enemySkillEffective = &enemy->skills[2]; 
     enemy->skills[1].active++; // Overheat count
@@ -15270,7 +16199,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
       enemy->skills[5].active++; // Turn Count
 
     }
-    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[5].active >= 5) && enemy->skills[0].active == 3) {
+    else if (isId(enemy->ID, "Lei heng") == 0 && (enemy->skills[5].active >= 5) && enemy->skills[0].active == 3 && enemy->skills[4].Coins > 0) {
 
       if(enemySkillEffective) *enemySkillEffective = &enemy->skills[4]; 
       enemy->skills[1].active++; // Overheat count
@@ -15392,7 +16321,7 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
     // ------------------ Before fight -----------------------
 
   // The Middle Nursefather - Matthias - at 10 The Middle - Grudge
-  if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0 && enemy->skills[0].active == 10 && enemy->skills[9].active != 3) {
+  if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0 && enemy->skills[0].active == 10 && enemy->skills[9].active != 3 && !isStaggered(enemy)) {
     printf("\n%s: *sigh*  \"...Not even gonna write that down. That's a summary execution!\"\n", enemy->name);
   }
 
@@ -15418,10 +16347,10 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
      if(enemySkillEffective) *enemySkillEffective = &enemy->skills[7];
 
-      player->skills[4].active = 0;
+        enemy->skills[4].active = 0;
 
       printf("\n%s: \"No more playing around, brat.\"\n",
-        player->name);
+        enemy->name);
 
       sleep(1);
 
@@ -15641,7 +16570,15 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
             player->Charge[1] -= 1;
       if (player->Charge[1] <= 0) player->Charge[1] = 0;
 
+      // The House of Spiders: The Ring Nursefather Hong Lu - Unqiue Charge
+        if (isId(player->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+          printf("\n%s loses 1 Corpus Ingredient Count (%d)\n", player->name, player->Charge[1]);
+        }
+          
+      else {
       printf("\n%s loses 1 Charge Count (%d)\n", player->name, player->Charge[1]);
+      }
+      
 
       if (player->Charge[1] <= 0) player->Charge[0] = 0;
 
@@ -15675,7 +16612,7 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
           // Heishou Pack - You Branch Adept Heathcliff - Burn
           if (isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0) {
 
-            if (player->HP < 0) player->HP = 1;
+            if (player->HP <= 0) player->HP = 1;
             
             int gain = 1;
             if (player->HP < player->MAX_HP * 0.5) gain += 1;
@@ -15789,6 +16726,72 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
 
 
+
+
+
+
+
+
+    
+// ------------------------------ The House of Spiders: The Ring Nursefather Hong Lu ------------------------------
+
+    // Passive
+    if (isId(player->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+      // 1. Turn End: Reset Unbreak
+      if (player->skills[5].active == 1) {
+      if (player->skills[2].Unbreakable > 0) player->skills[2].Unbreakable = 0; // Reset Unbreak
+      if (player->defenseSkill[0].Unbreakable > 0) player->skills[2].Unbreakable = 0; // Reset Unbreak
+      if (player->skills[3].Unbreakable > 0) player->skills[2].Unbreakable = 0; // Reset Unbreak
+      }
+
+        // 2. Turn End: Lose 2 Count
+      if (player->Passive > 0) {
+        if (player->Passive > 0) player->Passive -= 2;
+      if (player->Passive < 0) player->Passive = 0;
+
+      printf("\n%s loses 2 Viewing the Tableau (%d)\n", player->name, player->Passive);
+
+        sleep(1);
+
+      }
+
+        // 4. Transcend the Corpus: ฟื้นจาก Stagger
+        if (player->Stagger > 0 && player->Passive > 0 && player->skills[3].active == 0) {
+            player->Stagger = 0;
+            player->skills[3].active = 1; // ใช้ได้ครั้งเดียวต่อ Encounter
+            printf("\n%s recovers from Stagger!\n", player->name);
+
+          sleep(1);
+
+          printf("\n%s \"I cannot let the audience witness such a degrading sight.\"\n", player->name);
+
+          sleep(1);
+        }
+
+        player->skills[2].active = 0; // รีเซ็ต Critique ต่อเทิร์น
+    }
+
+    // ------------------------------------------------------------------------------------------
+
+    // Muga Ryōshū - Sever the thread delete
+    if (isId(player->ID, "Muga Ryōshū") == 0) {
+
+      // ระดับความพังพื้นฐานคือ 10% หรือตามค่า Muga (ถ้ามี)
+      int intensity = player->skills[0].active/10;
+
+      if (intensity > 0) {
+
+          for (int i = 0; i < enemy->numSkills; i++) {
+              // เงื่อนไข: ไม่ใช่ท่าไม้ตาย (index 5), สกิลมีชื่ออยู่จริง, และสกิลยังไม่พัง (Copies >= 0)
+              if (enemy->skills[i].name != NULL && enemy->skills[i].Copies >= 0) {
+                enemy->skills[i].name = glitchText(enemy->skills[i].name, intensity);
+              }
+          }
+                  enemy->name = glitchText(enemy->name, intensity/2); // ชื่อ
+      
+        }
+    }
+
 // The Middle Little Brother Sinclair - Counter Reset
     if (isId(player->ID, "The Middle Little Brother Sinclair") == 0) {
         // คืนค่าให้ทุกสกิลกลับเป็นท่าโจมตีปกติที่ Clash ได้
@@ -15814,7 +16817,8 @@ if (isId(player->ID, "The Middle Nursefather - Matthias") == 0 && (playerSkillUs
 // The Middle Nursefather - Matthias - Change Phase
     if (isId(player->ID, "The Middle Nursefather - Matthias") == 0) {
 
-      player->skills[3].active = 0; // Reset Damage taken
+      player->skills[3].active = player->skills[11].active; // Save Damage taken last turn
+      player->skills[11].active = 0; // Reset Damage taken
       
       float hpRate = player->HP / player->MAX_HP;
       int *thresholdState = &player->skills[7].active; // ใช้ดัชนี 7 เก็บ Bitmask ของ Threshold
@@ -15859,38 +16863,6 @@ if (isId(player->ID, "The Middle Nursefather - Matthias") == 0 && (playerSkillUs
         // Reset ตัวนับเหรียญของเทิร์นนี้ทิ้ง
         player->skills[6].active = 0; 
     }
-    
-    // Meursault:The Thumb Shin buffs (temporary, print once)
-    if (isId(player->ID, "Meursault:The Thumb") == 0 && (playerSkillUsed == &player->defenseSkill[0] || player->Stagger > 0) && !player->skills[3].active) {
-
-      if (player->Stagger > 0) {
-          player->Stagger = 0;
-
-        printf("\n%s recovers from 'Stagger'\n",
-          player->name);
-
-        sleep(1);
-      }
-
-      int amount = ((int)(8 * player->MAX_HP)) / 847;
-      if (amount < 8) amount = 8;
-
-      if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->ID, "Don Quixote") == 0) amount += 2; // pity for boss
-      if (isId(enemy->ID, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
-      if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0) amount += 5; // pity for boss
-
-        player->skills[3].active = 1;
-
-          player->Passive = amount;
-
-        printf("\n%s spent all Tigermark Round, 'Unrelenting Spirit [剛氣]' activated and reload %d Savage Tigermark Round\n",
-          player->name, amount);
-
-        sleep(1);
-
-        printf("\n%s: \"I see that you are worth the cost of my ammunition.\"\n", player->name);
-
-      }
 
     // Sukuna:King of Curse Domain expansion
     if (isId(enemy->ID, "Sukuna:King of Curse") == 0 && enemy->skills[8].active > 0) {
@@ -16477,146 +17449,147 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
       // ------------------------------ Cap HP --------------------------
 
       // Don Quixote Phase 2
-      if (isId(enemy->ID, "Don Quixote") == 0 && enemy->HP <= 0 &&
-          enemy->Passive == 0) {
+      if (isId(player->ID, "Don Quixote") == 0 && player->HP <= 0 &&
+          player->Passive == 0) {
 
-        printf("\n%s: \"If that's what you really yearn for...\"\n", enemy->name);
+        printf("\n%s: \"If that's what you really yearn for...\"\n", player->name);
 
         sleep(1);
 
         printf("\n%s tranforms to 'Sancho:The Second Kindred of Don Quixote'\n",
-               enemy->name);
+               player->name);
 
-        enemy->MAX_HP = 723;
-        enemy->HP = 723;
-        enemy->name = "Sancho:The Second Kindred of Don Quixote";
-        enemy->Sanity = 0;
-        enemy->sanityGainBase = 6;
-        enemy->sanityLossBase = 4;
-        enemy->immuneToPanicSkip = 1;
-        enemy->Passive = 1;
+        player->MAX_HP = 723;
+        player->HP = 723;
+        player->name = "Sancho:The Second Kindred of Don Quixote";
+        player->ID = "Sancho:The Second Kindred of Don Quixote";
+        player->Sanity = 0;
+        player->sanityGainBase = 6;
+        player->sanityLossBase = 4;
+        player->immuneToPanicSkip = 1;
+        player->Passive = 1;
 
         // Disable the old S0, S1, S2
-        enemy->skills[0] = enemy->skills[3];
-         enemy->skills[1] = enemy->skills[3];
-         enemy->skills[2] = enemy->skills[3];
-        enemy->skills[0].Copies = -1; // in pick skill function copies -1 will auto delete skill from lastused 
-        enemy->skills[1].Copies = -1;
-        enemy->skills[2].Copies = -1;
-        enemy->defenseSkill[0].Copies = -1;
+        player->skills[0] = player->skills[3];
+         player->skills[1] = player->skills[3];
+         player->skills[2] = player->skills[3];
+        player->skills[0].Copies = -1; // in pick skill function copies -1 will auto delete skill from lastused 
+        player->skills[1].Copies = -1;
+        player->skills[2].Copies = -1;
+        player->defenseSkill[0].Copies = -1;
 
         // Set copies for the newly mapped primary skills
-        enemy->skills[3].Copies = 4;
-        enemy->skills[4].Copies = 4;
-        enemy->skills[5].Copies = 4;
+        player->skills[3].Copies = 4;
+        player->skills[4].Copies = 4;
+        player->skills[5].Copies = 4;
 
-        enemy->skills[6].Copies = 3;
-        enemy->skills[7].Copies = 3;
-        enemy->skills[8].Copies = 3;
-        enemy->skills[9].Copies = 3;
-        enemy->skills[10].Copies = 3;
-        enemy->skills[11].Copies = 3;
+        player->skills[6].Copies = 3;
+        player->skills[7].Copies = 3;
+        player->skills[8].Copies = 3;
+        player->skills[9].Copies = 3;
+        player->skills[10].Copies = 3;
+        player->skills[11].Copies = 3;
 
         sleep(1);
 
-        clearDebuffsOnDeath(enemy, player);
+        clearDebuffsOnDeath(player, enemy);
 
-        if (isId(player->ID,
+        if (isId(enemy->ID,
                        "Don Quixote:The Manager of La Manchaland") == 0) {
           printf(
               "\n%s: I shall show you. Even if it’s a false dream... I will still "
               "move forward without hesitation!\n",
-              enemy->name);
+              player->name);
         } else {
-          printf("\n%s: \"Let wrap it up.\"\n", enemy->name);
+          printf("\n%s: \"Let wrap it up.\"\n", player->name);
         }
       }
 
       // Sukuna:King of Curse cursed reverse technique
-      if (isId(enemy->ID, "Sukuna:King of Curse") == 0 && enemy->HP <= 0 && enemy->Passive == 0) {
+      if (isId(player->ID, "Sukuna:King of Curse") == 0 && player->HP <= 0 && player->Passive == 0) {
 
-        enemy->Passive = 1;
+        player->Passive = 1;
 
-        enemy->HP = enemy->MAX_HP;
-        enemy->Sanity = 45;
+        player->HP = player->MAX_HP;
+        player->Sanity = 45;
 
-        printf("\n%s used 'Cursed Reverse Technique', heal up to Max HP, heal Sanity to 45 (Once per Encounter)\n", enemy->name);
+        printf("\n%s used 'Cursed Reverse Technique', heal up to Max HP, heal Sanity to 45 (Once per Encounter)\n", player->name);
 
         sleep(1);
 
-        printf("\n%s: \"Arm yourself...\"\n", enemy->name);
+        printf("\n%s: \"Arm yourself...\"\n", player->name);
 
         sleep(1);
       }
       
       // Jia Qiu Anti low
-      if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.4 &&
-          enemy->Passive == 3) {
+      if (isId(player->ID, "Jia Qiu") == 0 && player->HP <= player->MAX_HP * 0.4 &&
+          player->Passive == 3) {
 
-        enemy->Passive = 4;
+        player->Passive = 4;
 
-        enemy->HP = (int)(enemy->MAX_HP * 0.4);
+        player->HP = (int)(player->MAX_HP * 0.4);
 
-        printf("\n%s blocked, cap HP to 40%% for this turn\n", enemy->name);
+        printf("\n%s blocked, cap HP to 40%% for this turn\n", player->name);
 
         sleep(1);
 
-        if (enemy->Stagger > 0) {
-            enemy->Stagger = 0;
+        if (player->Stagger > 0) {
+            player->Stagger = 0;
 
           printf("\n%s recovers from 'Stagger'\n",
-            enemy->name);
+            player->name);
 
           sleep(1);
         }
       }
 
       // Jia Qiu LAST
-      if (isId(enemy->ID, "Jia Qiu") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
-          enemy->Passive == 5) {
+      if (isId(player->ID, "Jia Qiu") == 0 && player->HP <= player->MAX_HP * 0.2 &&
+          player->Passive == 5) {
 
-        enemy->Passive = 6;
+        player->Passive = 6;
 
-        enemy->HP = (int)(enemy->MAX_HP * 0.2);
+        player->HP = (int)(player->MAX_HP * 0.2);
 
-        printf("\n%s blocked, cap HP to 20%% for this turn\n", enemy->name);
+        printf("\n%s blocked, cap HP to 20%% for this turn\n", player->name);
 
         sleep(1);
 
-        if (enemy->Stagger > 0) {
-            enemy->Stagger = 0;
+        if (player->Stagger > 0) {
+            player->Stagger = 0;
 
           printf("\n%s recovers from 'Stagger'\n",
-            enemy->name);
+            player->name);
 
           sleep(1);
         }
       }
 
       // Erlking Heathcliff Anti low
-      if (isId(enemy->ID, "Erlking Heathcliff") == 0 && enemy->HP <= 50 &&
-          enemy->Passive == 1) {
+      if (isId(player->ID, "Erlking Heathcliff") == 0 && player->HP <= 50 &&
+          player->Passive == 1) {
 
-        enemy->Passive = 2;
+        player->Passive = 2;
 
-        enemy->HP = 50;
+        player->HP = 50;
 
-        printf("\n%s used 'Withstand', cap HP to 50 for this turn\n", enemy->name);
+        printf("\n%s used 'Withstand', cap HP to 50 for this turn\n", player->name);
 
         sleep(1);
 
-        if (enemy->Stagger > 0) {
-          enemy->Stagger = 0;
+        if (player->Stagger > 0) {
+          player->Stagger = 0;
 
           printf("\n%s recovers from 'Stagger'\n",
-            enemy->name);
+            player->name);
 
           sleep(1);
         }
 
         sleep(1);
 
-        printf("\n%s: \"Please, Catherine. Appear before me and tear me asunder. Let me see your eyes as I expire.\"\n", enemy->name);
+        printf("\n%s: \"Please, Catherine. Appear before me and tear me asunder. Let me see your eyes as I expire.\"\n", player->name);
 
         sleep(1);
       }
@@ -16627,22 +17600,22 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     if (isId(enemy->ID, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
         enemy->Passive == 1) {
 
-      inflictStatus(player->Sinking, 2, 1);
+      inflictStatus(player->Sinking, 2, 1, 0, 99, 0, 99);
 
       printf("\n%s gain +2 Sinking Stack (%d) and +1 Sinking Count (%d) from 'Bandages of the King in Binds'\n", player->name, player->Sinking[0], player->Sinking[1]);
     }
 
 // King in Binds anti low
-if (isId(enemy->ID, "King in Binds") == 0 && enemy->HP <= enemy->MAX_HP * 0.2 &&
-    enemy->skills[0].active == 0) {
+if (isId(player->ID, "King in Binds") == 0 && player->HP <= player->MAX_HP * 0.2 &&
+    player->skills[0].active == 0) {
 
-  enemy->skills[0].active = 1;
+  player->skills[0].active = 1;
 
-  enemy->Passive = 1;
+  player->Passive = 1;
 
-  enemy->HP = (int)(enemy->MAX_HP * 0.2);
+  player->HP = (int)(player->MAX_HP * 0.2);
 
-  printf("\n%s snapping Bandages, cap HP to 20%% for this turn, apply 'Bandages of the King in Binds' on all enemies.\n", enemy->name);
+  printf("\n%s snapping Bandages, cap HP to 20%% for this turn, apply 'Bandages of the King in Binds' on all enemies.\n", player->name);
 }
 
     // --------------------------------------------------
@@ -17432,7 +18405,7 @@ void runKingInBindsBattle(
                }
                
       if (playerGoesFirst == 1) {
-        if (playerSkillEffective != NULL && (playerSkillEffective->skillType == 0 || playerSkillEffective->skillType == 3)) {
+        if (playerSkillEffective != NULL && (playerSkillEffective->skillType == 0)) {
           attackPhase(player, playerSkillEffective, playerTempOffense,
                       playerTempDefense, &enemy, enemySkillEffective,
                       enemyTempOffense, enemyTempDefense,
@@ -17445,7 +18418,7 @@ void runKingInBindsBattle(
                       enemySkillEffective->Coins, 0, 0);
         }
       } else if (playerGoesFirst == 0) {
-        if (enemySkillEffective != NULL && (enemySkillEffective->skillType == 0 || enemySkillEffective->skillType == 3)) {
+        if (enemySkillEffective != NULL && (enemySkillEffective->skillType == 0)) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
                       enemyTempDefense, player, playerSkillEffective,
                       playerTempOffense, playerTempDefense,
@@ -17481,16 +18454,16 @@ void runKingInBindsBattle(
       if (clash.winner == 1) {
         if (clash.playerskillUsed->skillType == 4) {
           // --- [Clashable Guard Win Effect] ---
-          enemy.Tremor[2] += clash.playerFinalPower;
+          enemy.Tremor[4] += clash.playerFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   player->name, player->name, enemy.name, clash.playerFinalPower);
 
           sleep(1);
-          if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
+          if (enemy.Tremor[4] > 50 && enemy.Stagger <= 0) {
             enemy.Stagger += 2;
             printf("\n%s Staggered for one turn\n", enemy.name);
             sleep(1);
-             enemy.Tremor[2] = 0;
+             enemy.Tremor[4] = 0;
           }
 
         } else {
@@ -17508,15 +18481,15 @@ void runKingInBindsBattle(
       } else if (clash.winner == 2) {
         if (clash.enemyskillUsed->skillType == 4) {
           // --- [Clashable Guard Win Effect] ---
-          player->Tremor[2] += clash.enemyFinalPower;
+          player->Tremor[4] += clash.enemyFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   enemy.name, enemy.name, player->name, clash.enemyFinalPower);
           sleep(1);
-          if (player->Tremor[2] > 50 && player->Stagger <= 0) {
+          if (player->Tremor[4] > 50 && player->Stagger <= 0) {
             player->Stagger += 2;
             printf("\n%s Staggered for one turn\n", player->name);
             sleep(1);
-            player->Tremor[2] = 0;
+            player->Tremor[4] = 0;
           }
         } else {
           attackPhase(
@@ -17957,7 +18930,7 @@ void runKingInBindsBattle(
                       enemyTempOffense, enemyTempDefense,
                       playerSkillEffective->Coins, 0, 0);
 
-      } else {
+      } else if (!IsenemyUnableToAct && !IsplayerUnableToAct) {
           
        int canPlayerClash = (playerSkillEffective != NULL) && 
                             (pType == 0 || pType == 4 || pType == 5) && !IsplayerUnableToAct;
@@ -17983,7 +18956,7 @@ void runKingInBindsBattle(
                }
                
               if (playerGoesFirst == 1) {
-                if (playerSkillEffective != NULL && (playerSkillEffective->skillType == 0 || playerSkillEffective->skillType == 3)) {
+                if (playerSkillEffective != NULL && (playerSkillEffective->skillType == 0)) {
                 attackPhase(player, playerSkillEffective, playerTempOffense,
                             playerTempDefense, boss, enemySkillEffective,
                             enemyTempOffense, enemyTempDefense,
@@ -17996,7 +18969,7 @@ void runKingInBindsBattle(
                             enemySkillEffective->Coins, 0, 0);
                 }
             } else if (playerGoesFirst == 0) {
-                  if (enemySkillEffective != NULL && (enemySkillEffective->skillType == 0 || enemySkillEffective->skillType == 3)) {
+                  if (enemySkillEffective != NULL && (enemySkillEffective->skillType == 0)) {
                 attackPhase(boss, enemySkillEffective, enemyTempOffense,
                             enemyTempDefense, player, playerSkillEffective,
                             playerTempOffense, playerTempDefense,
@@ -18021,15 +18994,15 @@ void runKingInBindsBattle(
             if (clash.winner == 1) {
               if (clash.playerskillUsed->skillType == 4) {
                 // --- [Clashable Guard Win Effect] ---
-                boss->Tremor[2] += clash.playerFinalPower;
+                boss->Tremor[4] += clash.playerFinalPower;
                 printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                         player->name, player->name, boss->name, clash.playerFinalPower);
                 sleep(1);
-                if (boss->Tremor[2] > 50 && boss->Stagger <= 0) {
+                if (boss->Tremor[4] > 50 && boss->Stagger <= 0) {
                   boss->Stagger += 2;
                   printf("\n%s Staggered for one turn\n", boss->name);
                   sleep(1);
-                  boss->Tremor[2] = 0;
+                  boss->Tremor[4] = 0;
                 }
               } else {
                 attackPhase(
@@ -18046,15 +19019,15 @@ void runKingInBindsBattle(
             } else if (clash.winner == 2) {
               if (clash.enemyskillUsed->skillType == 4) {
                 // --- [Clashable Guard Win Effect] ---
-                player->Tremor[2] += clash.enemyFinalPower;
+                player->Tremor[4] += clash.enemyFinalPower;
                 printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                         boss->name, boss->name, player->name, clash.enemyFinalPower);
                 sleep(1);
-                if (player->Tremor[2] > 50 && player->Stagger <= 0) {
+                if (player->Tremor[4] > 50 && player->Stagger <= 0) {
                   player->Stagger += 2;
                   printf("\n%s Staggered for one turn\n", player->name);
                   sleep(1);
-                  player->Tremor[2] = 0;
+                  player->Tremor[4] = 0;
                 }
               } else {
                 attackPhase(
@@ -18120,6 +19093,7 @@ int main() {
       "The Middle Little Brother Sinclair", 
       "The House of Spiders: The Index Nursefather Yi Sang", 
       "The One Who Grips Faust",
+      "The House of Spiders: The Ring Nursefather Hong Lu",
   };
   // คำนวณจำนวนรายการที่มีทั้งหมดใน Array
   int numIdentities = sizeof(identity) / sizeof(identity[0]);
@@ -18191,18 +19165,13 @@ int main() {
     }
 
       // Map selection to setup index
-      if (selected_identity == 999) targetIndex = 99;      // Muga
-      else if (selected_identity == 888) targetIndex = 88; // Binah
-      else targetIndex = selected_identity - 1;
+      if (selected_identity == 100) targetIndex = 99;      // Muga
+      else if (selected_identity == 89) targetIndex = 88; // Binah
+    else targetIndex = -1;
     
         if ((selected_identity >= 1 && selected_identity <= numIdentities) || targetIndex > 0) {
-
-          // Setup temp characters for info preview
-          if (targetIndex > 0) {
-            setupCharacters(&tempPlayer, &tempEnemy, targetIndex, 0);
-          } else {
+          
           setupCharacters(&tempPlayer, &tempEnemy, selected_identity - 1, 0);
-          }
 
           printf("\n--- Identity Info ---\n");
           printf("Name: %s\n", tempPlayer.name);
@@ -18221,7 +19190,7 @@ int main() {
            printf("\n 1. Tiantui Star's Blade [天退星刀]\n Always Active: begin Encounters with Tigermark Round amount based on enemy (Min 12)\n"
             
              "\n When flipping a Coin that consumes Tigermark Round or Savage Tigermark Round: while not having those 'Unique Ammo' does not cancel this unit's attacks, the Coin's On Hit \"inflict Burn Stack\" and \"inflict Burn Count\" effects do not activate\n");
-         printf("\n 2. Chachihu [揷翅虎]\n If this unit equipped Defense Skills for the first time in this Encounter, or if this unit spent all of 'Tigermark Round', or if this unit is Staggered, or HP at 65%% or less HP, reload 'Savage Tigermark Round' amount based on enemy (Min 8) and activate 'Unrelenting Spirit [剛氣]'\n");
+         printf("\n 2. Chachihu [揷翅虎]\n If this unit equipped Defense Skills for the first time in this Encounter, or if this unit spent all of 'Tigermark Round', or if this unit is Staggered, or HP at 65%% or less HP, Turn End: Reload 'Savage Tigermark Round' amount based on enemy (Min 8) and activate 'Unrelenting Spirit [剛氣]'\n");
           printf("\n 3. Unrelenting Spirit [剛氣]\n"
             " - Max & Min Speed +1\n"
             " - If this unit's Speed is faster than the target's by 3 or more, deal +(Speed difference x 2.5)%% damage (Max 20%%)\n"
@@ -18257,8 +19226,9 @@ int main() {
           printf("Passive Skills:\n");
           printf("\n 1. Swordplay of the Homeland\n In Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn. (Once per Encounter)\n");
           printf("\n 2. Yield My Flesh\n When Clashing with 'Yield My Flesh' does not effects by any Clash Power boost, When Clash loses with 'Yield My Flesh', Use Counter 'To Claim Their Bones' to attack back (Cannot be used only if this unit died first)\n");
-          printf("\n 3. In Memoriam\n At 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 10+ Sanity or 30+ Sanity further from 0 (Buff base on each Skills)\n");
+          printf("\n 3. In Memoriam\n At 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 5+ Poise Stack or 7+ Poise Stack on self (Buff base on each Skills)\n");
           printf("\n 4. Overthrow\n After got attacked, gain +1 Final Power next turn (Once per enemy's skill)\n");
+          printf("\n 5. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
               } 
         else if (selected_identity - 1 == 2) {
           //Taunt
@@ -18287,10 +19257,21 @@ int main() {
           //Passive
           printf("Passive Skills:\n");
           printf("\n 1. Embrace the Tarnished Blood and Exsanguinate Others For the Cause\n In Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn, after that apply 'Lordsguard' to the left Heishou Pack (Once per Encounter)\n");
-          printf("\n 2. The Heishou Pack\n The Heishou Pack will heed you as their lord, you have 4 Heishou Packs(Mao, Si, Wu and You) as your follower, when using 'Answer Me, Heishou Packs', command one of the remaining Heishou Pack members to attack alongside this unit with 'I Carve the Path of a Lord' Skill; then gain buff from Heishou Pack after that 'Retreat' that Heishou Pack make them unable to use entire Encounter. If there is no Heishou Pack left use 'Lonesome Stand: Sacrifice to Claim The Garden [孑孑單身，捨生取园]' instead\n");
+          printf("\n 2. The Heishou Pack\n The Heishou Pack will heed you as their lord, you have 4 Heishou Packs(Mao, Si, Wu and You) as your follower, when using 'Answer Me, Heishou Packs', command one of the remaining Heishou Pack members to attack alongside this unit with 'I Carve the Path of a Lord' Skill; then gain 'Heishou Bolus Contamination [黑獸丸染]' after that 'Retreat' that Heishou Pack make them unable to use entire Encounter. If there is no Heishou Pack left use 'Lonesome Stand: Sacrifice to Claim The Garden [孑孑單身，捨生取园]' instead\n");
           printf("\n 3. The Heishou Lord\n After 'Embrace the Tarnished Blood and Exsanguinate Others For the Cause' activated, when this unit takes damage from any damage skills that can bring their HP down to 0, one of left Heishou Pack use 'Lordsguard' to defense this unit after that 'Retreat' that Heishou Pack make them unable to use entire Encounter, if the damage can't bring their HP down to 0, do not use 'Retreat'\n");
           printf("\n 4. Rupture\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Hit: Take (Stack) fixed Damage. Then reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
           printf("\n 5. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+          printf("\n 6. Heishou Bolus Contamination [黑獸丸染]\n Turn Start: Gain a buff from Stack"
+            "\n - at 1+ Stack: Gain +1 Max Speed and +2%% Damage Up for every Stack"
+            "\n - at 2+ Stack: Gain +1 Min Speed and +1 Defense Level Up for every Stack"
+            "\n - at 3+ Stack: Gain +1 Offense Level Up for every Stack"
+            "\n - at 4+ Stack: Gain +4 more Offense Level Up and +10%% Damage Up\n"
+            
+            "\n Empowered this unit based on which Heishou Pack that used"
+            "\n  Heishou Pack - Mao: Gain +3 Offense"
+            "\n  Heishou Pack - Wu: Gain +5 Defense"
+            "\n  Heishou Pack - You: Gain +0.1 Damage Mutiplier"
+            "\n  Heishou Pack - Si: Gain +1 Base Power");
               } 
         else if (selected_identity - 1 == 4) {
           //Taunt
@@ -18511,6 +19492,54 @@ int main() {
                        printf("\n 7. You Must Accept the Pain!\n When using 'Execution' and Enemy has 3+ 'Nail', use 'Purify' instead\n");
                        printf("\n 8. Bliss of Execution\n When attack with Skill, After Attack: If this unit has 'Fanatic' and enemy have 6+ 'Nail', use 'I Shall Claim Your Life!' after the attack (Once per time)\n");
                            }
+                       else if (selected_identity - 1 == 13) {
+                          //Taunt
+                          printf("\"Let us explore together— the pulsations of your remaining life.\"\n\n");
+
+                          //Description
+                          printf("A character that focus on inflict negative status to enemy and Dealing more damage and get buff from them\n\n");
+
+                          //Passive
+                          printf("Passive Skills:\n");
+                          printf("\n 1. Magnum Opus: Tibia\n Skill End: If the Skill dealt HP or Shield damage, gain +5 \x1b[0;33mCorpus Ingredient\x1b[0m Count"
+                            "\n - If target is killed or reach 0 HP even with nullify damage, gain +3 additional \x1b[0;33mCorpus Ingredient\x1b[0m Count\n"
+
+                            "\n Gain 1 \x1b[0;33mCorpus Ingredient\x1b[0m Stack every time this unit consumes 10 cumulative \x1b[0;33mCorpus Ingredient\x1b[0m Count in this Encounter"
+                            "\n - If the above effect brings this unit's x1b[0;33mCorpus Ingredient\x1b[0m Stack to 2 or higher, gain x1b[0;33mArtwork: Tibiax1b[0m\n"
+
+                            "\nBase Attack Skills and Clashable Counter Skill count as Skills that gain 'Charge' Count\n");
+                         printf("\n 2. Corpus Ingredient\n"
+                          " - Max Count : 20 \n"
+                           " - Unique Charge\n"
+                           " - Interacts the same as normal charge does to effects that raise or reduce Charge Stack or Count\n"
+                           " - Turn End: Lose 1 Count \n");
+                         printf("\n 3. Artwork: Tibia\n Apply the following effects to this unit's Base Attack Skills and Clashable Counter Skill based on Corpus Ingrdient Stack:\n"
+                           " - 1+: Base Power +1\n"
+                           " - 2+: If the enemy has Bleed or 'Unique Bleed', deal +10%% damage\n"
+                           " - 3+: Inflict +1 more Bleed Stack and Count\n"
+                           " - 4+: Base Power +1\n"
+                           " - 5+: Base Power +1\n");
+                          printf("\n 4. Transcend the Corpus\n Upon entering the Encounter for the first time, gain 21 \x1b[38;2;139;69;19mViewing the Tableau\x1b[0m\n"
+
+                            "\n When The Ring-faction allied Identities use a Skill, lose 1 \x1b[38;2;139;69;19mViewing the Tableau\x1b[0m (once per turn per Identity)\n"
+
+                            "\n Turn End: If this unit does not have \x1b[38;2;139;69;19mViewing the Tableau\x1b[0m, replace one of its Base Skills with \"Closing Time - Installation Art no. 1: Your Flesh and Bones as the Gallery's Seats\" at next Turn Start (prioritizes the Skill on the top Slot's row on the Dashboard)"
+                            " - If the replaced Skill becomes inaccessible due to being replaced by a different Skill, activate the above effect again\n"
+                            " - After used heal 10 Sanity and apply Somatic Frisson-inspiring Melody (Min & Max Speed +1, Base Attack Skills gain Clash Power +1 and deal +10%% damage) on self, Turn Start: gain 21 \x1b[38;2;139;69;19mViewing the Tableau\x1b[0m\n"
+
+                            "\n Turn End: if this unit was Staggered for the first time in this Encounter while under this effect, recover from Stagger (excluding forced Stagger)\n");
+                         printf("\n 5. Viewing the Tableau\n Turn End: Lose 2 Stack\n");
+                          printf("\n 6. A Maestro's Critique\n On Hit, if the Attack Skill inflicted a negative effect, heal 4 SP at Attack End (3 times per turn)\n"
+                           " - If this unit's SP is at max, gain +10%% Damage Up next turn when this unit heals SP with this effect (once per turn)\n");
+                          printf("\n 7. Curating the Exhibition\n If this unit's equipped Defense Skill, before getting attack by Skill, If this unit consume \x1b[0;33mCorpus Ingredient\x1b[0m, use 'Curating the Exhibition' to evade the attack\n");
+                         printf("\n 8. Bleed\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When this unit tossing the Attack Skill's Coins or Clashing end for one round, take fixed damage equal to (Stack). Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+                         printf("\n 9. Corpus Theater\n"
+                           "\n - Base Stack: 3" 
+                           "\n - When this unit gains Bleed from enemy Attack Skills, Randomly gain 1 of the following effects next turn and lose 1 Stack of this effect (once per Skill)"
+                           "\n · 3 Bleed Stack"
+                           "\n · 1 Bind"
+                           "\n · 1 Defense Power Down\n");
+                              }
                        else if (targetIndex == 99) {
                           //Taunt
                           printf("\"Once it is done... I will take \x1b[1;31mAraya\x1b[1;0m back.\"\n\n");
@@ -19234,10 +20263,10 @@ int main() {
 
     sleep(1);
 
-    updateSanity(&player, 20);
+    updateSanity(&player, 45);
     player.sanityGainBase += 5;
 
-    printf("\nTurn Start: %s gains 30 Shield and gains (Sanity/10) Offense Level Up and Defense Level Up (rounded down); Sanity Base Gain +5 and heals 20 Sanity for this Encounter\n",
+    printf("\nTurn Start: %s gains 30 Shield and gains (Sanity/10) Offense Level Up and Defense Level Up (rounded down); Sanity Base Gain +5 and heals 45 Sanity for this Encounter\n",
        player.name);
 
     sleep(1);
@@ -19671,7 +20700,7 @@ int main() {
           enemyTempDefense,
                     playerSkillEffective->Coins, 0, 0);
 
-      } else {
+      } else if (!IsenemyUnableToAct && !IsplayerUnableToAct) {
 
         int canPlayerClash = (playerSkillEffective != NULL) && 
                              (pType == 0 || pType == 4 || pType == 5) && !IsplayerUnableToAct;
@@ -19698,7 +20727,7 @@ int main() {
              
           if (playerGoesFirst == 1) {
             
-            if (playerSkillEffective != NULL && (playerSkillEffective->skillType == 0 || playerSkillEffective->skillType == 3)) {
+            if (playerSkillEffective != NULL && (playerSkillEffective->skillType == 0)) {
         attackPhase(&player, playerSkillEffective, playerTempOffense,
           playerTempDefense, &enemy, enemySkillEffective, enemyTempOffense,
         enemyTempDefense,
@@ -19714,7 +20743,7 @@ int main() {
 
         } else if (playerGoesFirst == 0) {
 
-            if (enemySkillEffective != NULL && (enemySkillEffective->skillType == 0 || enemySkillEffective->skillType == 3)) {
+            if (enemySkillEffective != NULL && (enemySkillEffective->skillType == 0)) {
           attackPhase(&enemy, enemySkillEffective, enemyTempOffense,
             enemyTempDefense, &player, playerSkillEffective,
             playerTempOffense, playerTempDefense,
@@ -19746,15 +20775,15 @@ int main() {
       if (clash.winner == 1) {
         if (clash.playerskillUsed->skillType == 4) {
           // --- [Clashable Guard Win Effect] ---
-          enemy.Tremor[2] += clash.playerFinalPower;
+          enemy.Tremor[4] += clash.playerFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   player.name, player.name, enemy.name, clash.playerFinalPower);
           sleep(1);
-          if (enemy.Tremor[2] > 50 && enemy.Stagger <= 0) {
+          if (enemy.Tremor[4] > 50 && enemy.Stagger <= 0) {
             enemy.Stagger += 2;
             printf("\n%s Staggered for one turn\n", enemy.name);
             sleep(1);
-            enemy.Tremor[2] = 0;
+            enemy.Tremor[4] = 0;
           }
 
           // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
@@ -19773,15 +20802,15 @@ int main() {
       } else if (clash.winner == 2) {
         if (clash.enemyskillUsed->skillType == 4) {
           // --- [Clashable Guard Win Effect] ---
-          player.Tremor[2] += clash.enemyFinalPower;
+          player.Tremor[4] += clash.enemyFinalPower;
           printf("\n%s won the Clash, %s's Guard increases %s's Stagger Threshold by %d!\n",
                   enemy.name, enemy.name, player.name, clash.enemyFinalPower);
           sleep(1);
-          if (player.Tremor[2] > 50 && player.Stagger <= 0) {
+          if (player.Tremor[4] > 50 && player.Stagger <= 0) {
             player.Stagger += 2;
             printf("\n%s Staggered for one turn\n", player.name);
             sleep(1);
-            player.Tremor[2] = 0;
+            player.Tremor[4] = 0;
           }
 
           // เมื่อ Guard ชนะ จะไม่เกิดการ attackPhase ปกติ (เพราะเป็นสกิลป้องกัน)
