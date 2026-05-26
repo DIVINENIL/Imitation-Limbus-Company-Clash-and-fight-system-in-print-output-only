@@ -4102,7 +4102,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       // Meursault:Blade Lineage Mentor - Skill 4
       if (isId(attacker->ID, "Meursault:Blade Lineage Mentor") ==
                      0 &&
-                 (atk == &attacker->skills[3])) {
+                 (atk == &attacker->defenseSkill[1])) {
 
         if (i == 0) {
 
@@ -10305,7 +10305,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
         chosenSkill->CoinPowerBoost[0] += PowerBuff;
         chosenSkill->CriticalDamageUp[0] += DamageBuff;
 
-        printf("At 7+ Poise Stack (%d), gain %d Coin Power and gain +%d%% damage on Critical Hit\n", c->Poise[0], PowerBuff, DamageBuff);
+        printf("At 7+ Poise Stack (%d), gain +%d Coin Power and gain +%d%% damage on Critical Hit\n", c->Poise[0], PowerBuff, DamageBuff);
 
         sleep(1);
       }
@@ -10318,7 +10318,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
       chosenSkill->CoinPowerBoost[0] += PowerBuff;
       chosenSkill->CriticalDamageUp[0] += DamageBuff;
 
-      printf("At 5+ Poise Stack (%d), gain %d Coin Power and gain +%d%% damage on Critical Hit\n", c->Poise[0], PowerBuff, DamageBuff);
+      printf("At 5+ Poise Stack (%d), gain +%d Coin Power and gain +%d%% damage on Critical Hit\n", c->Poise[0], PowerBuff, DamageBuff);
 
       sleep(1);
     } else if (c->Poise[0] >= 7 && chosenSkill == &c->skills[2]) {
@@ -14555,25 +14555,25 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
           PowerBuff = 1;
 
-          PowerBuff = (3/LoserSkill->Coins) < 1 ? 1 : (3/LoserSkill->Coins);
-          DamageBuff = (100/LoserSkill->Coins);
+          PowerBuff = 2;
+          DamageBuff = 25;
 
             LoserSkill->CoinPowerBoost[0] += PowerBuff;
             LoserSkill->DamageUp[0] += DamageBuff;
 
-          printf("At 7+ Poise Stack (%d), gain %d Coin Power and gain %d%% more damage\n", Loser->Poise[0], PowerBuff, DamageBuff);
+          printf("At 7+ Poise Stack (%d), gain +%d Coin Power and gain +%d%% damage\n", Loser->Poise[0], PowerBuff, DamageBuff);
 
           sleep(1);
         }
       else if (Loser->Poise[0] >= 5) {
 
-        PowerBuff = (3/LoserSkill->Coins) < 1 ? 1 : (3/LoserSkill->Coins);
-        DamageBuff = (50/LoserSkill->Coins);
+        PowerBuff = 1;
+        DamageBuff = 15;
 
           LoserSkill->CoinPowerBoost[0] += PowerBuff;
           LoserSkill->DamageUp[0] += DamageBuff;
 
-        printf("At 5+ Poise Stack (%d), gain %d Coin Power and gain %d%% more damage\n", Loser->Poise[0], PowerBuff, DamageBuff);
+        printf("At 5+ Poise Stack (%d), gain +%d Coin Power and gain +%d%% damage\n", Loser->Poise[0], PowerBuff, DamageBuff);
 
         sleep(1);
       } 
@@ -14687,11 +14687,11 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
     player->defenseSkill[0] = (SkillStats){"Overthrow", 8, 10, 1, 5, 3, 1, 0, 0, 0, 0, 3};
     player->defenseSkill[1] =
-      (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 1, 1, 0, 0, 0, 3};
+      (SkillStats){"To Claim Their Bones", 4, 4, 4, 5, 30, 2, 1, 0, 0, 0, 3};
 
     player->numDefenseSkills = 2; // <-- important
 
-    player->numSkills = 4; // <-- important
+    player->numSkills = 3; // <-- important
   } else if (pIndex == 2) {
     player->name = "Heathcliff:Wild Hunt";
     player->HP = 112;
@@ -18287,6 +18287,14 @@ void runKingInBindsBattle(
       // (playerSkill1/playerSkill2 ที่ roll มาจาก turn ก่อน)
       // -------------------------------------------------------
 
+    int playerTempOffense = 0, playerTempDefense = 0;
+    int enemyTempOffense  = 0, enemyTempDefense  = 0;
+
+    playerTempOffense += (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]);
+    playerTempDefense += (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]);
+    enemyTempOffense  += (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]);
+    enemyTempDefense  += (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]);
+
       if (!IsplayerUnableToAct) {
           printf("\nDashboard Skills:\n");
 
@@ -18445,14 +18453,6 @@ void runKingInBindsBattle(
               ;
           }
 
-        int playerTempOffense = 0, playerTempDefense = 0;
-        int enemyTempOffense  = 0, enemyTempDefense  = 0;
-
-        playerTempOffense += (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]);
-        playerTempDefense += (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]);
-        enemyTempOffense  += (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]);
-        enemyTempDefense  += (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]);
-
           if (choice == 0) {
             // --- กรณีเลือก Guard (แทนที่ Skill 1) ---
             playerSkillEffective = &player->defenseSkill[0];
@@ -18477,6 +18477,7 @@ void runKingInBindsBattle(
           // Player can't act, just pick a random skill for defensive purposes
           playerSkillIndex = *playerSkill1;
         }
+      }
 
      // roll skill ใหม่หลังเลือกแล้ว (สำหรับ turn หน้า)
       getSkills(&enemy, &kSkill1, &kSkill2, &kSkill3,
@@ -18662,8 +18663,6 @@ void runKingInBindsBattle(
     TurnCount++;
   }
 
-  }
-
   // Player ตายใน knight phase
   if (player->HP <= 0) return;
 
@@ -18834,6 +18833,14 @@ void runKingInBindsBattle(
         // Player เลือก skill — copy จาก main() ทุกอย่าง
         int playerSkillIndex;
 
+      int playerTempOffense = 0, playerTempDefense = 0;
+      int enemyTempOffense  = 0, enemyTempDefense  = 0;
+
+      playerTempOffense += (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]);
+      playerTempDefense += (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]);
+      enemyTempOffense  += (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]);
+      enemyTempDefense  += (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]);
+
         if (!IsplayerUnableToAct) {
             printf("\nDashboard Skills:\n");
 
@@ -18993,14 +19000,6 @@ void runKingInBindsBattle(
                 ;
             }
 
-          int playerTempOffense = 0, playerTempDefense = 0;
-          int enemyTempOffense  = 0, enemyTempDefense  = 0;
-
-          playerTempOffense += (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]);
-          playerTempDefense += (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]);
-          enemyTempOffense  += (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]);
-          enemyTempDefense  += (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]);
-
           if (choice == 0) {
             // --- กรณีเลือก Guard (แทนที่ Skill 1) ---
             playerSkillEffective = &player->defenseSkill[0]; // ชี้ไปที่สกิลป้องกัน
@@ -19025,6 +19024,7 @@ void runKingInBindsBattle(
           // Player can't act, just pick a random skill for defensive purposes
           playerSkillIndex = *playerSkill1;
           }
+        }
 
 
         playerSkillEffective =
@@ -19196,7 +19196,6 @@ void runKingInBindsBattle(
         TurnCount++;
     }
   }
-}
 
 
 
