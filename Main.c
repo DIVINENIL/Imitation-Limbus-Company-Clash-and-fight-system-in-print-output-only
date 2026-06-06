@@ -41,6 +41,9 @@ typedef struct { // skill
 int CoinPowerBoost[2];
 int FinalPowerBoost[2];
 int AttackPowerBoost[2];
+int AttackSkillPowerBoost[2]; // [0] = this turn, [1] = Next turn
+int DefensePowerBoost[2];
+int DefenseSkillPowerBoost[2]; // [0] = this turn, [1] = Next turn
 int BasePowerBoost[2];
 int ClashPower[2];
 float DamageUp[2];
@@ -85,6 +88,7 @@ typedef struct { // Character
   int AttackPowerUp[2]; // [0] = this turn, [1] = Next turn
   int AttackSkillPowerUp[2]; // [0] = this turn, [1] = Next turn
   int DefensePowerUp[2]; // [0] = this turn, [1] = Next turn
+  int DefenseSkillPowerUp[2]; // [0] = this turn, [1] = Next turn
   int BasePowerUp[2]; // [0] = this turn, [1] = Next turn
   int ClashPowerUp[2]; // [0] = this turn, [1] = Next turn
   float DamageUp[2]; // [0] = this turn, [1] = Next turn
@@ -100,6 +104,7 @@ typedef struct { // Character
   int FinalPowerDown[2]; // [0] = this turn, [1] = Next turn
   int AttackPowerDown[2]; // [0] = this turn, [1] = Next turn
   int AttackSkillPowerDown[2]; // [0] = this turn, [1] = Next turn
+  int DefenseSkillPowerDown[2]; // [0] = this turn, [1] = Next turn
   int DefensePowerDown[2]; // [0] = this turn, [1] = Next turn
   int BasePowerDown[2]; // [0] = this turn, [1] = Next turn
   int ClashPowerDown[2]; // [0] = this turn, [1] = Next turn
@@ -167,6 +172,7 @@ void initializeCharacterBuffs(Character *c) {
     c->AttackPowerUp[0]          = 0; c->AttackPowerUp[1]          = 0;
     c->AttackSkillPowerUp[0]     = 0; c->AttackSkillPowerUp[1]     = 0;
     c->DefensePowerUp[0]         = 0; c->DefensePowerUp[1]         = 0;
+    c->DefenseSkillPowerUp[0]         = 0; c->DefenseSkillPowerUp[1]         = 0;
     c->BasePowerUp[0]            = 0; c->BasePowerUp[1]            = 0;
     c->ClashPowerUp[0]           = 0; c->ClashPowerUp[1]           = 0;
     c->DamageUp[0]               = 0; c->DamageUp[1]               = 0;
@@ -212,6 +218,7 @@ void initializeCharacterBuffs(Character *c) {
     c->AttackPowerUp[0]          = c->AttackPowerUp[1];          c->AttackPowerUp[1]          = 0;
     c->AttackSkillPowerUp[0]     = c->AttackSkillPowerUp[1];     c->AttackSkillPowerUp[1]     = 0;
     c->DefensePowerUp[0]         = c->DefensePowerUp[1];         c->DefensePowerUp[1]         = 0;
+    c->DefenseSkillPowerUp[0]    = c->DefenseSkillPowerUp[1];    c->DefenseSkillPowerUp[1]    = 0;
     c->BasePowerUp[0]            = c->BasePowerUp[1];            c->BasePowerUp[1]            = 0;
     c->ClashPowerUp[0]           = c->ClashPowerUp[1];           c->ClashPowerUp[1]           = 0;
     c->DamageUp[0]               = c->DamageUp[1];               c->DamageUp[1]               = 0;
@@ -299,6 +306,9 @@ void rotateSkillBuffs(SkillStats *s) {
     s->CoinPowerBoost[0]         = s->CoinPowerBoost[1];
     s->FinalPowerBoost[0]        = s->FinalPowerBoost[1];
     s->AttackPowerBoost[0]       = s->AttackPowerBoost[1];
+  s->AttackSkillPowerBoost[0]       = s->AttackSkillPowerBoost[1];
+  s->DefensePowerBoost[0]       = s->DefensePowerBoost[1];
+  s->DefenseSkillPowerBoost[0]       = s->DefenseSkillPowerBoost[1];
     s->BasePowerBoost[0]         = s->BasePowerBoost[1];
     s->ClashPower[0]             = s->ClashPower[1];
     s->DamageUp[0]               = s->DamageUp[1];
@@ -312,6 +322,9 @@ void rotateSkillBuffs(SkillStats *s) {
     s->CoinPowerBoost[1]         = 0;
     s->FinalPowerBoost[1]        = 0;
     s->AttackPowerBoost[1]       = 0;
+    s->AttackSkillPowerBoost[1]  = 0;
+    s->DefensePowerBoost[1]      = 0;
+    s->DefenseSkillPowerBoost[1] = 0;
     s->BasePowerBoost[1]         = 0;
     s->ClashPower[1]             = 0;
     s->DamageUp[1]               = 0.0f;
@@ -340,6 +353,9 @@ void clearTurnSkillBuffs(Character *c) {
         s->CoinPowerBoost[0]    = 0;
         s->FinalPowerBoost[0]   = 0;
         s->AttackPowerBoost[0]  = 0;
+        s->AttackSkillPowerBoost[0]  = 0;
+        s->DefensePowerBoost[0]      = 0;
+        s->DefenseSkillPowerBoost[0] = 0;
         s->BasePowerBoost[0]    = 0;
         s->ClashPower[0]        = 0;
         s->DamageUp[0]          = 0.0f;
@@ -354,6 +370,9 @@ void clearTurnSkillBuffs(Character *c) {
         s->CoinPowerBoost[0]    = 0;
         s->FinalPowerBoost[0]   = 0;
         s->AttackPowerBoost[0]  = 0;
+        s->AttackSkillPowerBoost[0]  = 0;
+        s->DefensePowerBoost[0]      = 0;
+        s->DefenseSkillPowerBoost[0] = 0;
         s->BasePowerBoost[0]    = 0;
         s->ClashPower[0]        = 0;
         s->DamageUp[0]          = 0.0f;
@@ -393,8 +412,8 @@ void inflictStatus(int status[2], int potencyAdd, int countAdd, int MinStack, in
 }
 
 // ฟังก์ชันกลางสำหรับหักดาเมจเข้าเกราะและเลือด // true damage = 1, normal damage = 0
-void applyDamage(Character *defender, int damage, int trueDamage) {
-    if (damage <= 0) return;
+void applyDamage(Character *attacker, Character *defender, int damage, int trueDamage) {
+    if (damage <= 0 && defender != NULL) return;
 
   // -------------- Effect --------------
 
@@ -429,6 +448,7 @@ void applyDamage(Character *defender, int damage, int trueDamage) {
 
     // HP
     defender->HP -= damage;
+    
     if (defender->HP < 0) defender->HP = 0;
 
     // Heishou Pack - You Branch Adept Heathcliff save for lost HP
@@ -437,6 +457,93 @@ void applyDamage(Character *defender, int damage, int trueDamage) {
     }
 
 }
+
+  // ---------------------- Anti death effect ----------------------
+
+  // Erlking Heathcliff Faded promise for wild hunt
+  if (attacker != NULL && isId(attacker->ID, "Erlking Heathcliff") == 0 && isId(defender->ID, "Heathcliff:Wild Hunt") == 0 && (attacker->skills[7].active == 1 || attacker->skills[7].active == 0) && defender->HP <= 0)  {
+
+    if (defender->skills[7].active == 1) {
+
+    printf("\n%s's 'Faded Promise' activated! In this Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn (Once per Encounter)\n", defender->name);
+
+    sleep(1);
+
+    }
+
+      attacker->skills[7].active = 0;
+
+      defender->HP = 1;
+
+  }
+
+  // Hong lu:The Lord of Hongyuan - Passive
+  if ((isId(defender->ID, "Hong lu:The Lord of Hongyuan")) == 0 &&
+           defender->HP <= 0 && (defender->skills[5].active == 1 || defender->skills[5].active == 0)) {
+
+    if (defender->skills[5].active == 1) {
+
+    printf("\n%s's '%s' activeted! Nullity all damage; then apply 'Lordsguard' to all left Heishou Pack and bring %s's HP to 1 (Once per Encounter)\n",
+      defender->name, defender->skills[5].name, defender->name);
+
+    sleep(1);
+
+    printf("\n%s: \"The Lord will not die.\"\n", defender->name);
+
+    sleep(1);
+
+    }
+
+      defender->skills[5].active = 0;
+
+    defender->HP = 1;
+
+  }
+
+    // Heishou Pack - You Branch Adept Heathcliff - Anti death Passive
+    if ((isId(defender->ID, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
+        defender->HP <= 0 && (defender->skills[3].active == 0 || defender->skills[5].active == -1)) {
+
+      if (defender->skills[3].active == 0) {
+
+      printf("\n%s's 'Flame Rooster's Death Defiance [炎鳥不死戦]' activated! Nullity all damage; then bring %s's HP to 1 (Once per Encounter)\n",
+        defender->name, defender->name);
+
+      sleep(1);
+
+      printf("\n%s: \"Flame Rooster's Death Defiance [炎鳥不死戦]... Heh! You really thought I was gonna kick it... Huh?!\"\n",
+        defender->name);
+
+      sleep(1);
+
+      }
+
+        defender->skills[3].active = -1;
+
+      defender->HP = 1;
+
+    }
+
+    // Meursault:Blade Lineage Mentor - Passive
+    if (isId(defender->ID, "Meursault:Blade Lineage Mentor") == 0 &&
+        defender->HP <= 0 && (defender->Passive == 0 || defender->Passive == -1)) {
+
+      if (defender->Passive == 0) {
+
+      printf("\n%s's 'Swordplay of the Homeland' activated! Nullity all damage; then bring %s's HP to 1 (Once per Encounter)\n",
+        defender->name, defender->name);
+
+      sleep(1);
+
+      }
+
+        defender->Passive = -1; 
+
+          defender->HP = 1;
+
+    }
+
+  // ------------------------------------------------------------------
 
 }
 
@@ -556,7 +663,7 @@ void TremorBurst(Character *attacker, Character *defender, int TremorBurstStagge
 
     int damage = (defender->Tremor[0] + defender->Burn[0])/2;
 
-    applyDamage(defender, damage, 0);
+    applyDamage(attacker, defender, damage, 0);
 
     if (totalDamage != NULL) {
       *totalDamage += damage;
@@ -591,7 +698,7 @@ void updateSanity(Character *c, int delta) {
   if (isId(c->ID, "Muga Ryōshū") == 0 && (c->Sinking[0] > 0 || c->Sinking[1] > 0)) {
       if (delta < 0) {
           int hpDmg = abs(delta) * 3;
-          applyDamage(c, hpDmg, 1); // True damage
+          applyDamage(NULL, c, hpDmg, 1); // True damage
       }
       c->Sanity = -44; // ล็อคไว้ที่ -44 เสมอ
       return;
@@ -736,7 +843,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       int defDown = (c->Sanity <= -45) ? 5 : 4;
       int threshold = (c->Sanity <= -45) ? 25 : 30;
 
-      c->AttackPowerUp[0] += bonusAtk;
+      c->AttackSkillPowerUp[0] += bonusAtk;
         *defense -= defDown;
 
       // Damage Up จากความเจ็บปวด
@@ -814,7 +921,7 @@ void applySanityDebuff(int *offense, int *defense, Character *c) {
       int defDown = (c->Sanity <= -45) ? 5 : 4;
       int threshold = (c->Sanity <= -45) ? 25 : 30;
 
-      c->AttackPowerUp[0] += bonusAtk;
+      c->AttackSkillPowerUp[0] += bonusAtk;
         *defense -= defDown;
 
       // Damage Up จากความเจ็บปวด
@@ -1092,8 +1199,8 @@ void CorpusTheater(Character *c, Character *c2) {
             break;
         case 2:
             // ผลที่ 3: รับ 1 Defense Power Down
-              c2->FinalPowerDown[0] += 1;
-            printf("\t [Corpus Theater] +1 Defense Power Down next turn (%d)", c->skills[4].active);
+              c2->DefenseSkillPowerDown[0] += 1;
+            printf("\t [Corpus Theater] +1 Defense Skill Power Down next turn (%d)", c->skills[4].active);
             break;
     }
     sleep(1);
@@ -1642,18 +1749,18 @@ void clearDebuffsOnDeath(Character *defender, Character *attacker) {
 
 
 void defensePhase(Character *c, SkillStats *ds, Character *c2, SkillStats *ds2) {
-    if (c->HP <= 0 || isStaggered(c)) return;
+    if (c->HP <= 0 || isStaggered(c) || isPanicked(c)) return;
 
   int powerUp = 0;
 
     printf("\n--- Defense Phase ---\n");
-    printf("%s prepares defense with %s\n", c->name, ds->name);
+    printf("%s prepares defense with '%s'\n", c->name, ds->name);
 
     // แสดงรายละเอียดเหรียญ
     printf("Tossing %d Coins for Shield:\n", ds->Coins);
     printf("%-10s %-10s %-10s", "Coin", "Power", "Shield");
 
-    int totalPower = ds->BasePower + ds->BasePowerBoost[0] + ds->FinalPowerBoost[0] + ((c->BasePowerUp[0] - c->BasePowerDown[0]) + (c->FinalPowerUp[0] - c->FinalPowerDown[0]) + (c->FinalPowerUp[0] - c->FinalPowerDown[0]));
+    int totalPower = ds->BasePower + ds->BasePowerBoost[0] + ds->FinalPowerBoost[0] + ds->DefensePowerBoost[0] + ds->DefenseSkillPowerBoost[0] + ((c->BasePowerUp[0] - c->BasePowerDown[0]) + (c->FinalPowerUp[0] - c->FinalPowerDown[0]) + (c->DefensePowerUp[0] - c->DefensePowerDown[0]) + (c->DefenseSkillPowerUp[0] - c->DefenseSkillPowerDown[0]));
 
     for (int i = 0; i < ds->Coins; i++) {
         int isHead = tossCoinWithSanity(c);
@@ -1719,7 +1826,10 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
   // printf("\n%s attacks %s with %s\n", attacker->name, defender->name,
   // atk->name);
 
-  if (attacker->HP > 0 && !isStaggered(attacker)) {
+  int IsunableAttackertoact = isStaggered(attacker) || isPanicked(attacker);
+  int IsunableDefensetoact = isStaggered(attacker) || isPanicked(attacker);
+
+  if (attacker->HP > 0 && !IsunableAttackertoact) {
 
   if (remainingCoins <= 0) {
     printf("\nNo coins left to attack.\n");
@@ -1734,18 +1844,29 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
     }
 
     // Clashable Guard
+
     int powerReduction = 0;
-    if (defSkill != NULL && defSkill->skillType == 4 && !isStaggered(defender) && !ClashLostAttack) {
+    
+    int DefenseBonus = 0;
+    
+    if (defSkill != NULL && defSkill->skillType == 4 && !IsunableDefensetoact && !ClashLostAttack && defSkill->active == 1) {
+      
+      int powerReduction = defSkill->BasePower + defSkill->BasePowerBoost[0];
+
+      defSkill->active = 0;
+      
         printf("\n--- Defense Phase ---\n");
         printf("%s prepare to mitigate damage with %s: %s (Cracking Coin fixed Coin Power to 1)\n", defender->name, getSkillTypeName(defSkill->skillType), defSkill->name);
 
         // 1. คำนวณพลังพื้นฐาน (Base + Level Bonus + Buff)
-        powerReduction = defSkill->BasePower + defSkill->BasePowerBoost[0] + defSkill->FinalPowerBoost[0] + ((defender->BasePowerUp[0] - defender->BasePowerDown[0]) + (defender->FinalPowerUp[0] - defender->FinalPowerDown[0]) + (defender->FinalPowerUp[0] - defender->FinalPowerDown[0]));
+            DefenseBonus = defSkill->FinalPowerBoost[0] + defSkill->DefensePowerBoost[0] + defSkill->DefenseSkillPowerBoost[0] + ((defender->BasePowerUp[0] - defender->BasePowerDown[0]) + (defender->FinalPowerUp[0] - defender->FinalPowerDown[0]) + (defender->DefensePowerUp[0] - defender->DefensePowerDown[0]) + (defender->DefenseSkillPowerUp[0] - defender->DefenseSkillPowerDown[0]));
 
         int defenseDiff = defTempDefense - atkTempOffense;
         if (defenseDiff > 0) {
-            powerReduction += (defenseDiff / 3);
+                    DefenseBonus += (defenseDiff / 3);
         }
+
+        powerReduction += DefenseBonus;
 
         // 2. ช่วง Tossing Coins (Visual Part)
         printf("Tossing %d Coins (Fixed Coin Power: 1):\n", defSkill->Coins);
@@ -1767,10 +1888,9 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
             usleep(400000); 
         }
 
-        printf("\n(%d bonus) %s total Defense power: %d\n", ((defenseDiff > 0) ? (defenseDiff / 3) : 0) + ((defender->FinalPowerUp[0] - defender->FinalPowerDown[0]) + (defender->FinalPowerUp[0] - defender->FinalPowerDown[0]) + defSkill->FinalPowerBoost[0]), defender->name, powerReduction);
+        printf("\n(%d bonus) %s total Defense power: %d\n", DefenseBonus, defender->name, powerReduction);
         sleep(1);
     }
-
 
 
 
@@ -2481,30 +2601,34 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
         }
     }
 
-     if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
-    // Check on Hit for prescript II
-    // หา Index ของสกิลที่กำลังใช้อยู่
-    int atk_idx = -1;
-    if (atk == &attacker->skills[0]) atk_idx = 0;
-    else if (atk == &attacker->skills[1]) atk_idx = 1;
-    else if (atk == &attacker->skills[2]) atk_idx = 2;
-    else if (atk == &attacker->skills[3]) atk_idx = 3;
-
-    // เงื่อนไขความสำเร็จ Prescript II: "Hit" a target with a marked skill
-    if (attacker->Passive == 1 && atk_idx == attacker->skills[4].active) {
-        if (attacker->skills[5].active == 0) {
-            attacker->skills[5].active = 1;
-            //printf(" [Prescript II: Hit Success!] ");
-        }
-    }
-
-     }
-
     // The House of Spiders: The Ring Nursefather Hong Lu - Skill 3
     if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && atk == &attacker->skills[2]) {
 
       inflictStatus(attacker->Charge, 0, -4, 0, 99, 0, 20);
 
+        attacker->skills[6].active += 4; // Count Consumed
+      
+
+      if (attacker->skills[6].active >= 10) {
+         int Gain = attacker->skills[6].active / 10;
+          attacker->skills[6].active -= Gain * 10; // Count Consumed
+          inflictStatus(attacker->Charge, Gain, 0, 0, 99, 0, 20);
+          printf("\n%s gains +%d Corpus Ingredient Stack (%d)\n", attacker->name, Gain, attacker->Charge[0]);
+
+          sleep(1);
+
+          if (attacker->Charge[0] >= 2 && !attacker->skills[14].active) {
+            attacker->skills[14].active = 1; // Flagged
+            printf("\n%s gains Artwork: Tibia\n", attacker->name);
+
+            sleep(1);
+
+            printf("\n%s: \"Ah...! Marvelous art...!\"\n", attacker->name);
+
+            sleep(1);
+          }
+        }
+        
           printf("\n%s consumes 4 Corpus Ingredient Count (%d)\n", attacker->name, attacker->Charge[1]);
 
         sleep(1);
@@ -2519,7 +2643,7 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
     int evadePower = 0;
 
     // Evade Skill
-    if (defSkill->skillType == 2) {
+    if (defSkill != NULL && defSkill->skillType == 2 && defSkill->active == 1) {
         Evaded = 1;
       IsStillEvaded = 1;
 
@@ -2565,7 +2689,7 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
 
   printf("\n--- Attack Phase ---\n");
 
-  int totalPower = atk->BasePower + (attacker->BasePowerUp[0] - attacker->BasePowerDown[0]);
+  int totalPower = atk->BasePower + atk->BasePowerBoost[0] + (attacker->BasePowerUp[0] - attacker->BasePowerDown[0]);
   int totalDamage = 0;
 
   printf("%s starts attack with %s: '%s'\n", attacker->name, getSkillTypeName(atk->skillType), atk->name);
@@ -2702,7 +2826,7 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
       // Heishou Pack - You Branch Adept Heathcliff Skill 3 burn
       if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && attacker->HP >= attacker->MAX_HP*0.5) {
 
-        applyDamage(attacker, attacker->Burn[0], 0);
+        applyDamage(NULL, attacker, attacker->Burn[0], 0);
 
         if (attacker->HP < 1)
             attacker->HP = 1;
@@ -2793,9 +2917,9 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
     // Last coin power bonus (from character buffs only)
     if (i == remainingCoins - 1) {
       if (atk->skillType == 0) {
-        bonus = (atk->FinalPowerBoost[0] + atk->AttackPowerBoost[0]) + ((attacker->FinalPowerUp[0] - attacker->FinalPowerDown[0]) + (attacker->AttackPowerUp[0] - attacker->AttackPowerDown[0]) + (attacker->AttackPowerUp[0] - attacker->AttackPowerDown[0]));
+        bonus = (atk->FinalPowerBoost[0] + atk->AttackPowerBoost[0] + atk->AttackSkillPowerBoost[0]) + ((attacker->FinalPowerUp[0] - attacker->FinalPowerDown[0]) + (attacker->AttackPowerUp[0] - attacker->AttackPowerDown[0]) + (attacker->AttackSkillPowerUp[0] - attacker->AttackSkillPowerDown[0]));
       } else {
-        bonus = (atk->FinalPowerBoost[0] + atk->AttackPowerBoost[0]) + ((attacker->FinalPowerUp[0] - attacker->FinalPowerDown[0]) + (attacker->FinalPowerUp[0] - attacker->FinalPowerDown[0]));
+        bonus = (atk->FinalPowerBoost[0] + atk->DefensePowerBoost[0] + atk->DefenseSkillPowerBoost[0]) + ((attacker->FinalPowerUp[0] - attacker->FinalPowerDown[0]) + (attacker->DefensePowerUp[0] - attacker->DefensePowerDown[0]) + (attacker->DefenseSkillPowerUp[0] - attacker->DefenseSkillPowerDown[0]));
       }
         currentPower += bonus;
       if (currentPower <= 0) currentPower = 0;
@@ -2852,7 +2976,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       }
 
         }
-
 
 
 
@@ -4135,7 +4258,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
          printf("\n%s's last coin deal +50%% damage with Critical Hit", attacker->name);
 
-      sleep(1);
     }
 
 
@@ -4146,7 +4268,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
          printf("\n%s's this coin deal +60%% damage on Critical Hit", attacker->name);
 
-      sleep(1);
     }
 
       // Meursault:Blade Lineage Mentor S3/S4 Last coins
@@ -4165,7 +4286,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
          printf("\n%s's last coin deal +50%% damage", attacker->name);
 
-      sleep(1);
     }
 
 
@@ -4372,7 +4492,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
             if (evadePower <= 0) evadePower = 0;
           }
         }
-      } else {
+      } else if (defSkill != NULL) {
         evadePower = defSkill->BasePower + (defender->BasePowerUp[0] - defender->BasePowerDown[0]);
 
         int IsHeadHit = tossCoinWithSanity(defender);
@@ -4404,13 +4524,17 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         finalDamage = 0;
       } else {
         Evaded = 0;       // หลบพลาด! หยุดการหลบในเหรียญที่เหลือ
+
+        if (defSkill->skillType == 2) {
+            defSkill->active = 0; // เหรียญหลบพังแล้ว! (มีผลข้ามไปถึง Attack ต่อๆ ไปด้วย)
+        }
       }
 
     }
 
     if (!Evaded) {
 
-      applyDamage(defender, finalDamage, 0);
+      applyDamage(attacker, defender, finalDamage, 0);
 
     totalDamage += finalDamage;
 
@@ -4475,7 +4599,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                     int deal = attacker->skills[10].active;
                     attacker->skills[12].active += deal; // Store tremor burse damage
 
-                  applyDamage(defender, deal, 0);
+                  applyDamage(attacker, defender, deal, 0);
 
                     totalDamage += deal;
                     printf("\t Trigger 'Tremor Burst' (Stack %d Count 0) ", deal);
@@ -4512,7 +4636,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                 int hermesHardCap = (attacker->Passive < 2) ? 8 : 9;
                 int maxGainThisTurn = attacker->Passive + 2;
 
-                if (attacker->skills[1].active < hermesHardCap && attacker->skills[13].active < maxGainThisTurn) {
+                if (attacker->skills[1].active < hermesHardCap && attacker->skills[13].active < maxGainThisTurn && !Evaded) {
                     attacker->skills[1].active++;
                     attacker->skills[13].active++;
                     printf("\t Procuration [Hermes] +1 (%d) ", attacker->skills[1].active);
@@ -4572,7 +4696,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 3 coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && !Evaded) {
 
           inflictStatus(attacker->Burn, 2, 0, 0, 99, 0, 99);
 
@@ -4582,9 +4706,9 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 2 Last coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1 && !Evaded) {
 
-          inflictStatus(attacker->Burn, 3, 0, 0, 99, 0, 99);
+          inflictStatus(attacker->Burn, 3, 1, 0, 99, 0, 99);
 
       printf("\n%s applies +3 Burn Stack(%d) and +1 Burn Count(%d) on self", attacker->name, attacker->Burn[0], attacker->Burn[1]);
 
@@ -4594,7 +4718,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       if (damageboost > 20) damageboost = 20;
       int damage = finalDamage * (damageboost / 100);
 
-      applyDamage(defender, damage, 0);
+      applyDamage(attacker, defender, damage, 0);
 
       totalDamage += damage;
 
@@ -4604,13 +4728,13 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 3 Last coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1 && !Evaded) {
 
       float damageboost = (attacker->Burn[0] + attacker->Burn[1]) * 2.0f;
       if (damageboost > 20) damageboost = 20;
       int damage = finalDamage * (damageboost / 100);
 
-      applyDamage(defender, damage, 0);
+      applyDamage(attacker, defender, damage, 0);
 
       totalDamage += damage;
 
@@ -4620,12 +4744,12 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
     }
 
     // Heishou Pack - You Branch Adept Heathcliff Skill 4 Last coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1 && !Evaded) {
 
       float damageboost = 20.0f;
       int damage = finalDamage * (damageboost / 100);
 
-      applyDamage(defender, damage, 0);
+      applyDamage(attacker, defender, damage, 0);
 
       totalDamage += damage;
 
@@ -4657,6 +4781,25 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
          sleep(1);
     }
     }
+
+       if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+      // Check on Hit for prescript II
+      // หา Index ของสกิลที่กำลังใช้อยู่
+      int atk_idx = -1;
+      if (atk == &attacker->skills[0]) atk_idx = 0;
+      else if (atk == &attacker->skills[1]) atk_idx = 1;
+      else if (atk == &attacker->skills[2]) atk_idx = 2;
+      else if (atk == &attacker->skills[3]) atk_idx = 3;
+
+      // เงื่อนไขความสำเร็จ Prescript II: "Hit" a target with a marked skill
+      if (attacker->Passive == 1 && atk_idx == attacker->skills[4].active) {
+          if (attacker->skills[5].active == 0 && finalDamage > 0) {
+              attacker->skills[5].active = 1;
+              //printf(" [Prescript II: Hit Success!] ");
+          }
+      }
+
+       }
     // ----------------------------------------------------------------
 
 
@@ -4698,7 +4841,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           if (defender->Rupture[1] <= 0) defender->Rupture[0] = 0;
 
-         applyDamage(defender, deal, 0);
+         applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
 
@@ -4709,8 +4852,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       int damage = attacker->Bleed[0] > 0 ? attacker->Bleed[0] : 1;
 
-      applyDamage(attacker, damage, 0);
-
         attacker->Bleed[1]--;
 
       if (attacker->Bleed[1] <= 0) attacker->Bleed[1] = 0;
@@ -4718,6 +4859,8 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       printf("\t Take %d Bleed damage (Count %d)", damage, attacker->Bleed[1]);
 
       if (attacker->Bleed[1] <= 0) attacker->Bleed[0] = 0;
+
+      applyDamage(NULL, attacker, damage, 0);
 
     }
 
@@ -4751,7 +4894,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
             if (defender->Sinking[1] <= 0) defender->Sinking[0] = 0;
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
               totalDamage += deal;
 
@@ -5525,7 +5668,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
         if (Unbreakable <= 0 && attacker->skills[9].active == 0 && attacker->skills[2].active > 0) {
           int deal = 5;
 
-          applyDamage(defender, deal, 0);
+          applyDamage(attacker, defender, deal, 0);
 
           totalDamage += deal;
           printf("\t Deal %d bonus damage", deal);
@@ -5533,7 +5676,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
           int deal = 10;
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
             printf("\t Deal %d bonus damage", deal);
@@ -5557,14 +5700,14 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
           int deal = 10;
 
-          applyDamage(defender, deal, 0);
+          applyDamage(attacker, defender, deal, 0);
 
           totalDamage += deal;
           printf("\t [On Hit] Deal %d bonus damage", deal);
         } else  if (i == remainingCoins - 2 && attacker->skills[9].active >= 1 && Unbreakable <= 0) {
           int deal = 15;
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
             printf("\t [On Hit without Cracking] Deal %d bonus damage", deal);
@@ -5587,14 +5730,14 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
         if (Unbreakable <= 0 && attacker->skills[9].active == 0 && attacker->skills[2].active > 0) {
           int deal = 5;
 
-          applyDamage(defender, deal, 0);
+          applyDamage(attacker, defender, deal, 0);
 
           totalDamage += deal;
           printf("\t Deal %d bonus damage", deal);
         } else if (Unbreakable <= 0 && attacker->skills[9].active > 0 && attacker->skills[2].active > 0) {
           int deal = 10;
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
             printf("\t Deal %d bonus damage", deal);
@@ -5603,7 +5746,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
         if (Unbreakable <= 0 && i != remainingCoins - 1) {
           int deal = 10;
 
-          applyDamage(defender, deal, 0);
+          applyDamage(attacker, defender, deal, 0);
 
           totalDamage += deal;
           printf("\t [On Hit without Cracking] Deal %d bonus damage", deal);
@@ -5649,7 +5792,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
             int deal = 10;
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
             printf("\t [On Hit without Cracking] Deal %d bonus damage", deal);
@@ -5668,7 +5811,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
           int inflictCount = 4;
           inflictStatus(defender->Burn, 0, inflictCount, 0, 99, 0, 99);
-          printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[0]);
+          printf("\t [On Hit] Burn Count +%d on enemy (%d)", inflictCount, defender->Burn[1]);
 
         }
 
@@ -5694,7 +5837,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
           if (Unbreakable <= 0) {
             int deal = 10;
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
             printf("\t [On Hit without Cracking] Deal %d bonus damage", deal);
@@ -5713,7 +5856,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
             int deal = 10;
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
             printf("\t [On Hit without Cracking] Deal %d bonus damage", deal);
@@ -5726,7 +5869,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
           int deal = 20;
 
-          applyDamage(defender, deal, 0);
+          applyDamage(attacker, defender, deal, 0);
 
           totalDamage += deal;
           printf("\t [On Hit without Cracking] Deal %d bonus damage", deal);
@@ -6151,6 +6294,9 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
         Count = 2;
       } else if (i == remainingCoins - 2) { // Second Coin
           Stack = 2;
+        if (attacker->Passive <= 50) {
+            Stack += 1;
+        }
         }
 
       inflictStatus(defender->Burn, Stack, Count, 0, 99, 0, 99);
@@ -6289,7 +6435,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
       if (!attacker->Passive) {
 
-        applyDamage(defender, attacker->skills[0].active, 0);
+        applyDamage(attacker, defender, attacker->skills[0].active, 0);
 
       totalDamage += attacker->skills[0].active;
 
@@ -6299,7 +6445,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
         int Fairydamage = 0.5*((defender->MAX_HP/100)*attacker->skills[0].active);
 
-        applyDamage(defender, Fairydamage, 1);
+        applyDamage(attacker, defender, Fairydamage, 1);
 
           totalDamage += Fairydamage;
 
@@ -6379,7 +6525,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
       if (i == remainingCoins - 1) {
 
-        applyDamage(defender, attacker->skills[0].active, 0);
+        applyDamage(attacker, defender, attacker->skills[0].active, 0);
 
         totalDamage += attacker->skills[0].active;
         printf("\t [On Hit] Deal more damage equal to Butterfly on enemy(%d)", attacker->skills[0].active);
@@ -6434,7 +6580,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
             printf(" \tDeal %d more damage on enemy", min);
 
-          applyDamage(defender, min, 0);
+          applyDamage(attacker, defender, min, 0);
 
             totalDamage += min;
 
@@ -6485,7 +6631,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
                 printf(" \tDeal %d more damage on enemy", min);
 
-            applyDamage(defender, min, 0);
+            applyDamage(attacker, defender, min, 0);
 
             totalDamage += min;
 
@@ -6501,7 +6647,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
                 printf(" \tDeal %d damage on enemy", deal);
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
 
@@ -6515,7 +6661,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
                 printf(" \tDeal %d damage on enemy", deal);
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
 
@@ -6529,7 +6675,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
                 printf(" \tDeal %d damage on enemy", deal);
 
-            applyDamage(defender, deal, 0);
+            applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
 
@@ -6604,7 +6750,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
     // Muga Ryōshū on attack
     if (isId(attacker->ID, "Muga Ryōshū") == 0 && attacker->skills[0].active/5 > 0) {
-        applyDamage(defender, attacker->skills[0].active/5, 0); // deal sever the thread/5 damage
+        applyDamage(attacker, defender, attacker->skills[0].active/5, 0); // deal sever the thread/5 damage
       printf("\t Enemy takes %d damage", attacker->skills[0].active/5);
 
       totalDamage += attacker->skills[0].active/5;
@@ -6616,9 +6762,11 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
         if (attacker->Passive > 100) attacker->Passive = 100;
       printf("\t Muga [無我] +4 (%d)", attacker->Passive);
 
+      if (!Evaded) {
       attacker->skills[0].active += attacker->skills[10].active; // Inflicted sever
       if (attacker->skills[0].active > 100) attacker->skills[0].active = 100;
       printf("\t Sever the Thread [切絲] +%d on enemy (%d)", attacker->skills[10].active, attacker->skills[0].active);
+      }
     }
 
     // Muga Ryōshū gains on get hit
@@ -6628,7 +6776,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     }
 
     // Muga Ryōshū on attack skill 1
-    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[0] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[0] && Unbreakable <= 0 && !Evaded) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -6654,7 +6802,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     }
 
     // Muga Ryōshū on attack skill 2
-    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[1] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[1] && Unbreakable <= 0 && !Evaded) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -6680,7 +6828,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     }
 
     // Muga Ryōshū on attack skill 3
-    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[2] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[2] && Unbreakable <= 0 && !Evaded) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -6715,7 +6863,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     }
 
     // Muga Ryōshū on attack skill 4
-    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[3] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[3] && Unbreakable <= 0 && !Evaded) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -6750,7 +6898,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     }
 
     // Muga Ryōshū on attack skill 5
-    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[4] && Unbreakable <= 0) {
+    if (isId(attacker->ID, "Muga Ryōshū") == 0 && atk == &attacker->skills[4] && Unbreakable <= 0 && !Evaded) {
 
       int bleedstackinf = 0;
       if (attacker->skills[1].active == 1) bleedstackinf += 3;
@@ -6918,7 +7066,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
           updateSanity(defender, -(deal));
 
-          applyDamage(defender, excessdamage, 0);
+          applyDamage(attacker, defender, excessdamage, 0);
 
             totalDamage += excessdamage;
 
@@ -6939,7 +7087,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
         int deal = attacker->skills[1].active + attacker->skills[2].active;
 
-        applyDamage(defender, deal, 0);
+        applyDamage(attacker, defender, deal, 0);
 
             totalDamage += deal;
 
@@ -7005,7 +7153,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     // -------------------- Heishou Pack - You Branch Adept Heathcliff ---------------------
 
     // Heishou Pack - You Branch Adept Heathcliff - Skill 2 reuse
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[2].active > 0 || attacker->HP < attacker->MAX_HP * 0.5) && atk == &attacker->skills[1] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[1].Coins) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->skills[2].active > 0 || attacker->HP < attacker->MAX_HP * 0.5) && atk == &attacker->skills[1] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[1].Coins && !Evaded) {
 
       attacker->skills[1].Coins = remainingCoins;
 
@@ -7020,7 +7168,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     }
 
     // Heishou Pack - You Branch Adept Heathcliff - Skill 3-2 reuse
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->Burn[0] >= 20 || attacker->HP <= attacker->MAX_HP * 0.5) && atk == &attacker->skills[3] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[3].Coins) {
+    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (attacker->Burn[0] >= 20 || attacker->HP <= attacker->MAX_HP * 0.5) && atk == &attacker->skills[3] && i == remainingCoins - 1 && remainingCoins <= attacker->skills[3].Coins && !Evaded) {
 
       attacker->skills[3].Coins = remainingCoins;
 
@@ -7043,7 +7191,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
       int damage = abs(attacker->Sanity - defender->Sanity);
       if (damage > 30) damage = 30;
 
-      applyDamage(defender, damage, 0);
+      applyDamage(attacker, defender, damage, 0);
 
       totalDamage += damage;
 
@@ -7167,6 +7315,28 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
         printf("\n%s's Dialogues activated! Heal up to max HP, lose 1 stack(%d)", defender->name, attacker->skills[15].active);
         sleep(1);
     }
+
+      }
+
+      // Jia Qiu enemy heal
+      if (isId(defender->ID, "Jia Qiu") == 0 && (defender->skills[15].active > 0) && attacker->HP <= 0) {
+
+        if (isId(attacker->ID, "Hong lu:The Lord of Hongyuan") == 0) {
+
+            defender->skills[15].active -= 1;
+
+          attacker->HP = attacker->MAX_HP;
+            attacker->FinalPowerUp[1] += 1;
+          printf("\n%s's Uncompromising Imposition activated! Heal up to max HP and gain 1 Final Power, lose 1 stack(%d)", attacker->name, attacker->skills[15].active);
+          sleep(1);
+      } else {
+
+            defender->skills[15].active -= 1;
+
+            attacker->HP = attacker->MAX_HP;
+          printf("\n%s's Dialogues activated! Heal up to max HP, lose 1 stack(%d)", attacker->name, attacker->skills[15].active);
+          sleep(1);
+      }
 
 
     }
@@ -7465,12 +7635,12 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
           defender->skills[4].active = 0; // Reset
 
           // Resentment Logic
-          if (defender->skills[1].active > 0) defender->skills[1].active -= 2; // Lose Kiddo
+          if (defender->skills[1].active > 0) defender->skills[1].active -= 1; // Lose Kiddo
         if (defender->skills[1].active < 0) defender->skills[1].active = 0;
           defender->skills[0].active++; // Gain 1 Grudge
           if (defender->skills[0].active > 10) defender->skills[0].active = 10;
 
-          printf("\n%s gains 1 'The Middle - Grudge' (%d) and loses 2 'Check This Out, Kiddo!' (%d)\n", defender->name, defender->skills[0].active, defender->skills[1].active);
+          printf("\n%s gains 1 'The Middle - Grudge' (%d) and loses 1 'Check This Out, Kiddo!' (%d)\n", defender->name, defender->skills[0].active, defender->skills[1].active);
 
         sleep(1);
       }
@@ -8703,74 +8873,6 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     printf("\n%s's HP drop to 1\n", defender->name);
   }
 
-    // ---------------------- Anti death effect ----------------------
-
-    // Erlking Heathcliff Faded promise for wild hunt
-    if (isId(attacker->ID, "Erlking Heathcliff") == 0 && isId(defender->ID, "Heathcliff:Wild Hunt") == 0 && (attacker->skills[7].active == 1) && defender->HP <= 0)  {
-
-      attacker->skills[7].active--;
-
-      defender->HP = 1;
-
-      printf("\n%s's 'Faded Promise' activated! In this Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn (Once per Encounter)\n", defender->name);
-
-      sleep(1);
-
-    }
-
-    // Hong lu:The Lord of Hongyuan - Passive
-    if ((isId(defender->ID, "Hong lu:The Lord of Hongyuan")) == 0 &&
-             defender->HP <= 0 && defender->skills[5].active == 1) {
-
-        defender->skills[5].active--;
-
-      defender->HP = 1;
-
-      printf("\n%s's '%s' activeted! Nullity all damage; then apply 'Lordsguard' to all left Heishou Pack and bring %s's HP to 1 (Once per Encounter)\n",
-        defender->name, defender->skills[5].name, defender->name);
-
-      sleep(1);
-
-      printf("\n%s: \"The Lord will not die.\"\n", defender->name);
-
-      sleep(1);
-
-    }
-
-      // Heishou Pack - You Branch Adept Heathcliff - Anti death Passive
-      if ((isId(defender->ID, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
-          defender->HP <= 0 && defender->skills[3].active == 0) {
-
-          defender->skills[3].active--;
-
-        defender->HP = 1;
-
-        printf("\n%s's 'Flame Rooster's Death Defiance [炎鳥不死戦]' activated! Nullity all damage; then bring %s's HP to 1 (Once per Encounter)\n",
-          defender->name, defender->name);
-
-        sleep(1);
-
-        printf("\n%s: \"Flame Rooster's Death Defiance [炎鳥不死戦]... Heh! You really thought I was gonna kick it... Huh?!\"\n",
-          defender->name);
-
-      }
-
-      // Meursault:Blade Lineage Mentor - Passive
-      if (isId(defender->ID, "Meursault:Blade Lineage Mentor") == 0 &&
-          defender->HP <= 0 && defender->Passive == 0) {
-
-          defender->Passive--;
-
-            defender->HP = 1;
-
-        printf("\n%s's 'Swordplay of the Homeland' activated! Nullity all damage; then bring %s's HP to 1 (Once per Encounter)\n",
-          defender->name, defender->name);
-
-        sleep(1);
-
-      }
-
-    // ------------------------------------------------------------------
 
   // -------------------------------------------------------------------------------------------------------------
 
@@ -8828,7 +8930,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   // --------------- The House of Spiders: The Ring Nursefather Hong Lu ----------------
 
   // The House of Spiders: The Ring Nursefather Hong Lu - Consumed and loses / Buff Passive
-  if (isId(c->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0) {
+  if (isId(c->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 0 && !isStaggered(c) && !isPanicked(c)) {
 
     if (c->Passive > 0) {
     c->Passive -= 1;
@@ -8840,8 +8942,10 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
     if (c->skills[8].active == 1) {
 
+      if (chosenSkill->skillType == 0) {
       chosenSkill->ClashPower[0] += 1;
       chosenSkill->DamageUp[0] += 10;
+      }
 
       printf("\n%s has Somatic Frisson-inspiring Melody gains following effect:"
         "\n - Min & Max Speed +1 "
@@ -11388,7 +11492,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
   if (isId(c->ID, "Hong lu:The Lord of Hongyuan") == 0 && (chosenSkill == &c->defenseSkill[0])) {
 
 
-    chosenSkill->AttackPowerBoost[1] += 2;
+    c->AttackSkillPowerUp[1] += 2;
 
       printf("\n%s gains +2 Attack Skill Power Up next turn\n", c->name);
 
@@ -12663,8 +12767,10 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2,
 
 
 
-
-
+// Evade Skill
+  if (chosenSkill->skillType == 2 || chosenSkill->skillType == 4) {
+      chosenSkill->active = 1; // 1 หมายถึง เหรียญหลบยังอยู่ดี
+  }
 
 
 
@@ -13135,7 +13241,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   if (isId(p2->ID, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && s2 == &p2->skills[7]) {
 
     p2->ProtectionDown[0] += 30;
-    p2->DamageUp[0] -= 80;
+    s2->DamageUp[0] -= 80;
     updateSanity(p2, -10);
 
     printf("\n%s lost the Clash, loses 10 Sanity (%d), deals -80%% damage and takes +30%% damage\n",
@@ -13164,7 +13270,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
     for (int i = 0; i < p2->numSkills; i++) {
       p2->skills[i].Defense -= 24;
     }
-    p2->DamageUp[0] -= 50;
+    s2->DamageUp[0] -= 50;
 
     printf("\n%s lost the Clash, Deal -50%% damage and Defense -24 next turn for this Encounter\n", p2->name);
 
@@ -13295,7 +13401,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
   // Sancho:The Second Kindred of Don Quixote - Skill 10 lost
   if (isId(p2->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (s2 == &p2->skills[9]) && enemyCoins <= 0) {
-    p2->DamageUp[0] -= 50;
+    s2->DamageUp[0] -= 50;
     p2->ProtectionDown[0] += 30;
     printf("\n%s lost the Clash, deals -50%% damage and takes 30%% more damage\n", p2->name);
 
@@ -13519,15 +13625,13 @@ if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->sk
 
   }
 
-  // Sukuna:King of Curse - skill 7 8 9 Clash lost
-  if (isId(p2->ID, "Sukuna:King of Curse") == 0 && enemyCoins <= 0 && (s1 == &p1->skills[7] || s1 == &p1->skills[8] || s1 == &p1->skills[9])) {
+  // The Middle Nursefather - Matthias - skill 7 8 9 Clash lost
+  if (isId(p2->ID, "The Middle Nursefather - Matthias") == 0 && enemyCoins <= 0 && (s2 == &p2->skills[7] || s2 == &p2->skills[8] || s2 == &p2->skills[9])) {
 
-    p2->ProtectionDown[0] += 10;
-    p2->DamageUp[0] -= 70;
-    updateSanity(p2, -10);
+    s2->DamageUp[0] -= 80;
 
-    printf("\n%s lost the Clash, loses 10 Sanity (%d), deals -70%% damage and takes +10%% damage\n",
-      p2->name, p2->Sanity);
+    printf("\n%s lost the Clash, deals -80%% damage\n",
+      p2->name);
 
     sleep(1);
   }
@@ -13559,7 +13663,7 @@ if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->sk
         p1->HP -= (int)(p1->MAX_HP * 0.04);
     if (p1->HP < 1) p1->HP = 1;
 
-      p1->DamageUp[0] += 25;
+        s1->DamageUp[0] += 25;
       p1->Passive += 1;
 
     sleep(1);
@@ -13572,7 +13676,7 @@ if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->sk
     printf("\n%s won the Clash, deals 20%% more damage and more 20%% damage for every 10 Hardblood(%d)\n",
       p1->name, p1->Passive);
 
-      p1->DamageUp[0] += 20 * ((p2->Passive / 10) + 1);
+      s1->DamageUp[0] += 20 * ((p2->Passive / 10) + 1);
 
     sleep(1);
   }
@@ -13594,7 +13698,7 @@ if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->sk
   // Sancho:The Second Kindred of Don Quixote - Skill 14 won
   if (isId(p1->ID, "Sancho:The Second Kindred of Don Quixote") == 0 &&
       (s1 == &p1->skills[13]) && playerCoins <= 0) {
-      p1->DamageUp[0] += 10;
+      s1->DamageUp[0] += 10;
     if (p1->Passive < 1) p1->Passive = 1;
     printf("\n%s won the Clash, deal +10%% damage\n", p1->name);
 
@@ -13730,7 +13834,7 @@ if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->sk
 
   if (isId(p1->ID, "Fixer grade 9?") == 0 && p1->Passive >= 3 && playerCoins <= 0 && s1 == &p1->skills[1]) {
     p1->Passive -= 3;
-    p1->DamageUp[0] += 50;
+    s1->DamageUp[0] += 50;
     if (p1->Passive < 0) p1->Passive = 0;
     printf("\n%s won the Clash, consumes 3 Black Silence(%d) to deal 50%% more damage\n", p1->name, p1->Passive);
 
@@ -13759,7 +13863,7 @@ if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->sk
     p1->Passive -= 2;
     if (p1->Passive < 0) p1->Passive = 0;
     p1->DamageUp[1] += 15;
-    printf("\n%s won the Clash, consumes 2 Black Silence(%d) to deal 15%% more damage next turn\n", p1->name, p1->Passive);
+    printf("\n%s won the Clash, consumes 2 Black Silence(%d) to gain 15%% Damage Up next turn\n", p1->name, p1->Passive);
 
      sleep(1);
   }
@@ -13942,8 +14046,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
     int maxToss = (playerCoins > enemyCoins) ? playerCoins : enemyCoins;
 
-    playerTotal = s1->BasePower + (p1->BasePowerUp[0] - p1->BasePowerDown[0]);
-    enemyTotal = s2->BasePower + (p2->BasePowerUp[0] - p2->BasePowerDown[0]);
+    playerTotal = s1->BasePower + s1->BasePowerBoost[0] + (p1->BasePowerUp[0] - p1->BasePowerDown[0]);
+    enemyTotal = s2->BasePower + s2->BasePowerBoost[0] + (p2->BasePowerUp[0] - p2->BasePowerDown[0]);
 
     // ใช้การคูณลดทอน
     double roundDelay = 0.15;
@@ -14050,18 +14154,23 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       // Check if this is player's last coin
       if (i == playerCoins - 1) {
 
+        if (s1->skillType == 4) { // เราใช้ท่าป้องกันที่ Clash ได้
+          bonus += (playerTempDefense - enemyTempOffense) / 3;
+        } else if (s2->skillType == 4) { // เราใช้ท่าโจมตีปกติ แต่ศัตรูใช้ท่าป้องกันที่ Clash ได้
+          bonus += (playerTempOffense - enemyTempDefense) / 3;
+        } else { // โจมตีปกติ vs โจมตีปกติ
+          bonus += (playerTempOffense - enemyTempOffense) / 3;
+        }
+
+        if (bonus < 0) bonus = 0; // ต้องห้ามติดลบตามกฎเกม
+
         // Calculate player's clash bonus
-        if (s1->skillType == 4) { // ถ้าเป็น Clashable Guard
-          // ทุกๆ 3 Defense Level ที่สูงกว่า Offense ศัตรู ได้ +1 Power
-          int defenseDiff = playerTempDefense - enemyTempOffense;
-          if (defenseDiff > 0) bonus += (defenseDiff / 3);
+        if (s1->skillType != 0) { // ถ้าเป็น Clashable Guard or Counter
 
           // บวกโบนัสจาก DefensePowerBoost และ ClashPower/FinalPower ตามปกติ
-          bonus += (s1->ClashPower[0] + s1->FinalPowerBoost[0]) + ((p1->FinalPowerUp[0] - p1->FinalPowerDown[0]) + (p1->ClashPowerUp[0] - p1->ClashPowerDown[0]) + (p1->FinalPowerUp[0] - p1->FinalPowerDown[0])) + defenseDiff;
+          bonus += (s1->ClashPower[0] + s1->FinalPowerBoost[0]) + ((p1->FinalPowerUp[0] - p1->FinalPowerDown[0]) + (p1->ClashPowerUp[0] - p1->ClashPowerDown[0])) + (p1->DefenseSkillPowerUp[0] - p1->DefenseSkillPowerDown[0]);
         } else { // ถ้าเป็น Attack ปกติ (โค้ดเดิมของคุณ)
-          int offenseBonus = ((playerTempOffense - enemyTempOffense) / 3);
-          if (offenseBonus < 0) offenseBonus = 0;
-          bonus = (s1->ClashPower[0] + s1->FinalPowerBoost[0]) + ((p1->ClashPowerUp[0] - p1->ClashPowerDown[0]) + (p1->FinalPowerUp[0] - p1->FinalPowerDown[0]) + (p1->AttackPowerUp[0] - p1->AttackPowerDown[0])) + offenseBonus;
+          bonus += (s1->ClashPower[0] + s1->FinalPowerBoost[0]) + ((p1->ClashPowerUp[0] - p1->ClashPowerDown[0]) + (p1->FinalPowerUp[0] - p1->FinalPowerDown[0]) + (p1->AttackSkillPowerUp[0] - p1->AttackSkillPowerDown[0])) ;
         }
 
         if (bonus != 0) {
@@ -14085,15 +14194,24 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       // Check if this is enemy's last coin
       if (i == enemyCoins - 1) {
 
+        if (s2->skillType == 4) { 
+          // ศัตรูใช้ท่าป้องกันที่ Clash ได้ (เขาป้องกัน vs เราโจมตี)
+            bonus += (enemyTempDefense - playerTempOffense) / 3;
+        } else if (s1->skillType == 4) { 
+          // ศัตรูใช้ท่าโจมตีปกติ แต่เราใช้ท่าป้องกันที่ Clash ได้ (เขาโจมตี vs เราป้องกัน)
+            bonus += (enemyTempOffense - playerTempDefense) / 3;
+        } else { 
+          // โจมตีปกติ vs โจมตีปกติ
+            bonus += (enemyTempOffense - playerTempOffense) / 3;
+        }
+
+        if (bonus < 0) bonus = 0; // ต้องห้ามติดลบตามกฎเกม
+
         // Calculate enemy's clash bonus
-        if (s2->skillType == 4) { // ถ้าเป็น Clashable Guard
-          int defenseDiff = enemyTempDefense - playerTempOffense;
-          if (defenseDiff > 0) bonus += (defenseDiff / 3);
-          bonus += (s2->ClashPower[0] + s2->FinalPowerBoost[0]) + ((p2->FinalPowerUp[0] - p2->FinalPowerDown[0]) + (p2->ClashPowerUp[0] - p2->ClashPowerDown[0]) + (p2->FinalPowerUp[0] - p2->FinalPowerDown[0])) + defenseDiff;
+        if (s2->skillType != 0) { // ถ้าเป็น Clashable Guard
+          bonus += (s2->ClashPower[0] + s2->FinalPowerBoost[0]) + ((p2->FinalPowerUp[0] - p2->FinalPowerDown[0]) + (p2->ClashPowerUp[0] - p2->ClashPowerDown[0])) + (p2->DefenseSkillPowerUp[0] - p2->DefenseSkillPowerDown[0]);
         } else { // ถ้าเป็น Attack ปกติ (โค้ดเดิมของคุณ)
-          int offenseBonus = ((enemyTempOffense - playerTempOffense) / 3);
-          if (offenseBonus < 0) offenseBonus = 0;
-          bonus = (s2->ClashPower[0] + s2->FinalPowerBoost[0]) + ((p2->ClashPowerUp[0] - p2->ClashPowerDown[0]) + (p2->FinalPowerUp[0] - p2->FinalPowerDown[0]) + (p2->AttackPowerUp[0] - p2->AttackPowerDown[0])) + offenseBonus + kingPassiveP2;
+          bonus += (s2->ClashPower[0] + s2->FinalPowerBoost[0]) + ((p2->ClashPowerUp[0] - p2->ClashPowerDown[0]) + (p2->FinalPowerUp[0] - p2->FinalPowerDown[0]) + (p2->AttackSkillPowerUp[0] - p2->AttackSkillPowerDown[0])) + kingPassiveP2;
         }
 
         if (bonus != 0) {
@@ -14341,8 +14459,6 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       int damage = p1->Bleed[0] > 0 ? p1->Bleed[0] : 1;
 
-      applyDamage(p1, damage, 0);
-
         p1->Bleed[1]--;
 
       if (p1->Bleed[1] <= 0) p1->Bleed[1] = 0;
@@ -14351,14 +14467,14 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
       if (p1->Bleed[1] <= 0) p1->Bleed[0] = 0;
 
+      applyDamage(NULL, p1, damage, 0);
+
     }
 
     // Bleed p2 // 0 Stack 1 Count
     if (p2->Bleed[0] > 0 || p2->Bleed[1] > 0) {
 
       int damage = p2->Bleed[0] > 0 ? p2->Bleed[0] : 1;
-
-      applyDamage(p2, damage, 0);
 
           p2->Bleed[1]--;
 
@@ -14367,6 +14483,8 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       printf("\n%s takes %d Bleed damage (Count %d)\n", p2->name, damage, p2->Bleed[1]);
 
       if (p2->Bleed[1] <= 0) p2->Bleed[0] = 0;
+
+      applyDamage(NULL, p2, damage, 0);
 
     }
 
@@ -14683,7 +14801,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->skills[1] = (SkillStats){"Acupuncture", 3, 5, 3, 3, 3, 1, 1, 0, 2, 1};
     player->skills[2] =
         (SkillStats){"Yield My Flesh", 20, -8, 1, 0, 15, 1, 1, 0, 1, 1};
-
+    // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable, Type
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
     player->defenseSkill[0] = (SkillStats){"Overthrow", 8, 10, 1, 5, 3, 1, 0, 0, 0, 0, 3};
     player->defenseSkill[1] =
@@ -14694,8 +14812,8 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     player->numSkills = 3; // <-- important
   } else if (pIndex == 2) {
     player->name = "Heathcliff:Wild Hunt";
-    player->HP = 112;
-    player->MAX_HP = 112;
+    player->HP = 151;
+    player->MAX_HP = 151;
     player->MinSpeed = 3;
     player->MaxSpeed = 8;
     player->skills[0] = (SkillStats){"Beheading", 3, 4, 2, 2, -2, 1, 0, 0, 3, 1};
@@ -14963,7 +15081,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
       player->skills[0] = (SkillStats){"Anatomize", 3, 4, 2, 2, 2, 1, 0, 0, 3, 1};
       player->skills[1] = (SkillStats){"Gather Ingredient - Blood-bathed Objet", 4, 4, 3, 3, 2, 1, 0, 0, 2, 1};
     player->skills[2] = (SkillStats){"Installation Art no. 3: Improvised Ribcage", 5, 4, 2, 3, 2, 1, 0, 0, 0, 0};
-      player->skills[3] = (SkillStats){"Tibia's Melody - Anatomization of the Unanatomized by the Anatomized", 4, 3, 4, 4, 2, 1, 0, 1, 1, 1}; 
+      player->skills[3] = (SkillStats){"Tibia's Melody - Anatomization of the Unanatomized by the Anatomized", 4, 3, 4, 4, 2, 1, 0, 0, 1, 1}; 
       player->skills[4] = (SkillStats){"Closing Time - Installation Art no. 1: Your Flesh and Bones as the Gallery's Seats", 3, 4, 5, 5, 2, 2, 0, 5, 0, 1}; 
     // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable
     player->Passive = 21;          // Viewing the Tableau (เริ่มที่ 21)
@@ -15094,7 +15212,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     enemy->HP = 521;
     enemy->MAX_HP = 521;
     enemy->MinSpeed = 4;
-    enemy->MaxSpeed = 8;
+    enemy->MaxSpeed = 6;
     enemy->sanityGainBase = 10;
     enemy->sanityLossBase = 7;
     enemy->immuneToPanicSkip = 1;
@@ -15108,7 +15226,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     enemy->skills[5] = (SkillStats){"Black Flash", 10, 5, 1, 5, 10, 1, 1, 1, 3, 1};
     enemy->skills[6] = (SkillStats){"Know your place...", 2, 1, 5, 1, 10, 1, 1, 1, 2, 0};
     enemy->skills[7] =
-      (SkillStats){"Cursed Technique - World Cutting Slash", 20, 15, 1, 7, 10, 1.5, 0, 1, 0, 1};
+      (SkillStats){"Cursed Technique - World Cutting Slash", 10, 15, 1, 7, 10, 1.5, 0, 1, 0, 1};
     enemy->numSkills = 8; // <-- important
   } else if (eIndex == 4) {
     enemy->name = "Don Quixote";
@@ -15170,7 +15288,7 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
         (SkillStats){"I Must Push You Further", 5, 3, 4, 37, 0, 1, 1, 4, 0, 1};
 
     // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
-    enemy->defenseSkill[0] = (SkillStats){"Evade", 4, 10, 1, 0, 2, 1, 1, 0, 2, 0, 2};
+    enemy->defenseSkill[0] = (SkillStats){"Evade", 4, 10, 1, 35, 37, 1, 1, 0, 2, 0, 2};
     enemy->defenseSkill[1] = (SkillStats){"Do Not Meddle", 3, 3, 2, 37, 0, 1, 1, 0, 3, 1, 5};
 
     enemy->numDefenseSkills = 2; // <-- important
@@ -15267,12 +15385,12 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
 
     enemy->numDefenseSkills = 1; // <-- important
 
-  } else {
+  } else if (eIndex == 8) {
     enemy->name = "Fixer grade 9?";
     enemy->HP = 1897;
     enemy->MAX_HP = 1897;
-    enemy->MinSpeed = 5;
-    enemy->MaxSpeed = 10;
+    enemy->MinSpeed = 3;
+    enemy->MaxSpeed = 7;
     enemy->sanityGainBase = -7;
     enemy->sanityLossBase = -5;
     enemy->immuneToPanicSkip = 1;
@@ -15297,6 +15415,21 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
     enemy->skills[9] =
         (SkillStats){"Furioso", 25, -3, 15, 6, -5, 1, 0, 15, 0, 1};
     enemy->numSkills = 10; // <-- important
+  } else if (eIndex == 99) {
+    enemy->name = "Evil Bandit";
+    enemy->HP = 4;
+    enemy->MAX_HP = 1000;
+    enemy->MinSpeed = 5;
+    enemy->MaxSpeed = 7;
+    enemy->hasSanity = 1;
+    
+    enemy->numSkills = 0; // <-- important
+
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+    enemy->defenseSkill[0] = (SkillStats){"Evade", 20, 2, 2, 3, 5, 1, 1, 0, 2, 0, 2};
+
+    enemy->numDefenseSkills = 1; // <-- important
+
   }
 
 
@@ -15336,7 +15469,160 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   //------------------- Turn Start ----------------------------
 
 
+  
+  if (isId(enemy->ID, "Your Best Friend") == 0 && enemy->numSkills > 0 && (*enemySkill1 == -1 || *enemySkill2 == -1)) {
+    enemy->Passive = 1;
+      
+      getSkills(enemy, enemySkill1, enemySkill2, enemySkill3, -1, enemy->numSkills);
 
+    // บังคับเลือกท่าโจมตีใหม่ทันที (เพื่อไม่ให้มันใช้ท่าป้องกันอันเดิมในเทิร์นนี้)
+    if (enemySkillEffective != NULL) {
+        *enemySkillEffective = &enemy->skills[*enemySkill1];
+    }
+    
+  }
+
+  
+
+  if (isId(enemy->ID, "Your Best Friend") == 0 && enemy->Passive == 0) {
+    enemy->Passive = 1;
+
+    printf("\n%s: \"Back off that all I want...\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n\x1b[1;30m\"He sounds familier, but you don't know why.\"\x1b[0m\n", enemy->name);
+
+    sleep(1);
+  }
+
+  if (isId(enemy->ID, "Your Best Friend") == 0 && enemy->Passive == 1) {
+
+    enemy->Passive = 2;
+
+    for (int i = 0; i < enemy->numSkills; i++) {
+      enemy->skills[i].Offense -= 50;
+      enemy->skills[i].Defense -= 50;
+    }
+
+    for (int i = 0; i < enemy->numDefenseSkills; i++) {
+        enemy->defenseSkill[i].Offense -= 50;
+        enemy->defenseSkill[i].Defense -= 50;
+    }
+
+    enemy->Shield += enemy->MAX_HP;
+
+    printf("\n%s gains 'Love' (Lose 50 Offense Level and 50 Defense Level, and gain Shield HP equal to (Max HP) (Activate once per encounter))\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n\x1b[1;30m\"Sometimes I wish they just give up...\"\x1b[0m\n", enemy->name);
+
+    sleep(1);
+
+  }
+
+  if (isId(enemy->ID, "Your Best Friend") == 0 && enemy->Passive == 2 && (enemy->Shield <= 0 || enemy->HP <= enemy->MAX_HP*0.7)) {
+
+    enemy->Passive = 3;
+
+    for (int i = 0; i < enemy->numSkills; i++) {
+      enemy->skills[i].Offense += 50;
+      enemy->skills[i].Defense += 50;
+      enemy->skills[i].DmgMutiplier += 0.5;
+    }
+
+    for (int i = 0; i < enemy->numDefenseSkills; i++) {
+        enemy->defenseSkill[i].Offense += 50;
+        enemy->defenseSkill[i].Defense += 50;
+      enemy->skills[i].DmgMutiplier += 0.5;
+    }
+
+    printf("\n%s: \"Why are you making things so difficult than it should be...\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\nIn that time, A hoodie that a man wore, slip off and fly away\n", enemy->name);
+
+    sleep(3);
+
+    printf("\n%s: \"What...the... No... I-It can't be.\"\n", player->name);
+
+    sleep(3);
+
+    printf("\n%s: \"Why?! I thought you are my best friend!\"\n", player->name);
+
+    enemy->name = enemy->ID;
+
+     sleep(2);
+
+    printf("\n%s: \"...\"\n", enemy->name);
+
+    sleep(3);
+
+    printf("\n%s: \"Ha... Friend? Don't be freaking ridiculous with me!?\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"Had you even truly care about me? had you ask me if I'm being fine? NO!\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"I am. The One who tried. Keep it up. I think it's just a time the separate us...\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"But now I know I was wrong... All you care is YOURSELF!\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"Haha... What am I expecting from you...\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"I-I...\"\n", player->name);
+
+    sleep(1);
+
+    printf("\n%s: \"I don't want to hear anytime from you... I had enough of you. I can't blame you after all.\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s converts 'Love' to 'Hate' (Gain +0.5%% Damage Multiplier); then heal up to 100%% HP\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"What should I do? am I the one in wrong way...?\"\n", player->name);
+
+    sleep(1);
+
+      updateSanity(player, -100);
+
+    player->SanityFreezeTurns -= 1;
+
+    printf("\n%s loses 100 Sanity (%d)\n", player->name, player->Sanity);
+
+    sleep(1);
+
+  }
+
+  if (isId(enemy->ID, "Your Best Friend") == 0 && enemy->Passive == 3) {
+
+  enemy->Passive = 4;
+
+    printf("\n%s: \"No... This isn't you...\"\n", player->name);
+
+    sleep(1);
+
+    printf("\n%s: \"You must in control or something.\"\n", player->name);
+
+    sleep(2);
+
+    printf("\n%s: \"Face the truth %s... This is me\"\n", enemy->name, player->name);
+
+    sleep(3);
+
+  }
 
   // ------------- The House of Spiders: The Ring Nursefather Hong Lu -------------
 
@@ -15413,7 +15699,11 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
      }
 
-    printf("\n");
+    if (player->Passive >= 1) {
+
+      printf("\n");
+
+    }
 
     sleep(1);
   }
@@ -15571,7 +15861,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   // Muga Ryōshū – gains Speed
   if (isId(player->ID, "Muga Ryōshū") == 0 && player->skills[0].active/3 > 0) {
 
-      applyDamage(enemy, player->skills[0].active/3, 0);
+      applyDamage(player, enemy, player->skills[0].active/3, 0);
 
       printf("\n%s takes %d fixed damage\n", enemy->name, player->skills[0].active/3);
 
@@ -15914,7 +16204,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
     if (player->skills[2].active >= 20) {
         int penalty = player->skills[2].active / 20;
         player->ProtectionDown[0] += penalty * 10;
-        printf("%s's Karmic Consequence (%d): Take +%d damage\n", player->name, player->skills[2].active, penalty * 10);
+        printf("%s's Karmic Consequence (%d): Take +%d%% damage\n", player->name, player->skills[2].active, penalty * 10);
 
       sleep(1);
     }
@@ -16700,8 +16990,6 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
           int damage = player->Burn[0] > 0 ? player->Burn[0] : 1;
 
-          applyDamage(player, damage, 0);
-
           if (player->HP < 0) player->HP = 0;
 
             player->Burn[1]--; // Count Burn min 1
@@ -16712,6 +17000,8 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
           if (player->Burn[1] <= 0) player->Burn[0] = 0;
 
           sleep(1);
+
+          applyDamage(NULL, player, damage, 0);
 
 
 
@@ -16838,6 +17128,20 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
 
 
+    
+    // Evil Bandit Lose base
+    if (isId(player->ID, "Evil Bandit") == 0) {
+
+
+      for (int i = 0; i < player->numDefenseSkills; i++) {
+        player->defenseSkill[i].BasePower -= 1;
+      }
+
+      printf("\n%s's all skills lose 1 Base Power\n",
+        player->name);
+      
+          sleep(1);
+        }
 
     // Meursault:The Thumb Shin buffs (temporary, print once)
       if (isId(player->ID, "Meursault:The Thumb") == 0 &&
@@ -17009,7 +17313,7 @@ if (isId(player->ID, "The Middle Nursefather - Matthias") == 0 && (playerSkillUs
 
       int dealvalue = player->MAX_HP*0.05;
 
-      applyDamage(player, dealvalue, 0);
+      applyDamage(enemy, player, dealvalue, 0);
 
       printf("\n%s takes %d damage\n", player->name, dealvalue);
 
@@ -17758,79 +18062,12 @@ if (isId(player->ID, "King in Binds") == 0 && player->HP <= player->MAX_HP * 0.2
   printf("\n%s snapping Bandages, cap HP to 20%% for this turn, apply 'Bandages of the King in Binds' on all enemies.\n", player->name);
 }
 
-    // --------------------------------------------------
-
     // ---------------------- Anti death effect ----------------------
-
-    // Erlking Heathcliff Faded promise for wild hunt
-    if (isId(enemy->ID, "Erlking Heathcliff") == 0 && isId(player->ID, "Heathcliff:Wild Hunt") == 0 && (enemy->skills[7].active == 1) && player->HP <= 0)  {
-
-      enemy->skills[7].active--;
-
-      player->HP = 1;
-
-      printf("\n%s's 'Faded Promise' activated! In this Encounter, when this unit takes damage that brings their HP down to 0, nullify that damage; then, this unit's HP cannot drop below 1 for the turn (Once per Encounter)\n", player->name);
-
-      sleep(1);
-
-    }
-
-    // Hong lu:The Lord of Hongyuan - Passive
-    if ((isId(player->ID, "Hong lu:The Lord of Hongyuan")) == 0 &&
-             player->HP <= 0 && player->skills[5].active == 1) {
-
-        player->skills[5].active--;
-
-      player->HP = 1;
-
-      printf("\n%s's '%s' activeted! Nullity all damage; then apply 'Lordsguard' to all left Heishou Pack and bring %s's HP to 1 (Once per Encounter)\n",
-        player->name, player->skills[5].name, player->name);
-
-      sleep(1);
-
-      printf("\n%s: \"The Lord will not die.\"\n", player->name);
-
-      sleep(1);
-
-    }
-
-      // Heishou Pack - You Branch Adept Heathcliff - Anti death Passive
-      if ((isId(player->ID, "Heishou Pack - You Branch Adept Heathcliff")) == 0 &&
-          player->HP <= 0 && player->skills[3].active == 0) {
-
-          player->skills[3].active--;
-
-        player->HP = 1;
-
-        printf("\n%s's 'Flame Rooster's Death Defiance [炎鳥不死戦]' activated! Nullity all damage; then bring %s's HP to 1 (Once per Encounter)\n",
-          player->name, player->name);
-
-        sleep(1);
-
-        printf("\n%s: \"Flame Rooster's Death Defiance [炎鳥不死戦]... Heh! You really thought I was gonna kick it... Huh?!\"\n",
-          player->name);
-
-      }
-
-      // Meursault:Blade Lineage Mentor - Passive
-      if (isId(player->ID, "Meursault:Blade Lineage Mentor") == 0 &&
-          player->HP <= 0 && player->Passive == 0) {
-
-          player->Passive--;
-
-            player->HP = 1;
-
-        printf("\n%s's 'Swordplay of the Homeland' activated! Nullity all damage; then bring %s's HP to 1 (Once per Encounter)\n",
-          player->name, player->name);
-
-        sleep(1);
-
-      }
 
     // Erlking Heathcliff Faded promise for wild hunt
     if (isId(enemy->ID, "Erlking Heathcliff") == 0 && isId(player->ID, "Heathcliff:Wild Hunt") == 0 && (enemy->skills[7].active == 0))  {
 
-          enemy->skills[7].active -= 1;
+          enemy->skills[7].active--;
 
         player->HP = 1;
 
@@ -17862,6 +18099,8 @@ if (isId(player->ID, "King in Binds") == 0 && player->HP <= player->MAX_HP * 0.2
         player->HP = 1;
 
       }
+
+    // --------------------------------------------------
 
     // Binah - phase 2
     if (isId(player->ID, "Binah") == 0 && !player->Passive && player->HP <= player->MAX_HP*0.5) {
@@ -17986,6 +18225,243 @@ if (isId(player->ID, "King in Binds") == 0 && player->HP <= player->MAX_HP * 0.2
 
     clearTurnEffects(player);
     resetCharacterSkillsBuffs(player);
+
+    if (isId(enemy->ID, "Evil Bandit") == 0 && enemy->HP <= 0) {
+
+    printf("\n%s: \"SHIT!\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"I can't lose like this...\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"I...I...\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"Tricked YOU!\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"HAHAHA!!!\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\nSuddenly A sword from sky fly through the air and lace between your group and him. The wind from impact push away your group from him\n");
+
+    sleep(3);
+
+    printf("\n%s: \"Good luck with him. HAHAHA!\"\n", enemy->name);
+
+    sleep(1);
+
+    printf("\n%s: \"Stop him!\"\n", player->name);
+
+    sleep(1);
+
+    printf("\nHowever A man in the hoodie cover the head and body, along with one more sword besides jump from the nearby building and grab the sword and stop you\n");
+
+    sleep(3);
+
+    printf("\nYou stop and know this would happen... Still he's strong...\n");
+
+     sleep(1);
+
+    printf("\n%s gains 5 'Team of Friend'\n", player->name);
+
+    sleep(1);
+
+    printf("\n'Team of Friend':\n"
+      " - Gain Teammate equal to Stack, each has different HP"
+      " - When attack: Your team attack 1 more time (Once per skills; All teams' Sanity equal to this unit's)\n"
+      " - When taking damage that bring this unit's HP to 0, tranfer damage to one of your Teammate\n"
+      " - If any of your teammate reach 0 HP, they use 'Retreat', then loses 1 'Team of Friend' Stack\n"
+      "\x1b[1;30mYou are the who strongest here, so don't even think to fall that easy while we are here!\x1b[0m\n");
+
+    sleep(3);
+
+    // --- เริ่มการเปลี่ยนร่าง (The Real Boss Appears) ---
+    printf("\n[!!!] WARNING: TARGET CHANGED [!!!]\n");
+    sleep(1);
+
+    // ล้างบัฟ/ดีบัฟเก่าของ Bandit ทิ้งให้หมด
+    clearDebuffsOnDeath(enemy, player);
+    initializeCharacterBuffs(enemy); 
+    clearTurnEffects(enemy);
+
+    // ตั้งค่าบอสตัวจริง
+    enemy->name = "????????";
+    enemy->ID = "Your Best Friend";
+    enemy->MAX_HP = 1200;
+    enemy->HP     = 1200;
+    enemy->MinSpeed = 4;
+    enemy->MaxSpeed = 8;
+    enemy->Sanity = 0;
+    enemy->hasSanity = 1;
+    enemy->sanityGainBase = 12; // เก่งกว่าคนปกติ
+    enemy->sanityLossBase = 6;
+    enemy->immuneToPanicSkip = 1;
+    enemy->Stagger = 0; // ไม่ให้เริ่มมาแล้วติด Stagger
+
+    // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable, Type
+    // 0=Atk, 1=Guard, 2=Evade, 3=Counter, 4=ClashableGuard, 5=ClashableCounter
+
+    // ตั้งสกิลใหม่ให้บอสตัวจริง
+    enemy->numSkills = 8;
+    enemy->skills[0] = (SkillStats){"One White Sword Style: Split the Sky", 6, 4, 2, 40, 25, 1.0, 0, 0, 3, 1, 0};
+    enemy->skills[1] = (SkillStats){"Supreme White Sword Style: Split the Heaven", 5, 3, 5, 40, 25, 1.0, 0, 1, 0, 1, 0};
+    enemy->skills[2] = (SkillStats){"One Black Sword Style: Split the Below One", 14, -4, 2, 40, 25, 1.0, 0, 0, 3, 1, 0};
+    enemy->skills[3] = (SkillStats){"Supreme Black Sword Style: Split the Hell", 20, -3, 5, 40, 25, 1.0, 0, 1, 0, 1, 0};
+    enemy->skills[4] = (SkillStats){"One Sword Style: Split the Earth", 10, 5, 4, 42, 25, 1, 0, 4, 1, 1, 0};
+    enemy->skills[5] = (SkillStats){"Supreme One Sword Style: Split the World", 15, 2, 10, 42, 25, 1, 0, 10, 0, 1, 0};
+    enemy->skills[6] = (SkillStats){"Degraded Two Sword Style: Love...", 8, 2, 1, 45, 25, 1, 0, 1, 0, 1, 0};
+    enemy->skills[7] = (SkillStats){"Degraded Two Sword Style: Hate...", 10, -2, 1, 45, 25, 1, 0, 1, 0, 1, 0};
+
+    // ตั้งสกิลป้องกันใหม่ (อาจจะเป็น Counter แทน Evade)
+    enemy->numDefenseSkills = 2;
+    enemy->defenseSkill[0] = (SkillStats){"Gift from Hell", 16, -6, 2, 40, 25, 1.0, 0, 2, 2, 1, 5};
+    enemy->defenseSkill[1] = (SkillStats){"Cursed from Heaven", 7, 13, 1, 40, 25, 1.0, 0, 1, 2, 1, 4};
+
+    // Name
+    printf("\nName: ????????\n");
+    printf("HP: %.0f / %.0f\n", enemy->HP, enemy->MAX_HP);
+    printf("Speed: %d ~ %d\n", enemy->MinSpeed, enemy->MaxSpeed);
+
+          //Taunt
+            printf("\"I know this day will come...\"\n\n");
+
+            //Description
+            printf("Can't see who is he... but he feeling familiar\n\n");
+
+            //Passive
+             printf("Passive Skills:\n");
+      printf("\n 1. Burn\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (Turn End: When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), Turn End: Take fixed damage equal to (Stack). Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+      printf("\n 2. Dark Burn\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (Turn End: When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), Turn End: Take fixed true damage equal to (Stack). Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+      printf("\n 3. Tremor\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Trigger by 'Tremor Burst', Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP/4) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess. Turn End: Lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+      printf("\n 4. Tremor - White\n Change when Triggered by Amplitude Conversion\n"
+        " - Gain 10%% Damage Down for every 10 (Stack + Count)\n"
+        " - On Tremor Burst, Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess.\n"
+        " - Turn End: Lose 1 Count. When reach 0 Count, loses all Stack and Change back to Normal 'Tremor' too (Max 99 Stack/Count)\n");
+      printf("\n 5. Tremor - Black\n Change when Triggered by Amplitude Conversion\n"
+        " - Gain 10%% Take Damage Up for every 10 (Stack + Count)\n"
+        " - On Tremor Burst, Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess.\n"
+        " - Turn End: Lose 1 Count. When reach 0 Count, loses all Stack and Change back to Normal 'Tremor' too (Max 99 Stack/Count)\n");
+      printf("\n 6. Tremor - Grey\n Change when Triggered by Amplitude Conversion\n"
+        " - Gain 10%% Take Damage Up and 10%% Damage Down for every 5 (Stack + Count)\n"
+        " - On Tremor Burst, Raise Stagger Threshold equal to (Stack x 2); then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess.\n"
+        " - Turn End: Lose 1 Count. When reach 0 Count, loses all Stack and Change back to Normal 'Tremor' too (Max 99 Stack/Count)\n"
+        "\n\x1b[1;30m I don't usually use my Two Sword Style that much, because of its strong\x1b[0m\n");
+      printf("\n 7. Love and Hate\n Start the Encounter with \x1b[0;31mLove\x1b[0m\n"
+        " - If this unit loses all its shield or at 70%% HP or less, Convert \x1b[0;31mLove\x1b[0m to \x1b[0;93mHate\x1b[0m, and heals HP up to 100%%\n"
+        " - at 65%% HP or less, Gain \x1b[0;93mShin (心) - The Grey Reaper\x1b[0m\n"
+        "\n\x1b[1;30m You're are my friend... Is it? so that what friend do to each other, huh? I Hate YOU\x1b[0m\n");
+    printf("\n 8. Love\n Lose 50 Offense Level and 50 Defense Level; gain Shield HP equal to (Max HP) (Activate once per encounter)\n"
+      "\n\x1b[1;30m I thought we are good as long as I keep it up\x1b[0m\n");
+    printf("\n 9. Hate\n Gain +0.5%% Damage Multiplier\n"
+      "\n\x1b[1;30m But suddenly one day... You left me... Haha... I can't blame you for that, I supposed\x1b[0m\n");
+printf("\n 10. Shin (心) - The Grey Reaper\n"
+  " - Turn Start: Gain 100 Shield, +3 Offense Level, +3 Defense Level and 5 Attack Power Up\n"
+  " - Min & Max Speed +3\n"
+  " - Using Base Skill gain +3 Poise Stack and +3 Poise Count\n"
+  " - On Hit, inflict +1 Dark Burn Stack and +1 Dark Burn Count\n"
+  " - When Hit, inflict +2 Tremor Stack\n"
+  "\n\x1b[1;30m Master... You used to be the one who taught me, now you are the one who oppose me...\x1b[0m\n");
+printf("\n 11. Himinvateinn\n Gain by using Certain Skill:\n"
+  " - On Hit, inflict +1 Tremor Stack and +1 Tremor Count (Once per turn)\n"
+    " - While possesing, fixed Coin Power to Positive, if this unit's equipped Defense Skill, Take -50%% Damage\n"
+    " - When Hit, inflict +1 Tremor Stack\n"
+  " - While possesing this and \x1b[0;93mNiðbrandr\x1b[0m, this unit...\n"
+  "\n\x1b[1;30m A White Sword relic, wield to power beyond the sky and heaven, opposite with the one Black Sword relic, how ironically that something that this vast opposite can be wield by one person\x1b[0m\n");
+printf("\n 12. Niðbrandr\n Gain by using Certain Skill:\n"
+    " - On Hit, inflict +1 Burn Stack and +1 Burn Count (Once per turn)\n"
+      " - While possesing, fixed Coin Power to Negative if this unit's equipped Attack Skill or Clashable Counter Skill, Deal +20%% Damage on Unbreakable Coins\n"
+      " - On Clash Win: inflict +1 Dark Burn\n"
+  " - While possesing this and \x1b[0;93mHiminvateinn\x1b[0m, this unit...\n"
+  "\n\x1b[1;30m A Black Sword relic, wield to power deep than the ground and the hell, opposite with the one White Sword relic, how ironically that something that this vast opposite can be wield by one person\x1b[0m\n");
+      printf("\n 13. A Genius - Adaptation\n Every time this unit lost the clash:\n"
+        " - Gain 1 \x1b[0;93mAdaptation\x1b[0m\n"
+          " - If this unit has \x1b[0;31mLove\x1b[0m, Enemy heals 5 Sanity\n"
+          " - If this unit has \x1b[0;93mHate\x1b[0m, Gain 1 Base Power next turn\n"
+      "\n\x1b[1;30m A swordsman born of pure genius. While the world envies his effortless grace, does the one behind the blade can find any joy in this path? perhaps he already lost it...\x1b[0m\n");
+      printf("\n 14. Adaptation\n\n"
+        " - Max Stack: 10\n"
+          " - Can be consumes by Certain Skills\n"
+          " - Gain +1 Attack Power and +1 Defense Power for every 2 Stack\n"
+        " - Gain +1 Offense Level and +1 Defense Level for every 4 Stack\n"
+      " - At 10 Stack, Gain +1 Base Power and +1 Clash Power\n"
+      "\n\x1b[1;30m How ironic... it took only a few minutes for me to see through your technique... and how this will end...\x1b[0m\n");
+      printf("\n 15. Murderer\n"
+        " - When this unit deal HP or Shield HP damage, Gain 1 Attack Power Up and 1 Base Power Down\n"
+          " - When Enemy lost 'Team of Friend', Gain 10 Base Power Down and 50%% Take Damage Up\n"
+
+        "\n\x1b[1;30m Is my hands shaking? Ha... I thought I used to this already\x1b[0m\n\n"
+        
+          " - If Enemy's HP at 30%% or less, Gain 3 Offense Level Up and 5 Defense Level Down\n"
+
+        "\n\x1b[1;30m Is this almost over, right?\x1b[0m\n\n"
+        
+      " - When Enemy lost all 'Team of Friend', Gain 30 Base Power Down and 100%% Take Damage Up for one turn\n"
+      "\n\x1b[1;30m Yes... I killed them, all of them, regardless their background story, I did my job... ah... Whom was the first person I killed, huh? Is it my father? or my mother? ha... None of that does not matter anymore, the point is... I'm not feeling regret... Yes, I don't feel it... how terrify\x1b[0m\n");
+      printf("\n 16. Panic Recovery\n Turn End: if in Panic, Take 5%% fixed True Damage then reset SP to 30.\n"
+        
+         "\n\x1b[1;30m Feeling much better, I need to keep my calm\x1b[0m\n");
+      printf("\n 17. Fixed Panic\n This unit's Panic Type does not change when inflicted with an effect that changes Panic Types. Instead, this unit is inflicted with an effect that is inflicted against Non-SP Units.\n");
+      printf("\n 18. Panic Type - Rancor\n"
+        "Low Morale:\n"
+        "Turn Start: Gain 5 Defense Level Down, if this unit lost the Clash last turn, gain +2 Final Power, +2 Attack Power Up, +2 Defense Power Up and 5 Defense Down\n"
+        "Panic:\n"
+        "Combat Start: This unit attack with 'Degraded Two Sword Style: Hate...' as Unopposed attack. Turn Start: Gain 10 Defense Level Down, if this unit lost the Clash last turn, gain +2 Final Power, +4 Attack Power Up, +4 Defense Power Up and 10 Defense Down\n");
+
+      printf("\nSkills (%d Attack Skills, %d Defense Skills):\n", enemy->numSkills, enemy->numDefenseSkills);
+
+    printf("\nAttack Skills %d:\n\n", enemy->numSkills);
+
+      for (int i = 0; i < enemy->numSkills; i++) {
+        SkillStats s = enemy->skills[i];
+          printf(" %d. %s (%s)\n", i + 1, s.name, getSkillTypeName(s.skillType));
+
+        if (s.Unbreakable > 0) {
+            if (!s.Clashable) {
+            printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d Copies %d (Unclashable)\n",
+                   s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Unbreakable, s.Copies);
+            } else printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d Copies %d (Clashable)\n",
+               s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Unbreakable, s.Copies);
+          }  else 
+          if (!s.Clashable) {
+            printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable Copies %d (Unclashable)\n",
+                   s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Copies);
+            } else printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable Copies %d (Clashable)\n",
+               s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Copies);
+        }
+
+     printf("\nDefense Skills %d:\n\n", enemy->numDefenseSkills);
+
+    for (int i = 0; i < enemy->numDefenseSkills; i++) {
+      SkillStats s = enemy->defenseSkill[i];
+        printf(" %d. %s (%s)\n", i + 1, s.name, getSkillTypeName(s.skillType));
+
+      if (s.Unbreakable > 0) {
+          if (!s.Clashable) {
+          printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d Copies %d (Unclashable)\n",
+                 s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Unbreakable, s.Copies);
+          } else printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d Copies %d (Clashable)\n",
+             s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Unbreakable, s.Copies);
+        }  else 
+        if (!s.Clashable) {
+          printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable Copies %d (Unclashable)\n",
+                 s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Copies);
+          } else printf("    BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable Copies %d (Clashable)\n",
+             s.BasePower, s.CoinPower, s.Coins, s.Offense, s.Defense, s.Copies);
+      }
+
+    sleep(5);
+
+    printf("\n%s: \"You've wasted enough of our time.\"\n", enemy->name);
+
+    sleep(2);
+
+      }
 
     // -------------------------------------------------------- Lost CutScene --------------------------------------------------------
 
@@ -18251,41 +18727,12 @@ void runKingInBindsBattle(
 
     }
 
-      // แสดง knight skill
-      if (!IsenemyUnableToAct) {
-          SkillStats *ks = selectedEnemyPtr;
-          if (ks->Unbreakable > 0 && (ks->Clashable || ks->skillType != 0))
-              printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                getSkillTypeName(ks->skillType),
-                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
-                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
-                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]),
-                     ks->Unbreakable);
-          else if (ks->Unbreakable <= 0 && (ks->Clashable || ks->skillType != 0))
-              printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                getSkillTypeName(ks->skillType),
-                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
-                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
-                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]));
-          else if (ks->Unbreakable > 0 && !ks->Clashable && ks->skillType == 0)
-              printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                getSkillTypeName(ks->skillType),
-                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
-                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
-                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]),
-                     ks->Unbreakable);
-          else if (ks->Unbreakable <= 0 && !ks->Clashable && ks->skillType == 0)
-              printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                getSkillTypeName(ks->skillType),
-                     ks->name, ks->BasePower, ks->CoinPower, ks->Coins,
-                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
-                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]));
-      }
-
-      // -------------------------------------------------------
-      // Player เลือก skill — แสดง skill ของ turn นี้
-      // (playerSkill1/playerSkill2 ที่ roll มาจาก turn ก่อน)
-      // -------------------------------------------------------
+    int ECoinBoost = 0;
+    if (selectedEnemyPtr->CoinPower >= 0) {
+          ECoinBoost = enemy.PlusCoinPowerBoost[0] - enemy.PlusCoinPowerDrop[0];
+    } else {
+          ECoinBoost = enemy.MinusCoinPowerDrop[0] - enemy.PlusCoinPowerBoost[0];
+    }
 
     int playerTempOffense = 0, playerTempDefense = 0;
     int enemyTempOffense  = 0, enemyTempDefense  = 0;
@@ -18295,153 +18742,222 @@ void runKingInBindsBattle(
     enemyTempOffense  += (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]);
     enemyTempDefense  += (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]);
 
-      if (!IsplayerUnableToAct) {
-          printf("\nDashboard Skills:\n");
+      // แสดง knight skill
+      if (!IsenemyUnableToAct) {
+          SkillStats *ks = selectedEnemyPtr;
+          if (ks->Unbreakable > 0 && (ks->Clashable || ks->skillType != 0))
+              printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                getSkillTypeName(ks->skillType),
+                     ks->name, ks->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+                     ks->CoinPower + ECoinBoost, ks->Coins,
+                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
+                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]),
+                     ks->Unbreakable);
+          else if (ks->Unbreakable <= 0 && (ks->Clashable || ks->skillType != 0))
+              printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(ks->skillType),
+                ks->name, ks->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+                   ks->CoinPower + ECoinBoost, ks->Coins,
+                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
+                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]));
+          else if (ks->Unbreakable > 0 && !ks->Clashable && ks->skillType == 0)
+              printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                getSkillTypeName(ks->skillType),
+                ks->name, ks->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+                   ks->CoinPower + ECoinBoost, ks->Coins,
+                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
+                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]),
+                     ks->Unbreakable);
+          else if (ks->Unbreakable <= 0 && !ks->Clashable && ks->skillType == 0)
+              printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(ks->skillType),
+                ks->name, ks->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+                   ks->CoinPower + ECoinBoost, ks->Coins,
+                     ks->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
+                     ks->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]));
+      }
 
-            if (player->skills[*playerSkill1].Unbreakable > 0 && player->skills[*playerSkill1].Clashable) {
-                printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                      getSkillTypeName(player->skills[*playerSkill1].skillType),
-                       player->skills[*playerSkill1].name,
-                       player->skills[*playerSkill1].BasePower,
-                       player->skills[*playerSkill1].CoinPower,
-                       player->skills[*playerSkill1].Coins,
-                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                       player->skills[*playerSkill1].Unbreakable);
-            } else if (player->skills[*playerSkill1].Unbreakable <= 0 && player->skills[*playerSkill1].Clashable) {
-                printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                  getSkillTypeName(player->skills[*playerSkill1].skillType),
-                       player->skills[*playerSkill1].name,
-                       player->skills[*playerSkill1].BasePower,
-                       player->skills[*playerSkill1].CoinPower,
-                       player->skills[*playerSkill1].Coins,
-                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-            } else if (player->skills[*playerSkill1].Unbreakable > 0 && !player->skills[*playerSkill1].Clashable) {
-                printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                  getSkillTypeName(player->skills[*playerSkill1].skillType),
-                       player->skills[*playerSkill1].name,
-                       player->skills[*playerSkill1].BasePower,
-                       player->skills[*playerSkill1].CoinPower,
-                       player->skills[*playerSkill1].Coins,
-                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                       player->skills[*playerSkill1].Unbreakable);
-            } else {
-                printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                  getSkillTypeName(player->skills[*playerSkill1].skillType),
-                       player->skills[*playerSkill1].name,
-                       player->skills[*playerSkill1].BasePower,
-                       player->skills[*playerSkill1].CoinPower,
-                       player->skills[*playerSkill1].Coins,
-                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-            }
+      // -------------------------------------------------------
+      // Player เลือก skill — แสดง skill ของ turn นี้
+      // (playerSkill1/playerSkill2 ที่ roll มาจาก turn ก่อน)
+      // -------------------------------------------------------
 
-            if (player->skills[*playerSkill2].Unbreakable > 0 && player->skills[*playerSkill2].Clashable) {
-                printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                  getSkillTypeName(player->skills[*playerSkill2].skillType),
-                       player->skills[*playerSkill2].name,
-                       player->skills[*playerSkill2].BasePower,
-                       player->skills[*playerSkill2].CoinPower,
-                       player->skills[*playerSkill2].Coins,
-                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                       player->skills[*playerSkill2].Unbreakable);
-            } else if (player->skills[*playerSkill2].Unbreakable <= 0 && player->skills[*playerSkill2].Clashable) {
-                printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                  getSkillTypeName(player->skills[*playerSkill2].skillType),
-                       player->skills[*playerSkill2].name,
-                       player->skills[*playerSkill2].BasePower,
-                       player->skills[*playerSkill2].CoinPower,
-                       player->skills[*playerSkill2].Coins,
-                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-            } else if (player->skills[*playerSkill2].Unbreakable > 0 && !player->skills[*playerSkill2].Clashable) {
-                printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                  getSkillTypeName(player->skills[*playerSkill2].skillType),
-                       player->skills[*playerSkill2].name,
-                       player->skills[*playerSkill2].BasePower,
-                       player->skills[*playerSkill2].CoinPower,
-                       player->skills[*playerSkill2].Coins,
-                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                       player->skills[*playerSkill2].Unbreakable);
-            } else {
-                printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                  getSkillTypeName(player->skills[*playerSkill2].skillType),
-                       player->skills[*playerSkill2].name,
-                       player->skills[*playerSkill2].BasePower,
-                       player->skills[*playerSkill2].CoinPower,
-                       player->skills[*playerSkill2].Coins,
-                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-            }
+        int PCoinBoost1 = 0;
+        if (player->skills[*playerSkill1].CoinPower >= 0) {
+                PCoinBoost1 = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+        } else {
+                PCoinBoost1 = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+        }
 
-          // Next Skill
-            if (player->skills[*playerSkill3].Unbreakable > 0 && player->skills[*playerSkill3].Clashable) {
-                printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                  getSkillTypeName(player->skills[*playerSkill3].skillType),
-                       player->skills[*playerSkill3].name,
-                       player->skills[*playerSkill3].BasePower,
-                       player->skills[*playerSkill3].CoinPower,
-                       player->skills[*playerSkill3].Coins,
-                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                       player->skills[*playerSkill3].Unbreakable);
-            } else if (player->skills[*playerSkill3].Unbreakable <= 0 && player->skills[*playerSkill3].Clashable) {
-                printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                  getSkillTypeName(player->skills[*playerSkill3].skillType),
-                       player->skills[*playerSkill3].name,
-                       player->skills[*playerSkill3].BasePower,
-                       player->skills[*playerSkill3].CoinPower,
-                       player->skills[*playerSkill3].Coins,
-                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-            } else if (player->skills[*playerSkill3].Unbreakable > 0 && !player->skills[*playerSkill3].Clashable) {
-                printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                  getSkillTypeName(player->skills[*playerSkill3].skillType),
-                       player->skills[*playerSkill3].name,
-                       player->skills[*playerSkill3].BasePower,
-                       player->skills[*playerSkill3].CoinPower,
-                       player->skills[*playerSkill3].Coins,
-                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                       player->skills[*playerSkill3].Unbreakable);
-            } else {
-                printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                  getSkillTypeName(player->skills[*playerSkill3].skillType),
-                       player->skills[*playerSkill3].name,
-                       player->skills[*playerSkill3].BasePower,
-                       player->skills[*playerSkill3].CoinPower,
-                       player->skills[*playerSkill3].Coins,
-                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-            }
+        int PCoinBoost2 = 0;
+        if (player->skills[*playerSkill2].CoinPower >= 0) {
+                PCoinBoost2 = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+        } else {
+                PCoinBoost2 = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+        }
 
+        int PCoinBoost3 = 0;
+        if (player->skills[*playerSkill3].CoinPower >= 0) {
+                PCoinBoost3 = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+        } else {
+                PCoinBoost3 = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+        }
 
-          // Defense Skill
-        printf("\n");
-          if (player->defenseSkill[playerDefenseSkill].Unbreakable > 0) {
-            printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-              getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
-                   player->defenseSkill[playerDefenseSkill].name,
-                   player->defenseSkill[playerDefenseSkill].BasePower,
-                   player->defenseSkill[playerDefenseSkill].CoinPower,
-                   player->defenseSkill[playerDefenseSkill].Coins,
-                   player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                   player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                   player->defenseSkill[playerDefenseSkill].Unbreakable);
-          } else if (player->defenseSkill[playerDefenseSkill].Unbreakable <= 0) {
-            printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-              getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
-                   player->defenseSkill[playerDefenseSkill].name,
-                   player->defenseSkill[playerDefenseSkill].BasePower,
-                   player->defenseSkill[playerDefenseSkill].CoinPower,
-                   player->defenseSkill[playerDefenseSkill].Coins,
-                   player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                   player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+        if (!IsplayerUnableToAct) {
+        printf("\nDashboard Skills:\n");
+
+          if (player->skills[*playerSkill1].Unbreakable > 0 && player->skills[*playerSkill1].Clashable) {
+              printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                    getSkillTypeName(player->skills[*playerSkill1].skillType),
+                     player->skills[*playerSkill1].name,
+                     player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                     player->skills[*playerSkill1].Coins,
+                     player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                     player->skills[*playerSkill1].Unbreakable);
+          } else if (player->skills[*playerSkill1].Unbreakable <= 0 && player->skills[*playerSkill1].Clashable) {
+              printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(player->skills[*playerSkill1].skillType),
+                     player->skills[*playerSkill1].name,
+                     player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                     player->skills[*playerSkill1].Coins,
+                     player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+          } else if (player->skills[*playerSkill1].Unbreakable > 0 && !player->skills[*playerSkill1].Clashable) {
+              printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                getSkillTypeName(player->skills[*playerSkill1].skillType),
+                     player->skills[*playerSkill1].name,
+                     player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                     player->skills[*playerSkill1].Coins,
+                     player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                     player->skills[*playerSkill1].Unbreakable);
+          } else {
+              printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(player->skills[*playerSkill1].skillType),
+                     player->skills[*playerSkill1].name,
+                     player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                     player->skills[*playerSkill1].Coins,
+                     player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
           }
+
+          if (player->skills[*playerSkill2].Unbreakable > 0 && player->skills[*playerSkill2].Clashable) {
+              printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                getSkillTypeName(player->skills[*playerSkill2].skillType),
+                     player->skills[*playerSkill2].name,
+                     player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                     player->skills[*playerSkill2].Coins,
+                     player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                     player->skills[*playerSkill2].Unbreakable);
+          } else if (player->skills[*playerSkill2].Unbreakable <= 0 && player->skills[*playerSkill2].Clashable) {
+              printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(player->skills[*playerSkill2].skillType),
+                     player->skills[*playerSkill2].name,
+                     player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                     player->skills[*playerSkill2].Coins,
+                     player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+          } else if (player->skills[*playerSkill2].Unbreakable > 0 && !player->skills[*playerSkill2].Clashable) {
+              printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                getSkillTypeName(player->skills[*playerSkill2].skillType),
+                     player->skills[*playerSkill2].name,
+                     player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                     player->skills[*playerSkill2].Coins,
+                     player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                     player->skills[*playerSkill2].Unbreakable);
+          } else {
+              printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(player->skills[*playerSkill2].skillType),
+                     player->skills[*playerSkill2].name,
+                     player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                     player->skills[*playerSkill2].Coins,
+                     player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+          }
+
+        // Next Skill
+          if (player->skills[*playerSkill3].Unbreakable > 0 && player->skills[*playerSkill3].Clashable) {
+              printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                getSkillTypeName(player->skills[*playerSkill3].skillType),
+                     player->skills[*playerSkill3].name,
+                     player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                     player->skills[*playerSkill3].Coins,
+                     player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                     player->skills[*playerSkill3].Unbreakable);
+          } else if (player->skills[*playerSkill3].Unbreakable <= 0 && player->skills[*playerSkill3].Clashable) {
+              printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(player->skills[*playerSkill3].skillType),
+                     player->skills[*playerSkill3].name,
+                     player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                     player->skills[*playerSkill3].Coins,
+                     player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+          } else if (player->skills[*playerSkill3].Unbreakable > 0 && !player->skills[*playerSkill3].Clashable) {
+              printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                getSkillTypeName(player->skills[*playerSkill3].skillType),
+                     player->skills[*playerSkill3].name,
+                     player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                     player->skills[*playerSkill3].Coins,
+                     player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                     player->skills[*playerSkill3].Unbreakable);
+          } else {
+              printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                getSkillTypeName(player->skills[*playerSkill3].skillType),
+                     player->skills[*playerSkill3].name,
+                     player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                     player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                     player->skills[*playerSkill3].Coins,
+                     player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                     player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+          }
+
+
+        // Defense Skill
+
+        int PCoinBoostDef = 0;
+        if (player->defenseSkill[playerDefenseSkill].CoinPower >= 0) {
+                  PCoinBoostDef = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+        } else {
+                  PCoinBoostDef = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+        }
+
+        printf("\n");
+        if (player->defenseSkill[playerDefenseSkill].Unbreakable > 0) {
+          printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+            getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
+                 player->defenseSkill[playerDefenseSkill].name,
+                 player->defenseSkill[playerDefenseSkill].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                 player->defenseSkill[playerDefenseSkill].CoinPower + PCoinBoostDef,
+                 player->defenseSkill[playerDefenseSkill].Coins,
+                 player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                 player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                 player->defenseSkill[playerDefenseSkill].Unbreakable);
+        } else if (player->defenseSkill[playerDefenseSkill].Unbreakable <= 0) {
+          printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+            getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
+                 player->defenseSkill[playerDefenseSkill].name,
+                 player->defenseSkill[playerDefenseSkill].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                 player->defenseSkill[playerDefenseSkill].CoinPower + PCoinBoostDef,
+                 player->defenseSkill[playerDefenseSkill].Coins,
+                 player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                 player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+        }
         printf("\n");
 
           int choice;
@@ -18489,15 +19005,25 @@ void runKingInBindsBattle(
       // เพื่อให้ passive buff ใน getEffectiveSkill ทำงาน
       // -------------------------------------------------------
 
-      playerSkillEffective =
-          getEffectiveSkill(player, &enemy,
-                            playerSkillEffective,
-                            &playerTempOffense, &playerTempDefense);
+      SkillStats *enemySkillEffective = NULL;
 
-      SkillStats *enemySkillEffective =
-          getEffectiveSkill(&enemy, player,
-                            selectedEnemyPtr,
-                            &enemyTempOffense, &enemyTempDefense);
+    if (IsplayerUnableToAct) {
+      SkillStats dummy = player->defenseSkill[0];
+      getEffectiveSkill(player, &enemy, &dummy, &playerTempOffense, &playerTempDefense);
+      playerSkillEffective = NULL;
+    } else {
+      playerSkillEffective = getEffectiveSkill(player, &enemy, playerSkillEffective,
+                        &playerTempOffense, &playerTempDefense);
+    }
+
+    if (IsenemyUnableToAct) {
+      SkillStats dummyK = enemy.defenseSkill[0];
+      getEffectiveSkill(&enemy, player, &dummyK, &enemyTempOffense, &enemyTempDefense);
+      enemySkillEffective = NULL;
+    } else {
+      enemySkillEffective = getEffectiveSkill(&enemy, player, selectedEnemyPtr,
+                        &enemyTempOffense, &enemyTempDefense);
+    }
 
       // -------------------------------------------------------
       // Combat (เหมือน main loop ทุกอย่าง)
@@ -18538,11 +19064,11 @@ void runKingInBindsBattle(
              if (pType == 0 || eType == 0) {
 
                // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
-               if (player->defenseSkill[playerDefenseSkill].skillType == 1) {
+               if (pType == 1) {
                  defensePhase(player, playerSkillEffective, &enemy, selectedEnemyPtr);
                  }
 
-               if (selectedEnemyPtr->skillType == 1) {
+               if (eType == 1) {
                    defensePhase(&enemy, selectedEnemyPtr, player, playerSkillEffective);
                }
 
@@ -18793,202 +19319,245 @@ void runKingInBindsBattle(
           handleBeforeFight(player, boss, &enemySkillEffective, *playerSkill1, *playerSkill2, *enemySkill1, *enemySkill2);
           handleBeforeFight(boss, player, &playerSkillEffective, *enemySkill1, *enemySkill2, *playerSkill1, *playerSkill2);
 
-      if (!IsenemyUnableToAct) {
-          if (enemySkillEffective->Unbreakable > 0 && (enemySkillEffective->Clashable || enemySkillEffective->skillType != 0))
-            printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-              getSkillTypeName(enemySkillEffective->skillType),
-                   enemySkillEffective->name,
-                   enemySkillEffective->BasePower, enemySkillEffective->CoinPower,
-                   enemySkillEffective->Coins,
-                   enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
-                   enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]),
-                   enemySkillEffective->Unbreakable);
-        else if (enemySkillEffective->Unbreakable <= 0 && (enemySkillEffective->Clashable || enemySkillEffective->skillType != 0))
-            printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-              getSkillTypeName(enemySkillEffective->skillType),
-                   enemySkillEffective->name,
-                   enemySkillEffective->BasePower, enemySkillEffective->CoinPower,
-                   enemySkillEffective->Coins,
-                   enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
-                   enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]));
-        else if (enemySkillEffective->Unbreakable > 0 && !enemySkillEffective->Clashable && enemySkillEffective->skillType == 0)
-            printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-              getSkillTypeName(enemySkillEffective->skillType),
-                   enemySkillEffective->name,
-                   enemySkillEffective->BasePower, enemySkillEffective->CoinPower,
-                   enemySkillEffective->Coins,
-                   enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
-                   enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]),
-                   enemySkillEffective->Unbreakable);
-        else if (enemySkillEffective->Unbreakable <= 0 && !enemySkillEffective->Clashable && enemySkillEffective->skillType == 0)
-            printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-              getSkillTypeName(enemySkillEffective->skillType),
-                   enemySkillEffective->name,
-                   enemySkillEffective->BasePower, enemySkillEffective->CoinPower,
-                   enemySkillEffective->Coins,
-                   enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
-                   enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]));
-      }
-
-        // Player เลือก skill — copy จาก main() ทุกอย่าง
-        int playerSkillIndex;
+      // Player picks one skill (only if can act)
+      int playerSkillIndex;
 
       int playerTempOffense = 0, playerTempDefense = 0;
-      int enemyTempOffense  = 0, enemyTempDefense  = 0;
-
+      int enemyTempOffense = 0, enemyTempDefense = 0;
       playerTempOffense += (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]);
       playerTempDefense += (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]);
-      enemyTempOffense  += (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]);
-      enemyTempDefense  += (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]);
+      enemyTempOffense += (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]);
+      enemyTempDefense += (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]);
 
-        if (!IsplayerUnableToAct) {
-            printf("\nDashboard Skills:\n");
+          int ECoinBoost = 0;
+          if (enemySkillEffective->CoinPower >= 0) {
+                ECoinBoost = boss->PlusCoinPowerBoost[0] - boss->PlusCoinPowerDrop[0];
+          } else {
+                ECoinBoost = boss->MinusCoinPowerDrop[0] - boss->PlusCoinPowerBoost[0];
+          }
 
-              if (player->skills[*playerSkill1].Unbreakable > 0 && player->skills[*playerSkill1].Clashable) {
-                  printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                        getSkillTypeName(player->skills[*playerSkill1].skillType),
-                         player->skills[*playerSkill1].name,
-                         player->skills[*playerSkill1].BasePower,
-                         player->skills[*playerSkill1].CoinPower,
-                         player->skills[*playerSkill1].Coins,
-                         player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                         player->skills[*playerSkill1].Unbreakable);
-              } else if (player->skills[*playerSkill1].Unbreakable <= 0 && player->skills[*playerSkill1].Clashable) {
-                  printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                    getSkillTypeName(player->skills[*playerSkill1].skillType),
-                         player->skills[*playerSkill1].name,
-                         player->skills[*playerSkill1].BasePower,
-                         player->skills[*playerSkill1].CoinPower,
-                         player->skills[*playerSkill1].Coins,
-                         player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-              } else if (player->skills[*playerSkill1].Unbreakable > 0 && !player->skills[*playerSkill1].Clashable) {
-                  printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                    getSkillTypeName(player->skills[*playerSkill1].skillType),
-                         player->skills[*playerSkill1].name,
-                         player->skills[*playerSkill1].BasePower,
-                         player->skills[*playerSkill1].CoinPower,
-                         player->skills[*playerSkill1].Coins,
-                         player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                         player->skills[*playerSkill1].Unbreakable);
-              } else {
-                  printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                    getSkillTypeName(player->skills[*playerSkill1].skillType),
-                         player->skills[*playerSkill1].name,
-                         player->skills[*playerSkill1].BasePower,
-                         player->skills[*playerSkill1].CoinPower,
-                         player->skills[*playerSkill1].Coins,
-                         player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-              }
+          if (!IsenemyUnableToAct) {
+          if (enemySkillEffective->Unbreakable > 0 && (enemySkillEffective->Clashable || enemySkillEffective->skillType != 0)) {
+            printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d "
+                   "Defense %d Unbreakable %d)\n",
+              getSkillTypeName(enemySkillEffective->skillType),
+                   enemySkillEffective->name,
+                   enemySkillEffective->BasePower + (boss->BasePowerUp[0] - boss->BasePowerDown[0]),
+                   enemySkillEffective->CoinPower + ECoinBoost,
+                   enemySkillEffective->Coins,
+                   enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
+                   enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]),
+                   enemySkillEffective->Unbreakable);
+          } else if (enemySkillEffective->Unbreakable <= 0 && (enemySkillEffective->Clashable || enemySkillEffective->skillType != 0)) {
+            printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d "
+                   "Defense %d Breakable)\n",
+              getSkillTypeName(enemySkillEffective->skillType),
+                   enemySkillEffective->name,
+              enemySkillEffective->BasePower + (boss->BasePowerUp[0] - boss->BasePowerDown[0]),
+                 enemySkillEffective->CoinPower + ECoinBoost,
+                 enemySkillEffective->Coins,
+                 enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
+                   enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]));
+          } else if (enemySkillEffective->Unbreakable > 0 && !enemySkillEffective->Clashable && enemySkillEffective->skillType == 0) {
+            printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d "
+                   "Defense %d Unbreakable %d)\n",
+              getSkillTypeName(enemySkillEffective->skillType),
+                   enemySkillEffective->name,
+              enemySkillEffective->BasePower + (boss->BasePowerUp[0] - boss->BasePowerDown[0]),
+                 enemySkillEffective->CoinPower + ECoinBoost,
+                 enemySkillEffective->Coins,
+                 enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
+                 enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]),
+                   enemySkillEffective->Unbreakable);
+          } else if (enemySkillEffective->Unbreakable <= 0 && (!enemySkillEffective->Clashable && enemySkillEffective->skillType == 0)) {
+            printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d "
+                   "Defense %d Breakable)\n",
+              getSkillTypeName(enemySkillEffective->skillType),
+                   enemySkillEffective->name,
+                    enemySkillEffective->BasePower + (boss->BasePowerUp[0] - boss->BasePowerDown[0]),
+                 enemySkillEffective->CoinPower + ECoinBoost,
+                 enemySkillEffective->Coins,
+                 enemySkillEffective->Offense + (boss->OffenseLevelUp[0] - boss->OffenseLevelDown[0]),
+                 enemySkillEffective->Defense + (boss->DefenseLevelUp[0] - boss->DefenseLevelDown[0]));
+          }
+          }
 
-              if (player->skills[*playerSkill2].Unbreakable > 0 && player->skills[*playerSkill2].Clashable) {
-                  printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                    getSkillTypeName(player->skills[*playerSkill2].skillType),
-                         player->skills[*playerSkill2].name,
-                         player->skills[*playerSkill2].BasePower,
-                         player->skills[*playerSkill2].CoinPower,
-                         player->skills[*playerSkill2].Coins,
-                         player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                         player->skills[*playerSkill2].Unbreakable);
-              } else if (player->skills[*playerSkill2].Unbreakable <= 0 && player->skills[*playerSkill2].Clashable) {
-                  printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                    getSkillTypeName(player->skills[*playerSkill2].skillType),
-                         player->skills[*playerSkill2].name,
-                         player->skills[*playerSkill2].BasePower,
-                         player->skills[*playerSkill2].CoinPower,
-                         player->skills[*playerSkill2].Coins,
-                         player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-              } else if (player->skills[*playerSkill2].Unbreakable > 0 && !player->skills[*playerSkill2].Clashable) {
-                  printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                    getSkillTypeName(player->skills[*playerSkill2].skillType),
-                         player->skills[*playerSkill2].name,
-                         player->skills[*playerSkill2].BasePower,
-                         player->skills[*playerSkill2].CoinPower,
-                         player->skills[*playerSkill2].Coins,
-                         player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                         player->skills[*playerSkill2].Unbreakable);
-              } else {
-                  printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                    getSkillTypeName(player->skills[*playerSkill2].skillType),
-                         player->skills[*playerSkill2].name,
-                         player->skills[*playerSkill2].BasePower,
-                         player->skills[*playerSkill2].CoinPower,
-                         player->skills[*playerSkill2].Coins,
-                         player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-              }
+          int PCoinBoost1 = 0;
+          if (player->skills[*playerSkill1].CoinPower >= 0) {
+                  PCoinBoost1 = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+          } else {
+                  PCoinBoost1 = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+          }
 
-            // Next Skill
+          int PCoinBoost2 = 0;
+          if (player->skills[*playerSkill2].CoinPower >= 0) {
+                  PCoinBoost2 = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+          } else {
+                  PCoinBoost2 = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+          }
 
-          if (player->skills[*playerSkill3].Unbreakable > 0 && player->skills[*playerSkill3].Clashable) {
-                  printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                    getSkillTypeName(player->skills[*playerSkill3].skillType),
-                         player->skills[*playerSkill3].name,
-                         player->skills[*playerSkill3].BasePower,
-                         player->skills[*playerSkill3].CoinPower,
-                         player->skills[*playerSkill3].Coins,
-                         player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                         player->skills[*playerSkill3].Unbreakable);
-              } else if (player->skills[*playerSkill3].Unbreakable <= 0 && player->skills[*playerSkill3].Clashable) {
-                  printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                    getSkillTypeName(player->skills[*playerSkill3].skillType),
-                         player->skills[*playerSkill3].name,
-                         player->skills[*playerSkill3].BasePower,
-                         player->skills[*playerSkill3].CoinPower,
-                         player->skills[*playerSkill3].Coins,
-                         player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-              } else if (player->skills[*playerSkill3].Unbreakable > 0 && !player->skills[*playerSkill3].Clashable) {
-                  printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                    getSkillTypeName(player->skills[*playerSkill3].skillType),
-                         player->skills[*playerSkill3].name,
-                         player->skills[*playerSkill3].BasePower,
-                         player->skills[*playerSkill3].CoinPower,
-                         player->skills[*playerSkill3].Coins,
-                         player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                         player->skills[*playerSkill3].Unbreakable);
-              } else {
-                  printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                    getSkillTypeName(player->skills[*playerSkill3].skillType),
-                         player->skills[*playerSkill3].name,
-                         player->skills[*playerSkill3].BasePower,
-                         player->skills[*playerSkill3].CoinPower,
-                         player->skills[*playerSkill3].Coins,
-                         player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                         player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
-              }
+          int PCoinBoost3 = 0;
+          if (player->skills[*playerSkill3].CoinPower >= 0) {
+                  PCoinBoost3 = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+          } else {
+                  PCoinBoost3 = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+          }
 
+          if (!IsplayerUnableToAct) {
+          printf("\nDashboard Skills:\n");
 
-            // Defense Skill
-          printf("\n");
-            if (player->defenseSkill[playerDefenseSkill].Unbreakable > 0) {
-              printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
-                getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
-                     player->defenseSkill[playerDefenseSkill].name,
-                     player->defenseSkill[playerDefenseSkill].BasePower,
-                     player->defenseSkill[playerDefenseSkill].CoinPower,
-                     player->defenseSkill[playerDefenseSkill].Coins,
-                     player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                     player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
-                     player->defenseSkill[playerDefenseSkill].Unbreakable);
-            } else if (player->defenseSkill[playerDefenseSkill].Unbreakable <= 0) {
-              printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
-                getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
-                     player->defenseSkill[playerDefenseSkill].name,
-                     player->defenseSkill[playerDefenseSkill].BasePower,
-                     player->defenseSkill[playerDefenseSkill].CoinPower,
-                     player->defenseSkill[playerDefenseSkill].Coins,
-                     player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
-                     player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+            if (player->skills[*playerSkill1].Unbreakable > 0 && player->skills[*playerSkill1].Clashable) {
+                printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                      getSkillTypeName(player->skills[*playerSkill1].skillType),
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                       player->skills[*playerSkill1].Unbreakable);
+            } else if (player->skills[*playerSkill1].Unbreakable <= 0 && player->skills[*playerSkill1].Clashable) {
+                printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                  getSkillTypeName(player->skills[*playerSkill1].skillType),
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+            } else if (player->skills[*playerSkill1].Unbreakable > 0 && !player->skills[*playerSkill1].Clashable) {
+                printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                  getSkillTypeName(player->skills[*playerSkill1].skillType),
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                       player->skills[*playerSkill1].Unbreakable);
+            } else {
+                printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                  getSkillTypeName(player->skills[*playerSkill1].skillType),
+                       player->skills[*playerSkill1].name,
+                       player->skills[*playerSkill1].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill1].CoinPower + PCoinBoost1,
+                       player->skills[*playerSkill1].Coins,
+                       player->skills[*playerSkill1].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill1].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
             }
+
+            if (player->skills[*playerSkill2].Unbreakable > 0 && player->skills[*playerSkill2].Clashable) {
+                printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                  getSkillTypeName(player->skills[*playerSkill2].skillType),
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                       player->skills[*playerSkill2].Unbreakable);
+            } else if (player->skills[*playerSkill2].Unbreakable <= 0 && player->skills[*playerSkill2].Clashable) {
+                printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                  getSkillTypeName(player->skills[*playerSkill2].skillType),
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+            } else if (player->skills[*playerSkill2].Unbreakable > 0 && !player->skills[*playerSkill2].Clashable) {
+                printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                  getSkillTypeName(player->skills[*playerSkill2].skillType),
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                       player->skills[*playerSkill2].Unbreakable);
+            } else {
+                printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                  getSkillTypeName(player->skills[*playerSkill2].skillType),
+                       player->skills[*playerSkill2].name,
+                       player->skills[*playerSkill2].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill2].CoinPower + PCoinBoost2,
+                       player->skills[*playerSkill2].Coins,
+                       player->skills[*playerSkill2].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill2].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+            }
+
+          // Next Skill
+            if (player->skills[*playerSkill3].Unbreakable > 0 && player->skills[*playerSkill3].Clashable) {
+                printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                  getSkillTypeName(player->skills[*playerSkill3].skillType),
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                       player->skills[*playerSkill3].Unbreakable);
+            } else if (player->skills[*playerSkill3].Unbreakable <= 0 && player->skills[*playerSkill3].Clashable) {
+                printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                  getSkillTypeName(player->skills[*playerSkill3].skillType),
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+            } else if (player->skills[*playerSkill3].Unbreakable > 0 && !player->skills[*playerSkill3].Clashable) {
+                printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+                  getSkillTypeName(player->skills[*playerSkill3].skillType),
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                       player->skills[*playerSkill3].Unbreakable);
+            } else {
+                printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+                  getSkillTypeName(player->skills[*playerSkill3].skillType),
+                       player->skills[*playerSkill3].name,
+                       player->skills[*playerSkill3].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                       player->skills[*playerSkill3].CoinPower + PCoinBoost3,
+                       player->skills[*playerSkill3].Coins,
+                       player->skills[*playerSkill3].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                       player->skills[*playerSkill3].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+            }
+
+
+          // Defense Skill
+
+          int PCoinBoostDef = 0;
+          if (player->defenseSkill[playerDefenseSkill].CoinPower >= 0) {
+                    PCoinBoostDef = player->PlusCoinPowerBoost[0] - player->PlusCoinPowerDrop[0];
+          } else {
+                    PCoinBoostDef = player->MinusCoinPowerDrop[0] - player->PlusCoinPowerBoost[0];
+          }
+
+          printf("\n");
+          if (player->defenseSkill[playerDefenseSkill].Unbreakable > 0) {
+            printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
+              getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
+                   player->defenseSkill[playerDefenseSkill].name,
+                   player->defenseSkill[playerDefenseSkill].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                   player->defenseSkill[playerDefenseSkill].CoinPower + PCoinBoostDef,
+                   player->defenseSkill[playerDefenseSkill].Coins,
+                   player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                   player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]),
+                   player->defenseSkill[playerDefenseSkill].Unbreakable);
+          } else if (player->defenseSkill[playerDefenseSkill].Unbreakable <= 0) {
+            printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
+              getSkillTypeName(player->defenseSkill[playerDefenseSkill].skillType),
+                   player->defenseSkill[playerDefenseSkill].name,
+                   player->defenseSkill[playerDefenseSkill].BasePower + (player->BasePowerUp[0] - player->BasePowerDown[0]),
+                   player->defenseSkill[playerDefenseSkill].CoinPower + PCoinBoostDef,
+                   player->defenseSkill[playerDefenseSkill].Coins,
+                   player->defenseSkill[playerDefenseSkill].Offense + (player->OffenseLevelUp[0] - player->OffenseLevelDown[0]),
+                   player->defenseSkill[playerDefenseSkill].Defense + (player->DefenseLevelUp[0] - player->DefenseLevelDown[0]));
+          }
           printf("\n");
 
             int choice;
@@ -19027,14 +19596,25 @@ void runKingInBindsBattle(
         }
 
 
-        playerSkillEffective =
-            getEffectiveSkill(player, boss,
-                              playerSkillEffective,
-                              &playerTempOffense, &playerTempDefense);
-        enemySkillEffective =
-            getEffectiveSkill(boss, player,
-                              enemySkillEffective,
-                              &enemyTempOffense, &enemyTempDefense);
+      // --- คำนวณค่าสำหรับ Player ---
+      if (IsplayerUnableToAct) {
+          SkillStats dummy = player->defenseSkill[0]; // โคลนค่าจากท่าป้องกัน 0
+          getEffectiveSkill(player, &enemy, &dummy, &playerTempOffense, &playerTempDefense);
+          playerSkillEffective = NULL; // บังคับเป็น NULL ตามที่ต้องการ
+      } else {
+          playerSkillEffective = getEffectiveSkill(player, boss, playerSkillEffective,
+                                                  &playerTempOffense, &playerTempDefense);
+      }
+
+      // --- คำนวณค่าสำหรับ Enemy ---
+      if (IsenemyUnableToAct) {
+          SkillStats dummyE = boss->defenseSkill[0]; // โคลนท่าป้องกันศัตรู
+          getEffectiveSkill(boss, player, &dummyE, &enemyTempOffense, &enemyTempDefense);
+          enemySkillEffective = NULL; // บังคับเป็น NULL
+      } else {
+          enemySkillEffective = getEffectiveSkill(boss, player, enemySkillEffective,
+                                                  &enemyTempOffense, &enemyTempDefense);
+      }
 
 
       int playerGoesFirst = 0;
@@ -19088,11 +19668,11 @@ void runKingInBindsBattle(
              if (pType == 0 || eType == 0) {
 
                // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
-               if (player->defenseSkill[playerDefenseSkill].skillType == 1) {
+               if (pType == 1) {
                  defensePhase(player, playerSkillEffective, &enemy, enemySkillEffective);
                  }
 
-               if (enemySkillEffective->skillType == 1) {
+               if (eType == 1) {
                    defensePhase(&enemy, enemySkillEffective, player, playerSkillEffective);
                }
 
@@ -19349,7 +19929,7 @@ int main() {
          " - 8+ Rounds spent: Take 10%% less damage for every 10%% missing HP on self at Turn Start (max 50%%)\n"
          " - 14+ Rounds spent: On Clash Lose, Unbreakable Coins of this unit's Attack Skills deal +(75 + missing HP percentage on self)%% damage (Max 150%%)\n"
           " - 20+ Rounds spent: Deal +(HP percentage difference)%% damage against targets with higher remaining HP percentage than this unit (Max 50%%)\n");
-          printf("\n 8. Burn\n When Inflicte by Certain Skills: At 1+ Count, or at 1+ Stack (Turn End: When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), Turn End: Take fixed damage equal to (Stack). Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+          printf("\n 8. Burn\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (Turn End: When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), Turn End: Take fixed damage equal to (Stack). Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
            printf("\n 9. Tremor\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Trigger by 'Tremor Burst', Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP/4) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess. Turn End: Lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
           printf("\n 10. Tremor - Scorch\n Change when Triggered by Amplitude Conversion\n"
             " - On Tremor Burst, Take (Tremor Stack and Burn Stack / 2) fixed Damage and Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP/4) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn) and reset this progess.\n"
@@ -19678,7 +20258,7 @@ int main() {
                            "\n - When this unit gains Bleed from enemy Attack Skills, Randomly gain 1 of the following effects next turn and lose 1 Stack of this effect (once per Skill)"
                            "\n · 3 Bleed Stack"
                            "\n · 1 Bind"
-                           "\n · 1 Defense Power Down\n");
+                           "\n · 1 Defense Skill Power Down\n");
                               }
                        else if (targetIndex == 99) {
                           //Taunt
@@ -19846,8 +20426,41 @@ int main() {
 
   while (1) {
       printf("\nChoose enemy (1-%d): ", numEnemies);
-      if (scanf("%d", &selected_enemy) == 1 &&
-          selected_enemy >= 1 && selected_enemy <= numEnemies) {
+
+        if (scanf("%d", &selected_enemy) == 1) {
+
+          // --- Secret Character System (Press 0) ---
+          if (selected_enemy == 0) {
+              printf("\n\x1b[1;30m[???]: The mirror darkens... the light around you begins to fade...\x1b[0m\n");
+              usleep(1500000);
+              printf("\x1b[1;30m[???]: 'If you desire the hidden truth... name the \x1b[1;31mEnemy\x1b[0m \x1b[1;30myou seek.'\x1b[0m\n");
+              printf("\x1b[1;30m[???]: Secret Code : \x1b[0m");
+
+              char secret_code[50];
+            if (scanf("%49s", secret_code) != 1) {
+                while (getchar() != '\n'); // ล้างบัฟเฟอร์ถ้าอ่านค่าพลาด
+                continue; 
+            }
+
+              if (strcasecmp(secret_code, "Hate") == 0) {
+                  printf("\n\x1b[1;31m[!!!]: The mirror shatters! World of hero, and you are one of them, pursuing Evil...\x1b[0m\n");
+                  sleep(1);
+                    selected_enemy = 100; // Internal flag for Evil Bandit
+              } 
+              else {
+                  printf("\n[...]: The mirror returns to normal... nothing happened.\n");
+                  sleep(1);
+                  continue; // Back to normal selection
+              }
+          }
+
+        }
+
+          // Map selection to setup index
+          if (selected_enemy == 100) targetIndex = 99;      // Evil Bandit
+        else targetIndex = -1;
+
+            if ((selected_enemy >= 1 && selected_enemy <= numIdentities) || targetIndex > 0) {
 
           // Setup temp characters for info preview
           setupCharacters(&tempPlayer, &tempEnemy, 0, selected_enemy - 1);
@@ -20028,7 +20641,7 @@ int main() {
             " - At max Stack, take +20%% damage\n\n"
 
              " \x1b[1;30mThe Middle never forgets.\x1b[0m\n");
-          printf("\n 7. Vengeance Tattoos Max Output... Unseal Lævateinn!\n When 'Lævateinn' is unsealed, this unit gains \x1b[0;31mRidiculous Grit\x1b[0m\n");
+          printf("\n 7. Vengeance Tattoos Max Output... Unseal Lævateinn!\n When 'Lævateinn' is unsealed, this unit gains \x1b[0;33mRidiculous Grit\x1b[0m\n");
           printf("\n 8. Ridiculous Grit\n gains following effect:\n"
              " - Take -(missing HP percentage)%% damage from Skill (Max 90%%; Rounded down)\n"
               " - On Clash Win, heal (Clash count x 5) more Sanity (Max 15)\n"
@@ -20040,7 +20653,7 @@ int main() {
             "Turn Start: Gain 2 Attack Skill Power Up and 4 Defense Level Down; gain +10%% Damage Up for every 30 HP damage taken last turn (Max 50%%)\n"
             "Panic:\n"
             "Turn Start: Gain 3 Attack Skill Power Up and 5 Defense Level Down; gain +10%% Damage Up for every 25 HP damage taken last turn (Max 50%%)\n");
-            } else {
+            } else if (selected_enemy - 1 == 8) {
           //Taunt
           printf("\"That's that, and this is this.\"\n\n");
 
@@ -20054,7 +20667,18 @@ int main() {
            printf("\n 3. Vengeance For Nothing\n Every end of Turn 3rd, at 0+ Sanity, loses ((Further from 0 Sanity/2) + 5 for every 20%% missing HP) Sanity (Rounded down) and gain (3 + (1 for every 10%% missing HP)) Black Silence, at less than 0 Sanity, loses (5 + (5 for every 30%% missing HP)) Sanity and gain +2%% damage for every Black Silence next ture\n");
           printf("\n 4. Black Silence\n When win clash with Skills gain 3 Black Silence and gain 1 when lose clash, use for certain Skills (Max 60)\n");
           printf("\n 5. Furioso\n After all Skills except 'Furioso' had been used, recover from 'Stagger' and use 'Furioso' next turn\n");
-            } 
+            } else if (targetIndex == 99) {
+                //Taunt
+                printf("\"I am the one and only! This world shall bow under my shadow!\"\n\n");
+
+                //Description
+                printf("He's almost done! just mere one hit then all over... Isn't it?\n\n");
+
+                //Passive
+                 printf("Passive Skills:\n");
+                 printf("\n 1. Exhausted\n Turn End: All Skills lose 1 Base Power\n");
+                  printf("\n 2. ???????????????\n Turn End: If this unit takes damage, ?????????????????????????????????????????????????, then this unit retreat\n");
+                  }
 
           printf("\nSkills (%d Attack Skills, %d Defense Skills):\n", tempEnemy.numSkills, tempEnemy.numDefenseSkills);
 
@@ -20115,7 +20739,18 @@ int main() {
       }
   }
 
-  printf("You selected %s\n", enemyNames[selected_enemy - 1]);
+  if (selected_enemy == 100) {
+    printf("You selected Evil Bandit?\n");
+
+    sleep(1);
+
+    printf("\nIs it... really that easy?\n");
+
+    sleep(1);
+  } else {
+    printf("You selected %s\n", enemyNames[selected_enemy - 1]);
+  }
+  
   //-------------------------------------------------------------
 
 
@@ -20418,6 +21053,16 @@ int main() {
     printf("\nMoses retreats...\n");
 
     sleep(2);
+  } else if (isId(enemy.ID, "Evil Bandit") == 0) {
+
+      printf("\n%s: \"Hey! come back here!\n", player.name);
+
+      sleep(1);
+
+        printf("\n%s: \"HAHAHA! Catch me if you can!\"\n", enemy.name);
+
+        sleep(2);
+
   }
 
 
@@ -20557,14 +21202,31 @@ int main() {
       handleBeforeFight(&player, &enemy, &enemySkillEffective, playerSkill1, playerSkill2, enemySkill1, enemySkill2);
       handleBeforeFight(&enemy, &player, &playerSkillEffective, enemySkill1, enemySkill2, playerSkill1, playerSkill2);
 
+      // Player picks one skill (only if can act)
+      int playerSkillIndex;
+
+      int playerTempOffense = 0, playerTempDefense = 0;
+      int enemyTempOffense = 0, enemyTempDefense = 0;
+      playerTempOffense += (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]);
+      playerTempDefense += (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]);
+      enemyTempOffense += (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]);
+      enemyTempDefense += (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]);
+
+      int ECoinBoost = 0;
+      if (enemySkillEffective->CoinPower >= 0) {
+            ECoinBoost = enemy.PlusCoinPowerBoost[0] - enemy.PlusCoinPowerDrop[0];
+      } else {
+            ECoinBoost = enemy.MinusCoinPowerDrop[0] - enemy.PlusCoinPowerBoost[0];
+      }
+
       if (!IsenemyUnableToAct) {
       if (enemySkillEffective->Unbreakable > 0 && (enemySkillEffective->Clashable || enemySkillEffective->skillType != 0)) {
         printf("\nEnemy uses %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d "
                "Defense %d Unbreakable %d)\n",
           getSkillTypeName(enemySkillEffective->skillType),
                enemySkillEffective->name,
-               enemySkillEffective->BasePower,
-               enemySkillEffective->CoinPower,
+               enemySkillEffective->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+               enemySkillEffective->CoinPower + ECoinBoost,
                enemySkillEffective->Coins,
                enemySkillEffective->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
                enemySkillEffective->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]),
@@ -20574,44 +21236,55 @@ int main() {
                "Defense %d Breakable)\n",
           getSkillTypeName(enemySkillEffective->skillType),
                enemySkillEffective->name,
-               enemySkillEffective->BasePower,
-               enemySkillEffective->CoinPower,
-               enemySkillEffective->Coins,
-               enemySkillEffective->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
+          enemySkillEffective->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+             enemySkillEffective->CoinPower + ECoinBoost,
+             enemySkillEffective->Coins,
+             enemySkillEffective->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
                enemySkillEffective->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]));
       } else if (enemySkillEffective->Unbreakable > 0 && !enemySkillEffective->Clashable && enemySkillEffective->skillType == 0) {
         printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d "
                "Defense %d Unbreakable %d)\n",
           getSkillTypeName(enemySkillEffective->skillType),
                enemySkillEffective->name,
-               enemySkillEffective->BasePower,
-               enemySkillEffective->CoinPower,
-               enemySkillEffective->Coins,
-               enemySkillEffective->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
-               enemySkillEffective->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]),
+          enemySkillEffective->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+             enemySkillEffective->CoinPower + ECoinBoost,
+             enemySkillEffective->Coins,
+             enemySkillEffective->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
+             enemySkillEffective->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]),
                enemySkillEffective->Unbreakable);
       } else if (enemySkillEffective->Unbreakable <= 0 && (!enemySkillEffective->Clashable && enemySkillEffective->skillType == 0)) {
         printf("\nEnemy uses %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d "
                "Defense %d Breakable)\n",
           getSkillTypeName(enemySkillEffective->skillType),
                enemySkillEffective->name,
-               enemySkillEffective->BasePower,
-               enemySkillEffective->CoinPower,
-               enemySkillEffective->Coins,
-               enemySkillEffective->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
-               enemySkillEffective->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]));
+                enemySkillEffective->BasePower + (enemy.BasePowerUp[0] - enemy.BasePowerDown[0]),
+             enemySkillEffective->CoinPower + ECoinBoost,
+             enemySkillEffective->Coins,
+             enemySkillEffective->Offense + (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]),
+             enemySkillEffective->Defense + (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]));
       }
     }
 
-    // Player picks one skill (only if can act)
-    int playerSkillIndex;
+      int PCoinBoost1 = 0;
+      if (player.skills[playerSkill1].CoinPower >= 0) {
+              PCoinBoost1 = player.PlusCoinPowerBoost[0] - player.PlusCoinPowerDrop[0];
+      } else {
+              PCoinBoost1 = player.MinusCoinPowerDrop[0] - player.PlusCoinPowerBoost[0];
+      }
 
-    int playerTempOffense = 0, playerTempDefense = 0;
-    int enemyTempOffense = 0, enemyTempDefense = 0;
-    playerTempOffense += (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]);
-    playerTempDefense += (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]);
-    enemyTempOffense += (enemy.OffenseLevelUp[0] - enemy.OffenseLevelDown[0]);
-    enemyTempDefense += (enemy.DefenseLevelUp[0] - enemy.DefenseLevelDown[0]);
+      int PCoinBoost2 = 0;
+      if (player.skills[playerSkill2].CoinPower >= 0) {
+              PCoinBoost2 = player.PlusCoinPowerBoost[0] - player.PlusCoinPowerDrop[0];
+      } else {
+              PCoinBoost2 = player.MinusCoinPowerDrop[0] - player.PlusCoinPowerBoost[0];
+      }
+
+      int PCoinBoost3 = 0;
+      if (player.skills[playerSkill3].CoinPower >= 0) {
+              PCoinBoost3 = player.PlusCoinPowerBoost[0] - player.PlusCoinPowerDrop[0];
+      } else {
+              PCoinBoost3 = player.MinusCoinPowerDrop[0] - player.PlusCoinPowerBoost[0];
+      }
 
     if (!IsplayerUnableToAct) {
       printf("\nDashboard Skills:\n");
@@ -20620,8 +21293,8 @@ int main() {
             printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
                   getSkillTypeName(player.skills[playerSkill1].skillType),
                    player.skills[playerSkill1].name,
-                   player.skills[playerSkill1].BasePower,
-                   player.skills[playerSkill1].CoinPower,
+                   player.skills[playerSkill1].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill1].CoinPower + PCoinBoost1,
                    player.skills[playerSkill1].Coins,
                    player.skills[playerSkill1].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill1].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]),
@@ -20630,8 +21303,8 @@ int main() {
             printf("1. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
               getSkillTypeName(player.skills[playerSkill1].skillType),
                    player.skills[playerSkill1].name,
-                   player.skills[playerSkill1].BasePower,
-                   player.skills[playerSkill1].CoinPower,
+                   player.skills[playerSkill1].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill1].CoinPower + PCoinBoost1,
                    player.skills[playerSkill1].Coins,
                    player.skills[playerSkill1].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill1].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]));
@@ -20639,8 +21312,8 @@ int main() {
             printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
               getSkillTypeName(player.skills[playerSkill1].skillType),
                    player.skills[playerSkill1].name,
-                   player.skills[playerSkill1].BasePower,
-                   player.skills[playerSkill1].CoinPower,
+                   player.skills[playerSkill1].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill1].CoinPower + PCoinBoost1,
                    player.skills[playerSkill1].Coins,
                    player.skills[playerSkill1].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill1].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]),
@@ -20649,8 +21322,8 @@ int main() {
             printf("1. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
               getSkillTypeName(player.skills[playerSkill1].skillType),
                    player.skills[playerSkill1].name,
-                   player.skills[playerSkill1].BasePower,
-                   player.skills[playerSkill1].CoinPower,
+                   player.skills[playerSkill1].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill1].CoinPower + PCoinBoost1,
                    player.skills[playerSkill1].Coins,
                    player.skills[playerSkill1].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill1].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]));
@@ -20660,8 +21333,8 @@ int main() {
             printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
               getSkillTypeName(player.skills[playerSkill2].skillType),
                    player.skills[playerSkill2].name,
-                   player.skills[playerSkill2].BasePower,
-                   player.skills[playerSkill2].CoinPower,
+                   player.skills[playerSkill2].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill2].CoinPower + PCoinBoost2,
                    player.skills[playerSkill2].Coins,
                    player.skills[playerSkill2].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill2].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]),
@@ -20670,8 +21343,8 @@ int main() {
             printf("2. %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
               getSkillTypeName(player.skills[playerSkill2].skillType),
                    player.skills[playerSkill2].name,
-                   player.skills[playerSkill2].BasePower,
-                   player.skills[playerSkill2].CoinPower,
+                   player.skills[playerSkill2].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill2].CoinPower + PCoinBoost2,
                    player.skills[playerSkill2].Coins,
                    player.skills[playerSkill2].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill2].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]));
@@ -20679,8 +21352,8 @@ int main() {
             printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
               getSkillTypeName(player.skills[playerSkill2].skillType),
                    player.skills[playerSkill2].name,
-                   player.skills[playerSkill2].BasePower,
-                   player.skills[playerSkill2].CoinPower,
+                   player.skills[playerSkill2].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill2].CoinPower + PCoinBoost2,
                    player.skills[playerSkill2].Coins,
                    player.skills[playerSkill2].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill2].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]),
@@ -20689,8 +21362,8 @@ int main() {
             printf("2. %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
               getSkillTypeName(player.skills[playerSkill2].skillType),
                    player.skills[playerSkill2].name,
-                   player.skills[playerSkill2].BasePower,
-                   player.skills[playerSkill2].CoinPower,
+                   player.skills[playerSkill2].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill2].CoinPower + PCoinBoost2,
                    player.skills[playerSkill2].Coins,
                    player.skills[playerSkill2].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill2].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]));
@@ -20701,8 +21374,8 @@ int main() {
             printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
               getSkillTypeName(player.skills[playerSkill3].skillType),
                    player.skills[playerSkill3].name,
-                   player.skills[playerSkill3].BasePower,
-                   player.skills[playerSkill3].CoinPower,
+                   player.skills[playerSkill3].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill3].CoinPower + PCoinBoost3,
                    player.skills[playerSkill3].Coins,
                    player.skills[playerSkill3].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill3].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]),
@@ -20711,8 +21384,8 @@ int main() {
             printf("Next Skill | %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
               getSkillTypeName(player.skills[playerSkill3].skillType),
                    player.skills[playerSkill3].name,
-                   player.skills[playerSkill3].BasePower,
-                   player.skills[playerSkill3].CoinPower,
+                   player.skills[playerSkill3].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill3].CoinPower + PCoinBoost3,
                    player.skills[playerSkill3].Coins,
                    player.skills[playerSkill3].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill3].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]));
@@ -20720,8 +21393,8 @@ int main() {
             printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
               getSkillTypeName(player.skills[playerSkill3].skillType),
                    player.skills[playerSkill3].name,
-                   player.skills[playerSkill3].BasePower,
-                   player.skills[playerSkill3].CoinPower,
+                   player.skills[playerSkill3].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill3].CoinPower + PCoinBoost3,
                    player.skills[playerSkill3].Coins,
                    player.skills[playerSkill3].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill3].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]),
@@ -20730,8 +21403,8 @@ int main() {
             printf("Next Skill | %s: '%s' (Unclashable) (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
               getSkillTypeName(player.skills[playerSkill3].skillType),
                    player.skills[playerSkill3].name,
-                   player.skills[playerSkill3].BasePower,
-                   player.skills[playerSkill3].CoinPower,
+                   player.skills[playerSkill3].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+                   player.skills[playerSkill3].CoinPower + PCoinBoost3,
                    player.skills[playerSkill3].Coins,
                    player.skills[playerSkill3].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                    player.skills[playerSkill3].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]));
@@ -20739,13 +21412,21 @@ int main() {
 
 
       // Defense Skill
+
+      int PCoinBoostDef = 0;
+      if (player.defenseSkill[playerDefenseSkill].CoinPower >= 0) {
+                PCoinBoostDef = player.PlusCoinPowerBoost[0] - player.PlusCoinPowerDrop[0];
+      } else {
+                PCoinBoostDef = player.MinusCoinPowerDrop[0] - player.PlusCoinPowerBoost[0];
+      }
+      
       printf("\n");
       if (player.defenseSkill[playerDefenseSkill].Unbreakable > 0) {
         printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Unbreakable %d)\n",
           getSkillTypeName(player.defenseSkill[playerDefenseSkill].skillType),
                player.defenseSkill[playerDefenseSkill].name,
-               player.defenseSkill[playerDefenseSkill].BasePower,
-               player.defenseSkill[playerDefenseSkill].CoinPower,
+               player.defenseSkill[playerDefenseSkill].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+               player.defenseSkill[playerDefenseSkill].CoinPower + PCoinBoostDef,
                player.defenseSkill[playerDefenseSkill].Coins,
                player.defenseSkill[playerDefenseSkill].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                player.defenseSkill[playerDefenseSkill].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]),
@@ -20754,8 +21435,8 @@ int main() {
         printf("Defense Skill - %s: '%s' (BasePower %d CoinPower %d Coins %d Offense %d Defense %d Breakable)\n",
           getSkillTypeName(player.defenseSkill[playerDefenseSkill].skillType),
                player.defenseSkill[playerDefenseSkill].name,
-               player.defenseSkill[playerDefenseSkill].BasePower,
-               player.defenseSkill[playerDefenseSkill].CoinPower,
+               player.defenseSkill[playerDefenseSkill].BasePower + (player.BasePowerUp[0] - player.BasePowerDown[0]),
+               player.defenseSkill[playerDefenseSkill].CoinPower + PCoinBoostDef,
                player.defenseSkill[playerDefenseSkill].Coins,
                player.defenseSkill[playerDefenseSkill].Offense + (player.OffenseLevelUp[0] - player.OffenseLevelDown[0]),
                player.defenseSkill[playerDefenseSkill].Defense + (player.DefenseLevelUp[0] - player.DefenseLevelDown[0]));
@@ -20797,13 +21478,25 @@ int main() {
     }
   }   // closes if (!IsplayerUnableToAct)
 
-    playerSkillEffective =
-        getEffectiveSkill(&player, &enemy, playerSkillEffective,
-                          &playerTempOffense, &playerTempDefense);
+      // --- คำนวณค่าสำหรับ Player ---
+      if (IsplayerUnableToAct) {
+          SkillStats dummy = player.defenseSkill[0]; // โคลนค่าจากท่าป้องกัน 0
+          getEffectiveSkill(&player, &enemy, &dummy, &playerTempOffense, &playerTempDefense);
+          playerSkillEffective = NULL; // บังคับเป็น NULL ตามที่ต้องการ
+      } else {
+          playerSkillEffective = getEffectiveSkill(&player, &enemy, playerSkillEffective,
+                                                  &playerTempOffense, &playerTempDefense);
+      }
 
-    enemySkillEffective =
-        getEffectiveSkill(&enemy, &player, enemySkillEffective,
-                          &enemyTempOffense, &enemyTempDefense);
+      // --- คำนวณค่าสำหรับ Enemy ---
+      if (IsenemyUnableToAct) {
+          SkillStats dummyE = enemy.defenseSkill[0]; // โคลนท่าป้องกันศัตรู
+          getEffectiveSkill(&enemy, &player, &dummyE, &enemyTempOffense, &enemyTempDefense);
+          enemySkillEffective = NULL; // บังคับเป็น NULL
+      } else {
+          enemySkillEffective = getEffectiveSkill(&enemy, &player, enemySkillEffective,
+                                                  &enemyTempOffense, &enemyTempDefense);
+      }
 
       int playerGoesFirst = 0;
 
@@ -20857,11 +21550,11 @@ int main() {
            if (pType == 0 || eType == 0) {
 
              // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
-             if (player.defenseSkill[playerDefenseSkill].skillType == 1) {
+             if (pType == 1) {
              defensePhase(&player, playerSkillEffective, &enemy, enemySkillEffective);
              }
 
-             if (enemySkillEffective->skillType == 1) {
+             if (eType == 1) {
                  defensePhase(&enemy, enemySkillEffective, &player, playerSkillEffective);
              }
 
