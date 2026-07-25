@@ -2692,6 +2692,7 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
 
       printf("\n%s attacks 'Heshin Packs - %s' instead!\n", attacker->name,
              HeshinPacks);
+
     }
   }
 
@@ -2800,6 +2801,10 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
     int fanaticUsed = 0;
 
     if (!nodefense) {
+
+      if (isId(defender->ID, "Hong lu:The Lord of Hongyuan") == 0 && HeshinPacks != NULL) {
+        Evaded = 1;
+      }
 
     // Evade Skill
     if (defSkill != NULL && defSkill->skillType == 2 && defSkill->active == 1) {
@@ -5901,9 +5906,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                   TremorStack += 1;
                 if (attacker->skills[0].active >= 1 && (SpendAmmoLeiheng > 0 || SpendSavageAmmoLeiheng > 0)) {
                   TremorStack += 1;
-                  if (SpendSavageAmmoLeiheng > 0) {
-                    TremorStack *= 2;
-                  }
                 }
               }
 
@@ -5939,8 +5941,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                     BurnStack += 3;
                     BurnCount += 2;
                       if (SpendSavageAmmoLeiheng > 0) {
-                        TremorStack *= 2;
-                        TremorCount *= 2;
                           BurnStack *= 2;
                           BurnCount *= 2;
                       }
@@ -5954,8 +5954,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                       int Count = 2;
 
                       if (SpendSavageAmmoLeiheng > 0) {
-                        TremorStack *= 2;
-                        TremorCount *= 2;
                           BurnStack *= 2;
                           BurnCount *= 2;
                       }
@@ -6002,8 +6000,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                   }
 
                   if (SpendSavageAmmoLeiheng > 0) {
-                    TremorStack *= 2;
-                    TremorCount *= 2;
                       BurnStack *= 2;
                       BurnCount *= 2;
                   }
@@ -6011,11 +6007,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                     if (Unbreakable <= 0) {
                       int Stack = 4;
                       int Count = 4;
-
-                      if (SpendSavageAmmoLeiheng > 0) {
-                          Stack *= 2;
-                          Count *= 2;
-                      }
 
                       if (isId(attacker->ID, "Lei heng") == 0 && attacker->skills[4].active == 1 && attacker->skills[0].active == 3) {
                         if (Stack > 0) Stack += 3;
@@ -6039,8 +6030,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                   }
 
                   if (SpendSavageAmmoLeiheng > 0) {
-                    TremorStack *= 2;
-                    TremorCount *= 2;
                       BurnStack *= 2;
                       BurnCount *= 2;
                   }
@@ -6074,42 +6063,50 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
               // Skill 3
                 if (atk == &attacker->skills[2]) {
 
-                  int Stack = 0;
-                  int Count = 0;
+                  int TremorStack = 0;
+                  int TremorCount = 0;
+                  int BurnStack = 0;
+                  int BurnCount = 0;
                   
                   if (SpendAmmoLeiheng > 0) {
-                  Stack = SpendAmmoLeiheng;
-                  Count = SpendAmmoLeiheng;
+                    TremorStack = SpendAmmoLeiheng;
+                    TremorCount = SpendAmmoLeiheng;
+                      BurnStack = SpendAmmoLeiheng;
+                      BurnCount = SpendAmmoLeiheng;
                   } else if (SpendSavageAmmoLeiheng > 0) {
-                      Stack = SpendSavageAmmoLeiheng;
-                      Count = SpendSavageAmmoLeiheng;
+                        TremorStack = SpendSavageAmmoLeiheng;
+                        TremorCount = SpendSavageAmmoLeiheng;
+                      BurnStack = SpendSavageAmmoLeiheng;
+                      BurnCount = SpendSavageAmmoLeiheng;
+
+                    if (SpendSavageAmmoLeiheng > 0) {
+                          BurnStack *= 2;
+                          BurnCount *= 2;
+                    }
                       }
 
-                  if (SpendSavageAmmoLeiheng > 0) {
-                      Stack *= 2;
-                      Count *= 2;
-                  }
+                  
 
                   if (isId(attacker->ID, "Lei heng") == 0 && attacker->skills[4].active == 1 && attacker->skills[0].active == 3) {
-                    if (Stack > 0) Stack += 3;
-                    if (Count > 0) Count++;
+                    if (TremorStack > 0) TremorStack += 3;
+                    if (TremorCount > 0) TremorCount++;
                       } else if (isId(attacker->ID, "Lei heng") == 0 && attacker->skills[4].active == 1) {
-                    if (Stack > 0) Stack += 2;
+                    if (TremorStack > 0) TremorStack += 2;
                       }
 
                   if (!ClashLostAttack) {
-                  inflictStatus(defender->Tremor, Stack, Count, 0, 99, 0, 99);
+                  inflictStatus(defender->Tremor, TremorStack, TremorCount, 0, 99, 0, 99);
                     if (SpendAmmoLeiheng > 0 || SpendSavageAmmoLeiheng > 0) {
-                  inflictStatus(defender->Burn, Stack, Count, 0, 99, 0, 99);
+                  inflictStatus(defender->Burn, BurnStack, BurnCount, 0, 99, 0, 99);
                     }
                   } else {
-                    inflictStatus(defender->Tremor, Stack/2, Count/2, 0, 99, 0, 99);
+                    inflictStatus(defender->Tremor, TremorStack/2, TremorCount/2, 0, 99, 0, 99);
                     if (SpendAmmoLeiheng > 0 || SpendSavageAmmoLeiheng > 0) {
-                    inflictStatus(defender->Burn, Stack/2, Count/2, 0, 99, 0, 99);
+                    inflictStatus(defender->Burn, BurnStack/2, BurnCount/2, 0, 99, 0, 99);
                     }
                   }
 
-                    printf("\t [On Hit] Inflict Burn Stack (%d), Burn Count (%d), Tremor Stack (%d), and Tremor Count (%d) by Rounds spent", defender->Burn[0], defender->Burn[1], defender->Tremor[0], defender->Tremor[1]);
+                    printf("\t [On Hit] Inflict Burn Stack (%d), Burn Count (%d), Tremor Stack (%d), and Tremor Count (%d) equal to Rounds spent", defender->Burn[0], defender->Burn[1], defender->Tremor[0], defender->Tremor[1]);
                   
                    if (Unbreakable <= 0) {
                   defender->TremorType = "Scorch";
@@ -9015,17 +9012,20 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
     // ----------------- The House of Spiders: The Thumb Nursefather Rodion -----------------
 
     // Accelerating Future
-    if (isId(attacker->ID, "The House of Spiders: The Thumb Nursefather Rodion") == 0 && attacker->skills[4].active > 0) {
+    if (isId(attacker->ID, "The House of Spiders: The Thumb Nursefather Rodion") == 0) {
 
        attacker->defenseSkill[5].active = 0; // Reset Spend Count
 
+      if (attacker->skills[4].active > 0) {
     attacker->skills[4].active = 0; // Accelerating Future
+      
       
       attacker->skills[17].active = 0; // at max Accelerating Future flag
 
     printf("\n%s's 'Accelerating Future' expires\n", attacker->name);
 
     sleep(1);
+      }
 
     } 
     
@@ -12315,9 +12315,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
       printf(" - %d+ Rounds spent: Take 10%% less damage for every 10%% missing HP on self at Turn Start (%d%% - Max 50%%)\n", c->defenseSkill[3].active, SkillUp);
 
-      printf(" - %d+ Rounds spent: On Clash Lose, Unbreakable Coins of this unit's Attack Skills deal +(75 + missing HP percentage on self)%% damage (Max 150%%)\n", (c->defenseSkill[3].active + (c->defenseSkill[3].active/2)));
+      printf(" - %d+ Rounds spent: On Clash Lose, Unbreakable Coins of this unit's Attack Skills deal +(75 + missing HP percentage on self)%% damage (Max 150%%)\n", (c->defenseSkill[3].active + (c->defenseSkill[2].active/2)));
       
-      printf(" - %d+ Rounds spent: Deal +(HP percentage difference)%% damage against targets with higher remaining HP percentage than this unit (Max 50%%)\n", (c->defenseSkill[3].active + c->defenseSkill[3].active));
+      printf(" - %d+ Rounds spent: Deal +(HP percentage difference)%% damage against targets with higher remaining HP percentage than this unit (Max 50%%)\n", (c->defenseSkill[3].active + c->defenseSkill[2].active));
 
     sleep(1);
 
@@ -16500,7 +16500,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
 
       // เรียกใช้ฟังก์ชันเดียวจบ (ส่ง Player เป็นคนชนะ, Enemy เป็นคนแพ้)
-      applyClashRoundResult(p1, s1, p2, s2, playerCoins, enemyCoins, clashCount); // Coin need to stay same array, i am too lazy to fix it
+      applyClashRoundResult(p1, s1, p2, s2, playerCoins, enemyCoins, clashCount);
 
 
 
@@ -16606,7 +16606,7 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
 
 
       // เรียกใช้ฟังก์ชันเดียวจบ (ส่ง Player เป็นคนแพ้, Enemy เป็นคนชนะ)
-      applyClashRoundResult(p2, s2, p1, s1, enemyCoins, playerCoins, clashCount); // Coin need to stay same array, i am too lazy to fix it
+      applyClashRoundResult(p2, s2, p1, s1, enemyCoins, playerCoins, clashCount);
 
 
 
@@ -16625,6 +16625,9 @@ ClashResult clashPhase(Character *p1, SkillStats *s1, int playerTempOffense,
       printf("Clash is a draw! Tossing agains...\n");
 
       usleep((int)(roundDelay * 5000000));
+
+      // เรียกใช้ฟังก์ชันเดียวจบ (ส่ง Player เป็นคนชนะ, Enemy เป็นคนแพ้)
+      applyClashRoundResult(p1, s1, p2, s2, playerCoins, enemyCoins, clashCount);
     }
 
 
@@ -17760,6 +17763,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
     printf("\n%s: \"Why?! I thought you are my best friend!\"\n", player->name);
 
     enemy->name = enemy->ID;
+    clearDebuffsOnDeath(enemy, player);
 
      sleep(2);
 
@@ -17799,7 +17803,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
     sleep(1);
 
-    printf("\n%s: \"What should I do? am I the one in wrong way...?\"\n", player->name);
+    printf("\n%s: \"What's happening...?\"\n", player->name);
 
     sleep(1);
 
@@ -17825,7 +17829,11 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
     sleep(2);
 
-    printf("\n%s: \"Face the truth '%s'... This is me\"\n", enemy->name, player->name);
+    printf("\n%s: \"Face the truth '%s'...\"\n", enemy->name, player->name);
+
+    sleep(2);
+
+    printf("\n%s: \"This is real me\"\n", enemy->name);
 
     sleep(3);
 
@@ -18831,7 +18839,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
   // Lei heng – Chosen Prey (Turn Start)
   if (isId(enemy->ID, "Lei heng") == 0 && enemy->skills[0].active >= 1 && enemy->skills[7].active > 0) {
-    int preyChance = 70 - enemy->Sanity;
+    int preyChance = 80 - enemy->Sanity;
     if (preyChance < 0) preyChance = 0;
     if (preyChance > 0 && (rand() % 100) < preyChance) {
       enemy->skills[6].active = 1;
@@ -19478,7 +19486,7 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
       if (player->skills[6].active > 0) { // Next turn Fanatic
             player->Passive += player->skills[6].active;
-        printf("\n%s gains %d Fanatic this turn\n", player->name, player->skills[6].active);
+        printf("\n%s gains %d Fanatic next turn\n", player->name, player->skills[6].active);
         player->skills[6].active = 0;
         }
 
@@ -19490,7 +19498,7 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
       if (player->skills[7].active > 0) { // Next turn Gaze
           player->skills[4].active = 1;
-        printf("\n%s gains 'Gaze' this turn\n", enemy->name);
+        printf("\n%s gains 'Gaze' next turn\n", enemy->name);
         player->skills[7].active = 0;
         }
 
@@ -19535,16 +19543,15 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
       player->defenseSkill[3].active = 0; // Evaded 2 time per turn rest
       player->defenseSkill[4].active = 0; // Evaded once time per turn rest
 
-      if (player->Stagger > 0 && player->skills[3].active == 0) {
+      if ((player->Stagger > 0 || player->HP <= 0.6 * player->MAX_HP) && player->skills[3].active == 0) {
+        if (player->Stagger > 0) {
       player->Stagger = 0;
           player->skills[3].active = 1; // ใช้ได้ครั้งเดียวต่อ Encounter
           printf("\n%s recovers from Stagger!\n", player->name);
 
         sleep(1);
 
-        printf("\n%s: \"Like hell I'm kickin' the bucket in this fucking dump.\"\n", player->name);
-
-        sleep(1);
+        }
 
         if (player->skills[13].active == 0) {
              player->skills[13].active = 1; // Shin
@@ -19554,6 +19561,10 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
           printf("\n%s gains 'Shin (心) - Disgrace' next turn\n", player->name);
 
            sleep(1);
+
+          printf("\n%s: \"Like hell I'm kickin' the bucket in this fucking dump.\"\n", player->name);
+
+          sleep(1);
            }
       }
       }
@@ -20883,78 +20894,105 @@ if (isId(player->ID, "King in Binds") == 0 && player->HP <= player->MAX_HP * 0.2
       printf("\n 2. Dark Burn\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (Turn End: When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), Turn End: Take fixed true damage equal to (Stack). Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
       printf("\n 3. Tremor\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Trigger by 'Tremor Burst', Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP/4) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn and take +50%% damage) and reset this progess. Turn End: Lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
       printf("\n 4. Tremor - White\n Change when Triggered by Amplitude Conversion\n"
-        " - Gain 10%% Damage Down for every 10 (Stack + Count)\n"
+        " - Gain 10%% Damage Down for every 10 (Stack + Count) (Max 50%%)\n"
         " - On Tremor Burst, Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn and take +50%% damage) and reset this progess.\n"
         " - Turn End: Lose 1 Count. When reach 0 Count, loses all Stack and Change back to Normal 'Tremor' too (Max 99 Stack/Count)\n");
       printf("\n 5. Tremor - Black\n Change when Triggered by Amplitude Conversion\n"
-        " - Gain 10%% Take Damage Up for every 10 (Stack + Count)\n"
+        " - Gain 10%% Take Damage Up for every 10 (Stack + Count) (Max 50%%)\n"
         " - On Tremor Burst, Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn and take +50%% damage) and reset this progess.\n"
         " - Turn End: Lose 1 Count. When reach 0 Count, loses all Stack and Change back to Normal 'Tremor' too (Max 99 Stack/Count)\n");
       printf("\n 6. Tremor - Grey\n Change when Triggered by Amplitude Conversion\n"
-        " - Gain 10%% Take Damage Up and 10%% Damage Down for every 5 (Stack + Count)\n"
+        " - Gain 10%% Take Damage Up and 10%% Damage Down for every 5 (Stack + Count) (Max 100%% each)\n"
         " - On Tremor Burst, Raise Stagger Threshold equal to (Stack x 2); then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn and take +50%% damage) and reset this progess.\n"
         " - Turn End: Lose 1 Count. When reach 0 Count, loses all Stack and Change back to Normal 'Tremor' too (Max 99 Stack/Count)\n"
+        
         "\n\x1b[1;30m I don't usually use my Two Sword Style that much, because of its strong\x1b[0m\n");
-      printf("\n 7. Love and Hate\n Start the Encounter with \x1b[0;31mLove\x1b[0m\n"
+        printf("\n 7. Serene\n Gained via Certain Skills or effects:\n"
+          " - Unique Poise\n"
+          " - Max Stack: 99\n"
+          " - Max Count: 99\n"
+         " - When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count\n"
+          " - On Hit: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%)\n"
+          " - For every Poise Stack surplus 20, when Critical Hit boost more damage by (Surplus Stack)%% \n"
+          " - On Critical Hit: Reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n"
+          
+        "\n\x1b[1;30m For every move I make from now on there will always be fewer and fewer unnecessary move\x1b[0m\n");
+      printf("\n 8. Twilight Overload\n Gained via Certain Skills or effects:\n"
+        " - Unique Charge\n"
+        " - Max Stack: 10\n"
+        " - Max Count: 20\n"
+        " - Gain +1 Defense Level for every 2 Count\n"
+        " - Gain +1 Offense Level for every Stack\n"
+        " - Interacts the same as normal charge does to effects that raise or reduce Charge Stack or Count\n"
+           " - Turn End: Lose 1 Count. If Count reaches 0, all Stacks are lost.\n"
+
+      "\n\x1b[1;30m The energy hums with a dangerous harmony, feeding both the sky above and the hell below\x1b[0m\n");
+      printf("\n 9. Love and Hate\n Start the Encounter with \x1b[0;31mLove\x1b[0m\n"
         " - If this unit loses all its shield or at 70%% HP or less, Convert \x1b[0;31mLove\x1b[0m to \x1b[0;93mHate\x1b[0m, and heals HP up to 100%%\n"
         " - at 65%% HP or less, Gain \x1b[0;93mShin (心) - The Grey Reaper\x1b[0m\n"
         "\n\x1b[1;30m You're are my friend... Is it? so that what friend do to each other, huh? I Hate YOU\x1b[0m\n");
-    printf("\n 8. Love\n Lose 50 Offense Level and 50 Defense Level; gain Shield HP equal to (Max HP) (Activate once per encounter)\n"
+    printf("\n 10. Love\n Lose 50 Offense Level and 50 Defense Level; gain Shield HP equal to (Max HP) (Activate once per encounter)\n"
       "\n\x1b[1;30m I thought we are good as long as I keep it up\x1b[0m\n");
-    printf("\n 9. Hate\n Gain +0.5%% Damage Multiplier\n"
+    printf("\n 11. Hate\n Gain +0.5%% Damage Multiplier\n"
       "\n\x1b[1;30m But suddenly one day... You left me... Haha... I can't blame you for that, I supposed\x1b[0m\n");
-printf("\n 10. Shin (心) - The Grey Reaper\n"
+printf("\n 12. Shin (心) - The Grey Reaper\n"
   " - Turn Start: Gain 100 Shield, +3 Offense Level, +3 Defense Level and 5 Attack Power Up\n"
+  " - Turn End: Gain 5 \x1b[0;93mTwilight Overload\x1b[0m Count\n"
   " - Min & Max Speed +3\n"
-  " - Using Base Skill gain +3 Poise Stack and +3 Poise Count\n"
+  " - Using Base Skill gain +3 \x1b[0;93mSerene\x1b[0m Stack and +3 \x1b[0;93mSerene\x1b[0m Count\n"
   " - On Hit, inflict +1 Dark Burn Stack and +1 Dark Burn Count\n"
   " - When Hit, inflict +2 Tremor Stack\n"
   "\n\x1b[1;30m Master... You used to be the one who taught me, now you are the one who oppose me...\x1b[0m\n");
-printf("\n 11. Himinvateinn\n Gain by using Certain Skill:\n"
+printf("\n 13. Himinvateinn\n Gain by using Certain Skill:\n"
   " - On Hit, inflict +1 Tremor Stack and +1 Tremor Count (Once per turn)\n"
     " - While possesing, fixed Coin Power to Positive, if this unit's equipped Defense Skill, Take -50%% Damage\n"
-    " - When Hit, inflict +1 Tremor Stack against attacker\n"
+    " - When Hit, inflict +1 Tremor Stack against attacker; then gain 2 \x1b[0;93mTwilight Overload\x1b[0m Count\n"
   " - While possesing this and \x1b[0;93mNiðbrandr\x1b[0m, this unit...\n"
   "\n\x1b[1;30m A White Sword relic, wield to power beyond the sky and heaven, opposite with the one Black Sword relic, how ironically that something that this vast opposite can be wield by one person\x1b[0m\n");
-printf("\n 12. Niðbrandr\n Gain by using Certain Skill:\n"
+printf("\n 14. Niðbrandr\n Gain by using Certain Skill:\n"
     " - On Hit, inflict +1 Burn Stack and +1 Burn Count (Once per turn)\n"
       " - While possesing, fixed Coin Power to Negative if this unit's equipped Attack Skill or Clashable Counter Skill, Deal +20%% Damage on Unbreakable Coins\n"
-      " - On Clash Win: inflict +1 Dark Burn\n"
+      " - On Clash Win: inflict +1 Dark Burn; then gain 5 \x1b[0;93mTwilight Overload\x1b[0m Count\n"
   " - While possesing this and \x1b[0;93mHiminvateinn\x1b[0m, this unit...\n"
   "\n\x1b[1;30m A Black Sword relic, wield to power deep than the ground and the hell, opposite with the one White Sword relic, how ironically that something that this vast opposite can be wield by one person\x1b[0m\n");
-      printf("\n 13. A Genius - Adaptation\n Every time this unit lost the clash:\n"
+      printf("\n 15. A Genius - Adaptation\n Every time this unit lost the clash:\n"
         " - Gain 1 \x1b[0;93mAdaptation\x1b[0m\n"
           " - If this unit has \x1b[0;31mLove\x1b[0m, Enemy heals 5 Sanity\n"
           " - If this unit has \x1b[0;93mHate\x1b[0m, Gain 1 Base Power next turn\n"
       "\n\x1b[1;30m A swordsman born of pure genius. While the world envies his effortless grace, does the one behind the blade can find any joy in this path? perhaps he already lost it...\x1b[0m\n");
-      printf("\n 14. Adaptation\n"
+      printf("\n 16. Adaptation\n"
         " - Max Stack: 10\n"
           " - Can be consumes by Certain Skills\n"
+        " - When consumed, gain 3 \x1b[0;93mSerene\x1b[0m Stack and 2 \x1b[0;93mSerene\x1b[0m Count for every consumed\n"
           " - Gain +1 Attack Power and +1 Defense Power for every 2 Stack\n"
         " - Gain +1 Offense Level and +1 Defense Level for every 4 Stack\n"
       " - At 10 Stack, Gain +1 Base Power and +1 Clash Power\n"
       "\n\x1b[1;30m How ironic... it took only a few minutes for me to see through your technique... and how this will end...\x1b[0m\n");
-      printf("\n 15. Murderer\n"
-        " - When this unit deal HP or Shield HP damage, Gain 1 Attack Power Up and 1 Base Power Down\n"
-          " - When Enemy lost 'Team of Friend', Gain 10 Base Power Down and 50%% Take Damage Up\n"
+      printf("\n 17. Murderer\n"
+        " - When this unit deal HP or Shield HP damage last turn:\n"
+        " · Turn Start: Gain 1 Attack Power Up and 1 Base Power Down\n"
+          " - When Enemy lost 'Team of Friend', Gain 10 Base Power Down and 50%% Take Damage Up for the next turn\n"
+        " · Turn Start: Gain 1 Attack Power Up and 1 Base Power Down\n"
 
         "\n\x1b[1;30m Is my hands shaking? Ha... I thought I used to this already\x1b[0m\n\n"
         
-          " - If Enemy's HP at 30%% or less, Gain 3 Offense Level Up and 5 Defense Level Down\n"
+          " - If Enemy's HP at 30%% or less:\n"
+        " · Turn Start: Gain 3 Offense Level Up and 5 Defense Level Down\n"
 
         "\n\x1b[1;30m Is this almost over, right?\x1b[0m\n\n"
         
-      " - When Enemy lost all 'Team of Friend', Gain 30 Base Power Down and 100%% Take Damage Up for one turn\n"
+      " - When Enemy lost all 'Team of Friend', Gain 30 Base Power Down and 100%% Take Damage Up for the next turn\n"
       "\n\x1b[1;30m Yes... I killed them, all of them, regardless their background story, I did my job... ah... Whom was the first person I killed, huh? Is it my father? or my mother? ha... None of that does not matter anymore, the point is... I'm not feeling regret... Yes, I don't feel it... how terrify\x1b[0m\n");
       printf("\n 16. Panic Recovery\n Turn End: if in Panic, Take 5%% fixed True Damage then reset SP to 30.\n"
         
          "\n\x1b[1;30m Feeling much better, I need to keep my calm\x1b[0m\n");
-      printf("\n 17. Fixed Panic\n This unit's Panic Type does not change when inflicted with an effect that changes Panic Types. Instead, this unit is inflicted with an effect that is inflicted against Non-SP Units.\n");
-      printf("\n 18. Panic Type - Rancor\n"
+      printf("\n 18. Fixed Panic\n This unit's Panic Type does not change when inflicted with an effect that changes Panic Types. Instead, this unit is inflicted with an effect that is inflicted against Non-SP Units.\n");
+      printf("\n 19. Panic Type - Rancor\n"
         " Low Morale:\n"
         "  - Turn Start: Gain 5 Defense Level Down, if this unit lost the Clash last turn, gain +2 Final Power, +2 Attack Power Up, +2 Defense Power Up and 5 Defense Down\n"
         " Panic:\n"
-        "  - Combat Start: This unit attack with 'Degraded Two Sword Style: Hate...' as Unopposed attack. Turn Start: Gain 10 Defense Level Down, if this unit lost the Clash last turn, gain +2 Final Power, +4 Attack Power Up, +4 Defense Power Up and 10 Defense Down\n");
+        "  - Combat Start: This unit attack with 'Degraded Two Sword Style: Hate...' as Unopposed attack\n"
+        " - Turn Start: Gain 10 Defense Level Down, if this unit lost the Clash last turn, gain +2 Final Power, +4 Attack Power Up, +4 Defense Power Up and 10 Defense Down\n");
 
       printf("\nSkills (%d Attack Skills, %d Defense Skills):\n", enemy->numSkills, enemy->numDefenseSkills);
 
@@ -22505,7 +22543,7 @@ int main() {
           printf("\n 2. Yield My Flesh\n When Clashing with 'Yield My Flesh' does not effects by any Clash Power boost, When Clash loses with 'Yield My Flesh', Use Counter 'To Claim Their Bones' to attack back (Cannot be used only if this unit died first)\n");
           printf("\n 3. In Memoriam\n At 60%% or less HP, Apply 'Remembrance' buff on self, Gains buff at 5+ Poise Stack or 7+ Poise Stack on self (Buff base on each Skills)\n");
           printf("\n 4. Overthrow\n After got attacked, gain +1 Final Power next turn (Once per enemy's skill)\n");
-          printf("\n 5. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+          printf("\n 5. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit deals Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
           printf("\n 6. Shadow-vested Bladesinger [着影揮刀]\n If this unit using 'To Claim Their Bones' immediately after activated 'Swordplay of the Homeland', 'To Claim Their Bones' gains following effect:\n"
             "  - Before Attack: gain +20 Poise Stack and +4 Poise Count\n"
             "  - Before Attack: Deal +(Poise Stack on self x 2)%% damage on Critical Hit (Max 100%%)\n"
@@ -22550,7 +22588,7 @@ int main() {
           printf("\n 2. The Heishou Pack\n The Heishou Pack will heed you as their lord, you have 4 Heishou Packs(Mao, Si, Wu and You) as your follower, when using 'Answer Me, Heishou Packs', command one of the remaining Heishou Pack members to attack alongside this unit with 'I Carve the Path of a Lord' Skill; then gain 'Heishou Bolus Contamination [黑獸丸染]' after that 'Retreat' that Heishou Pack make them unable to use entire Encounter. If there is no Heishou Pack left use 'Lonesome Stand: Sacrifice to Claim The Garden [孑孑單身，捨生取园]' instead\n");
           printf("\n 3. The Heishou Lord\n After 'Embrace the Tarnished Blood and Exsanguinate Others For the Cause' activated, when this unit takes damage from any damage skills that can bring their HP down to 0, one of left Heishou Pack use 'Lordsguard' to defense this unit after that 'Retreat' that Heishou Pack make them unable to use entire Encounter, if the damage can't bring their HP down to 0, do not use 'Retreat'\n");
           printf("\n 4. Rupture\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Hit: Take (Stack) fixed Damage. Then reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
-          printf("\n 5. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+          printf("\n 5. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit deals Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
           printf("\n 6. Heishou Bolus Contamination [黑獸丸染]\n Turn Start: Gain a buff from Stack"
             "\n - at 1+ Stack: Gain +1 Max Speed and +2%% Damage Up for every Stack"
             "\n - at 2+ Stack: Gain +1 Min Speed and +1 Defense Level Up for every Stack"
@@ -22578,7 +22616,7 @@ int main() {
           printf("\n 1. Volatilized Memory\n When using Skills expect 'Target Readjustment Fire' gain 'Torn Memory' which use for 'Target Readjustment Fire' to buff it\n");
           printf("\n 2. I shall Fire\n After used 'Target Readjustment Fire', lose (Torn Memory x 2) Sanity, at 7+ 'Torn Memory', lose all 'Torn Memory' to gain 'Fell Bullet'\n");
           printf("\n 3. Fell Bullet\n When lost 'Torn Memory' gains 'Fell Bullet', All skills' Damage Multiplier +0.2 and Clash Power +2 for every Stack; then heal 20 Sanity on self (Stackable). Combat Start: Gain +2 Poise Stack for every Stack, when inflicting Bleed, inflict 1 more Bleed Stack or Count (this effect activates as long as there is Fell Bullet in this unit)\n");
-          printf("\n 4. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+          printf("\n 4. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit deals Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
           printf("\n 5. Bleed\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When this unit tossing the Attack Skill's Coins or Clashing end for one round, take fixed damage equal to (Stack). Then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
               } 
         else if (selected_identity - 1 == 5) {
@@ -22857,7 +22895,7 @@ int main() {
                           " - Max Count : 20 \n"
                            " - Unique Charge\n"
                            " - Interacts the same as normal charge does to effects that raise or reduce Charge Stack or Count\n"
-                           " - Turn End: Lose 1 Count \n");
+                           " - Turn End: Lose 1 Count\n");
                          printf("\n 3. Artwork: Tibia\n Apply the following effects to this unit's Base Attack Skills and Clashable Counter Skill based on Corpus Ingrdient Stack:\n"
                            " - 1+: Base Power +1\n"
                            " - 2+: If the enemy has Bleed or 'Unique Bleed', deal +10%% damage\n"
@@ -22936,7 +22974,7 @@ int main() {
 
                              "\n The following causes this unit to gain \x1b[0;33mShin (心) - Disgrace\x1b[0m next turn:\n"
                             " - If this unit's \x1b[0;33mEye of Precognition\x1b[0m Stack drops to 0\n"
-                            " - If this unit is Staggered\n"
+                            " - If this unit is Staggered or at 60%% or less HP\n"
 
                            "\n\x1b[0;33mShin (心) - Disgrace\x1b[0m\n"
                               " - Min & Max Speed +1\n"
@@ -22971,7 +23009,7 @@ int main() {
                            printf("\n 6. Tremor - Scorch\n Change when Triggered by Amplitude Conversion\n"
                              " - On Tremor Burst, Take (Tremor Stack and Burn Stack / 2) fixed Damage and Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (target's Max HP/4) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn and take +50%% damage) and reset this progess.\n"
                              " - Turn End: Lose 1 Count. When reach 0 Count, loses all Stack and Change back to Normal 'Tremor' too (Max 99 Stack/Count)\n");
-                           printf("\n 7. Poise\n When Gain by Certain Skills or effects: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
+                           printf("\n 7. Poise\n When Gain by Certain Skills or effects: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit deals Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
                                }
                        else if (targetIndex == 99) {
                           //Taunt
@@ -23269,7 +23307,7 @@ int main() {
               "\n - If this unit is Staggered, recover from Stagger"
               "\n - Heal 5 Sanity for every 10%% missing HP on self (Max 20)\n");
             printf("\n 12. Chosen Prey\n at 90%% or less HP, or at the end of the 3nd turn\n"
-              " Turn Start: At (70 - current Sanity)%% chance, inflict 1 Prey against the target that dealt the most damage to this unit last turn\n"
+              " Turn Start: At (80 - current Sanity)%% chance, inflict 1 Prey against the target that dealt the most damage to this unit last turn\n"
               
               "\n Prey"
               "\n - In a Clash with an enemy, Clash Power -3"
@@ -23632,9 +23670,29 @@ int main() {
 
     sleep(1);
 
-    printf("\n%s: \"Come on then, shrimp! Let's see if that empty soul o' yours can actually keep up with my rhythm!\" *Reload*\n", enemy.name);
+    printf("\n%s: \"Come on then, shrimp! Let's see if that empty soul o' yours can actually keep up with my rhythm!\"\n", enemy.name);
 
-    sleep(2);
+    sleep(1);
+
+
+            enemy.defenseSkill[1].active = 0; // Tigermark rounds
+    enemy.defenseSkill[3].active = 18;
+
+        int current_clip = enemy.defenseSkill[2].active;
+        int reserve = enemy.defenseSkill[3].active;
+        int needed = 6 - current_clip; // ขาดอีกเท่าไหร่จะเต็ม 6
+
+            int take = (reserve >= needed) ? needed : reserve;
+                enemy.defenseSkill[2].active += take;
+    enemy.defenseSkill[3].active -= take;
+
+        printf("\n%s gains 18 Savage Tigermark Round and uses 'Reload - Tactical' (Reload this unit's Ammo to its maximum capacity (does not discard any remaining Ammo))"
+          "\n Savage Tigermark Round:\n"
+          " - Stack (Loaded Ammo) : %d\n"
+           " - Count (Remaining Ammo) : %d\n",
+          enemy.name, enemy.defenseSkill[2].active, enemy.defenseSkill[3].active);
+
+        sleep(1);
 
     enemy.skills[0].name = "Double Slash - Blast [爆]";
     enemy.skills[0].CoinPower += 1;
@@ -23650,11 +23708,11 @@ int main() {
     enemy.sanityLossBase = 3;
 
     for (int i = 0; i <= 9; i++) {
-      enemy.skills[i].BasePower += 10;
-      enemy.defenseSkill[i].BasePower += 10;
+      enemy.skills[i].BasePower += 5;
+      enemy.defenseSkill[i].BasePower += 5;
     }
 
-    printf("\n%s gains +1000 Max HP, heals +45 Sanity and all Skills gain +10 Base Power at start of the Encounter\n", enemy.name);
+    printf("\n%s gains +1000 Max HP, heals +45 Sanity and all Skills gain +5 Base Power at start of the Encounter\n", enemy.name);
 
     sleep(1);
 
