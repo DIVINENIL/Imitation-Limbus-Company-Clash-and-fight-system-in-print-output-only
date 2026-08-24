@@ -10635,6 +10635,8 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
       if (atk == &attacker->skills[1]) {
         attacker->defenseSkill[10].active += 15;
+        if (attacker->defenseSkill[10].active > 999) attacker->defenseSkill[10].active = 999;
+        if (attacker->defenseSkill[11].active > 999) attacker->defenseSkill[11].active = 999;
         printf("\n%s increase Bloodfeast by 15 (%d)\n", attacker->name, attacker->defenseSkill[10].active);
 
         sleep(1);
@@ -10642,6 +10644,8 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
       if (atk == &attacker->skills[2]) {
         attacker->defenseSkill[10].active += 30;
+        if (attacker->defenseSkill[10].active > 999) attacker->defenseSkill[10].active = 999;
+        if (attacker->defenseSkill[11].active > 999) attacker->defenseSkill[11].active = 999;
         printf("\n%s increase Bloodfeast by 30 (%d)\n", attacker->name, attacker->defenseSkill[10].active);
 
         sleep(1);
@@ -10683,6 +10687,8 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
       if (atk == &attacker->skills[5]) {
         attacker->defenseSkill[10].active += 50;
+        if (attacker->defenseSkill[10].active > 999) attacker->defenseSkill[10].active = 999;
+        if (attacker->defenseSkill[11].active > 999) attacker->defenseSkill[11].active = 999;
         printf("\n%s increase Bloodfeast by 50 (%d)\n", attacker->name, attacker->defenseSkill[10].active);
 
         sleep(1);
@@ -11615,8 +11621,10 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
      if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && (atk == &attacker->skills[13] || atk == &attacker->skills[12] || atk == &attacker->skills[11] || atk == &attacker->skills[10])) {
 
         attacker->defenseSkill[10].active += totalDamage;
+       if (attacker->defenseSkill[10].active > 999) attacker->defenseSkill[10].active = 999;
+       if (attacker->defenseSkill[11].active > 999) attacker->defenseSkill[11].active = 999;
 
-       printf("\n%s increases Bloodfeast equal to the damage this Skill dealt (%d)\n", attacker->name, totalDamage); 
+       printf("\n%s increases Bloodfeast equal to the damage this Skill dealt (%d - Bloodfeast %d)\n", attacker->name, totalDamage, attacker->defenseSkill[10].active); 
 
        sleep(1);
      }
@@ -20842,6 +20850,8 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   // Don Quixote:The Manager of La Manchaland – Bloodfeast
   if (isId(player->ID, "Don Quixote:The Manager of La Manchaland") == 0) {
 
+    if (player->defenseSkill[10].active > 999) player->defenseSkill[10].active = 999;
+    if (player->defenseSkill[11].active > 999) player->defenseSkill[11].active = 999;
     player->defenseSkill[12].active = 0; // Bloodfeast Skill consumed reset
 
     printf("\n%s's Bloodfeast: %d\n"
@@ -20862,6 +20872,8 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   // Sancho:The Second Kindred of Don Quixote – Bloodfeast
   if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
 
+    if (enemy->defenseSkill[10].active > 999) enemy->defenseSkill[10].active = 999;
+    if (enemy->defenseSkill[11].active > 999) enemy->defenseSkill[11].active = 999;
        enemy->defenseSkill[12].active = 0; // Bloodfeast Skill consumed reset
     
     printf("\n%s's Bloodfeast: %d\n"
