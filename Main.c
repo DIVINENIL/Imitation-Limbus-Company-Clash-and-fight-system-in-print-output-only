@@ -2691,36 +2691,7 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
       }
     }
 
-    // Sancho:The Second Kindred of Don Quixote - Heal mechnics
-   if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && Unbreakable <= 0) {
-
-    int healvalue = 40;
-
-     int missingHP = (int)(((attacker->MAX_HP - attacker->HP) / attacker->MAX_HP) * 100);
-      if (missingHP > 20) missingHP = 20;
-
-     if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
-          0 &&
-      (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
-      healvalue += 100;
-     }
-
-     healvalue += missingHP;
-
-     printf("\nOn Hit with this Skill: heal %d%% of the HP damage dealt\n", healvalue);
-
-     sleep(1);
-
-   }  // Sancho:The Second Kindred of Don Quixote - certain heal skill
-     else if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") ==
-             0 &&
-         (atk == &attacker->skills[10] || atk == &attacker->skills[11] || atk == &attacker->skills[12] || atk == &attacker->skills[13])) {
-
-       printf("\nOn Hit with this Skill: heal 100%% of the HP damage dealt\n");
-
-       sleep(1);
-     }
-
+    
   // Don Quixote:The Manager of La Manchaland and Sancho - Heal mechnics
   if ((isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
            0 &&
@@ -5340,7 +5311,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         }
     }
 
-
+      // Furioso
     if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3] && i == remainingCoins - 1) {
 
           atk->DamageUp[0] += 90.0f;
@@ -5348,6 +5319,15 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         printf("\nWeapon assigned to this Coin is fixed as Scythe and Deal +90%% damage");
 
     }
+
+      // Furioso Op
+      if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[4] && i == remainingCoins - 1) {
+
+            atk->DamageUp[0] += 200.0f;
+
+          printf("\nWeapon assigned to this Coin is fixed as Scythe and Deal +200%% damage");
+
+      }
 
 
 
@@ -5361,7 +5341,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
     if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
 
-      if (atk == &attacker->skills[3] && i == remainingCoins - 1) {
+      if ((atk == &attacker->skills[3] || atk == &attacker->skills[4]) && i == remainingCoins - 1) {
           weapon = 8; // Fixed as Scythe
       } else {
           weapon = rand() % 9;
@@ -5735,7 +5715,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                 // [Hammer: Tremor Burst System]
                 if (weapon == 4 && !Evaded) {
   
-                  printf("\t [On Hit] Raise Stagger Threshold by %d", 3);
+                  printf("(Raise Stagger Threshold by %d) ", 3);
                   MoveStagger(attacker, defender, 20, 3, 1);
                   
                 }
@@ -5918,6 +5898,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       else if (atk == &attacker->skills[1]) atk_idx = 1;
       else if (atk == &attacker->skills[2]) atk_idx = 2;
       else if (atk == &attacker->skills[3]) atk_idx = 3;
+         else if (atk == &attacker->skills[4]) atk_idx = 4;
 
       // เงื่อนไขความสำเร็จ Prescript II: "Hit" a target with a marked skill
       if (attacker->Passive == 1 && atk_idx == attacker->skills[4].active) {
@@ -6248,7 +6229,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       // -------------- Sancho:The Second Kindred of Don Quixote --------------
 
       // Sancho:The Second Kindred of Don Quixote - Heal mechnics
-       if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0 && (attacker->Bleed[0] > 0 || attacker->Bleed[1] > 0) && !Evaded) {
+       if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && ClashLostAttack == 0 && (defender->Bleed[0] > 0 || defender->Bleed[1] > 0) && !Evaded) {
 
         int healvalue = 40;
 
@@ -6280,8 +6261,8 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       // Sancho:The Second Kindred of Don Quixote - Skill 5
       if (isId(attacker->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && atk == &attacker->skills[4] && !Evaded) {
 
-        inflictStatus(defender->Bleed, 0, 3, 0, 99, 0, 99);
-        printf("\t [On Hit] Bleed Count +3 on enemy (%d)", defender->Bleed[1]);
+        inflictStatus(defender->Bleed, 0, 2, 0, 99, 0, 99);
+        printf("\t [On Hit] Bleed Count +2 on enemy (%d)", defender->Bleed[1]);
 
       }
 
@@ -6326,7 +6307,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
           if (defender->Bleed[1] <= 0) defender->Bleed[1] = 0;
 
-          printf("\t [On Hit] Activate Bleed on the target equal to its Count (%d). Use up the target's Bleed Count down to 1", defender->Bleed[1]);
+          printf("\t [On Hit] Activate Bleed (%d) on the target equal to its Count (%d). Use up the target's Bleed Count down to 1", defender->Bleed[0], defender->Bleed[1]);
 
           if (defender->Bleed[1] <= 0) defender->Bleed[0] = 0;
 
@@ -6376,11 +6357,11 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
         } 
 
         if (i == remainingCoins - 1) {
-          defender->Paralyze[0] += 1;
+          defender->Paralyze[1] += 1;
           printf("\t [On Hit] Paralyze +1 on enemy next turn (Fix the Power of 1 Coins to 0 for one turn)");
 
           if (attacker->defenseSkill[12].active >= 30) {
-            defender->Bind[1] += 2;
+            defender->Paralyze[1] += 2;
             printf("\t [On Hit] This Skill consumed 50 Bloodfeast, Paralyze +2 additional");
           }
         }
@@ -9091,6 +9072,13 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
           }
         }
 
+        if (i == remainingCoins - 1) { // First Coin
+          Stack = 3;
+          if (attacker->Passive <= 50) {
+            Stack += 2;
+          }
+        }
+
         inflictStatus(defender->Burn, Stack, Count, 0, 99, 0, 99);
 
         if (Count > 0 && Stack > 0) {
@@ -10127,8 +10115,29 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
         sleep(1);
 
-      }
+      }else if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[4]) && i == remainingCoins - 1 && attacker->skills[3].active == 2) {
 
+      // FOr OP FURIOSO
+
+        printf("\n\n%s: \"You belong here, in this hell.\"\n", attacker->name);
+
+        sleep(1);
+
+      }    // The House of Spiders: The Index Nursefather Yi Sang Skill 5 - OP Last coins
+    else if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[4]) && i == remainingCoins - 1) {
+
+      printf("\n\n%s: \"A dimwitted fool living a fabricated life. That's what you are. And who I am...\"\n", attacker->name);
+
+      sleep(1);
+
+    }  
+
+      if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
+
+      if ((atk == &attacker->skills[4]) && i != remainingCoins - 1) {
+        if (defender->HP <= 1 && atk == &attacker->skills[4]) defender->HP = 1;
+      }
+      }
 
     if (Unbreakable > 0) Unbreakable--; // ← Character's Cracking Coins
 
@@ -10523,9 +10532,11 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
       }
 
         // 2. ถ้าเป็น Furioso-Replica: ได้ Hermes ในเทิร์นหน้า (ฝากไว้ใน skills[7].active)
-        if (atk == &attacker->skills[3] && uncrackedUnbreakable > 0) {
+        if ((atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
+          if (uncrackedUnbreakable > 0) {
             attacker->skills[7].active = (uncrackedUnbreakable / 2);
             printf("\n%s gains +%d 'Procuration [Hermes]' next turn\n", attacker->name, attacker->skills[7].active);
+          }
 
           sleep(1);
 
@@ -10558,7 +10569,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
       sleep(1);
     }
 
-    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && atk == &attacker->skills[3]) {
+    if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (atk == &attacker->skills[3] || atk == &attacker->skills[4])) {
         // [Attack End] Consume all Procuration [Hermes]
         attacker->skills[1].active = 0; 
         printf("\n%s consumes all Procuration [Hermes] Stacks", attacker->name);
@@ -10628,6 +10639,8 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
       if (atk == &attacker->skills[0]) {
         attacker->defenseSkill[10].active += 5;
+        if (attacker->defenseSkill[10].active > 999) attacker->defenseSkill[10].active = 999;
+        if (attacker->defenseSkill[11].active > 999) attacker->defenseSkill[11].active = 999;
         printf("\n%s increase Bloodfeast by 5 (%d)\n", attacker->name, attacker->defenseSkill[10].active);
 
         sleep(1);
@@ -10657,12 +10670,15 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
           attacker->defenseSkill[11].active += consume; // Bloodfeast consumed
           attacker->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
 
-      int gain = ((5 * (consume/25))/100) * attacker->MAX_HP;
+        if (attacker->defenseSkill[10].active > 999) attacker->defenseSkill[10].active = 999;
+        if (attacker->defenseSkill[11].active > 999) attacker->defenseSkill[11].active = 999;
+
+        int gain = (consume / 25) * 0.1f * attacker->MAX_HP;
 
         attacker->HP += gain;
       if (attacker->HP > attacker->MAX_HP) attacker->HP = attacker->MAX_HP;
 
-      printf("\n%s at 150+ Bloodfeast (%d), consumes up to 50 Bloodfeast (%d) and heals 5%% HP (%d - %.2f) for every 25 Bloodfeast this unit consumed (%d)\n", attacker->name, attacker->defenseSkill[10].active + consume, attacker->defenseSkill[10].active, gain, attacker->HP, consume);
+      printf("\n%s at 150+ Bloodfeast (%d), consumes up to 50 Bloodfeast (%d) and heals 10%% HP (%d - %.2f) for every 25 Bloodfeast this unit consumed (%d)\n", attacker->name, attacker->defenseSkill[10].active + consume, attacker->defenseSkill[10].active, gain, attacker->HP, consume);
 
       sleep(1);
 
@@ -10673,6 +10689,9 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
            attacker->defenseSkill[10].active -= consume; // Bloodfeast
           attacker->defenseSkill[11].active += consume; // Bloodfeast consumed
           attacker->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
+
+        if (attacker->defenseSkill[10].active > 999) attacker->defenseSkill[10].active = 999;
+        if (attacker->defenseSkill[11].active > 999) attacker->defenseSkill[11].active = 999;
 
       int gain = (consume/50);
         if (gain > 2) gain = 2;
@@ -11586,15 +11605,18 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
   // won
   if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
           0 &&
-      (atk == &attacker->skills[6])) {
+      (atk == &attacker->defenseSkill[0]) && attacker->defenseSkill[0].active) {
 
     attacker->Passive += 5;
     if (attacker->Passive > 30) attacker->Passive = 30;
 
-    printf("\n%s gains 5 Hardblood(%d)\n", attacker->name, attacker->Passive);
+    printf("\n%s gains 5 Hardblood (%d)\n", attacker->name, attacker->Passive);
 
     sleep(1);
-  }
+  } else if (isId(attacker->ID, "Don Quixote:The Manager of La Manchaland") ==
+        0 && attacker->defenseSkill[0].active) {
+     attacker->defenseSkill[0].active = 0;
+        }
 
   //------------------------------------Sancho:The Second Kindred of Don Quixote-------------------
 
@@ -12672,8 +12694,8 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
     sleep(1);
 
-      // Passive 2 & 4: Offense/Defense +6 (Base) + (Muga/10)
-      int levelBoost = 6 + (c->Passive / 10);
+      // Passive 2 & 4: Offense/Defense (Muga/10)
+      int levelBoost = (c->Passive / 10);
       *tempOffense += levelBoost;
       *tempDefense += levelBoost;
 
@@ -12682,7 +12704,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
       if (reduction > 90.0f) reduction = 90.0f;
       chosenSkill->Protection[0] += reduction;
 
-      printf("\n%s gains +%d Offense and Defense, Damage Reduction +%.0f%%\n", c->name, levelBoost, reduction);
+      printf("\n%s gains +%d Offense and Defense from Muga [無我] on self, Damage Reduction +%.0f%%\n", c->name, levelBoost, reduction);
 
     sleep(1);
   }
@@ -12783,7 +12805,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
       // 7. You Must Accept the Pain!: เปลี่ยนสกิลเมื่อตะปูเยอะ
       if (chosenSkill == &c->skills[2] && c->skills[2].active >= 3) {
-          chosenSkill = &c->skills[3]; // ใช้ Purify แทน Execution
+          *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
+    chosenSkill = &c->skills[3];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense; // ใช้ Purify แทน Execution
           printf("\n%s has 3+ Nails, using 'Purify' instead\n", c2->name);
 
         sleep(1);
@@ -13062,7 +13086,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
         int grace = c->skills[0].active;
         int dmgBoost = (grace >= 9) ? 16 : (grace * 2);
-      if (dmgBoost > 0) {
+      if (dmgBoost > 0 && grace < 9) {
         chosenSkill->DamageUp[0] += dmgBoost; // +2% ต่อ Grace หรือ 20% ถ้าเต็ม 9
         printf("\n%s +2%% damage with Skills marked with 'Mark of the Prescript' for every 'Grace of the Prescript' on self (%d%% - Max 16%%)\n", c->name, dmgBoost);
 
@@ -13073,6 +13097,15 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
     *tempOffense += (c->skills[0].active / 3); // Offense +1 ทุก 3 Grace
 
     if ((c->skills[0].active / 3) > 0) { printf("\n%s gains +1 Offense (%d) for every 3 'Grace of the Prescript' (%d)\n", c->name, (c->skills[0].active / 3), c->skills[0].active); sleep(1);}
+
+  int grace = c->skills[0].active;
+ if (grace >= 9) {
+      chosenSkill->DamageUp[0] += 20; // +2% ต่อ Grace หรือ 20% ถ้าเต็ม 9
+      printf("\n%s at 9 'Grace of the Prescript' on self, deal +20%% damage with Base Skills\n", c->name);
+
+    sleep(1);
+  }
+
   }
 
   // The House of Spiders: The Index Nursefather Yi Sang - Skill Defense Buff
@@ -13218,7 +13251,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
     }
 
   // The House of Spiders: The Index Nursefather Yi Sang - Skill 4 Buff
-  if (isId(c->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && chosenSkill == &c->skills[3]) {
+  if (isId(c->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (chosenSkill == &c->skills[3] || chosenSkill == &c->skills[4])) {
 
     // [Combat Start] สั่งห้ามรับ Hermes ในเทิร์นนี้ (ฝากค่าไว้ใน skills[8].active)
     c->skills[8].active = 1;
@@ -13430,7 +13463,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
       *tempOffense -= chosenSkill->Offense;
       *tempDefense -= chosenSkill->Defense;
 
-        chosenSkill = &c->skills[2];
+        *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
+    chosenSkill = &c->skills[2];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
         chosenSkill->Clashable = 0;
         chosenSkill->skillType = 3;
@@ -13444,7 +13479,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
       *tempOffense -= chosenSkill->Offense;
       *tempDefense -= chosenSkill->Defense;
 
-        chosenSkill = &c->skills[2];
+        *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
+    chosenSkill = &c->skills[2];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
         chosenSkill->Clashable = 0;
         chosenSkill->skillType = 3;
@@ -13456,7 +13493,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
         c->OffenseLevelUp[0] -= chosenSkill->Offense;
       *tempDefense -= chosenSkill->Defense;
 
-        chosenSkill = &c->skills[1];
+        *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
+    chosenSkill = &c->skills[1];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
         chosenSkill->Clashable = 0;
           chosenSkill->skillType = 3;
@@ -13566,7 +13605,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
     printf("\nWhen activated 'Dullahan', %s switching '%s' to Skill '%s'\n", c->name,
            chosenSkill->name, c->skills[3].name);
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[3];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
     chosenSkill->skillType = 0;
 
     sleep(1);
@@ -13578,7 +13619,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
     printf("\n%s activated 'Dullahan', and equipped '%s', using '%s' as Clashable Counter instead\n", c->name,
            chosenSkill->name, c->skills[3].name);
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[3];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
     chosenSkill->skillType = 5;
 
     sleep(1);
@@ -13906,7 +13949,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
     printf("\n%s at 1+ Savage Tigermark Round, switching '%s' to Skill '%s'\n", c->name,
            chosenSkill->name, c->skills[3].name);
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[3];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
     sleep(1);
   }
@@ -14117,7 +14162,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   // The House of Spiders: The Thumb Nursefather Rodion - Skill 2-1 to 2-2
   if (isId(c->ID, "The House of Spiders: The Thumb Nursefather Rodion") == 0 && (chosenSkill == &c->skills[2]) && c->skills[10].active <= 0) {
 
-     chosenSkill = &c->skills[3];
+     *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
+    chosenSkill = &c->skills[3];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
       printf("\n%s does not have Acceleration Round, activate as 'Sezionatura di Cervo'\n", c->name);
 
@@ -14314,7 +14361,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   if (isId(c->ID, "Lei heng") == 0 && c->HP < c->MAX_HP * 0.4 &&
       (chosenSkill == &c->skills[2])) {
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[4];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
     sleep(1);
 
@@ -14550,7 +14599,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
     printf("\n%s: \"I've prepped plenty of fuel.\"\n", c->name);
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->defenseSkill[0];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
     sleep(1);
   }
@@ -14568,7 +14619,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   // Gregor:Firefist – Buff Passive
   if (isId(c->ID, "Gregor:Firefist") == 0) {
 
-    if (c2->HP <= (c2->MAX_HP *0.75) || c->HP <= (c->MAX_HP *0.75)) {
+    if ((c2->HP <= (c2->MAX_HP *0.75) || c->HP <= (c->MAX_HP *0.75)) && c->skills[3].active > 0) {
 
     if (c->skills[3].active > 0 && (c2->Burn[0] + c2->Burn[1]) < 30) {
       int boost = c->skills[3].active * 0.2;  // 0.2% per consumed fuel
@@ -14579,9 +14630,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
       printf("\n%s's HP or %s's HP at 75%% or less HP, Deal +0.2%% damage for every District 12 Fuel and Overheated Fuel this unit consumed in this Encounter (%d%% - Max 40%%)\n",
          c2->name, c->name, boost);
 
-       printf("\n%s: \"Let's see how much more of this you can take.\"\n", c->name);
-
-    } else if (c->skills[3].active > 0 && (c2->Burn[0] + c2->Burn[1]) >= 30) {
+    } else if (c->skills[3].active > 0 && (c2->Burn[0] + c2->Burn[1]) < 50) {
       int boost = c->skills[3].active * 0.3;  // 0.3% per consumed fuel
       if (boost > 60) {
         boost = 60;
@@ -14590,9 +14639,28 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
         printf("\n%s's HP or %s's HP at 75%% or less HP, and main target at 30+ (Burn Stack + Burn Count) (%d), Deal +0.3%% damage for every District 12 Fuel and Overheated Fuel this unit consumed in this Encounter (%d%% - Max 60%%)\n",
            c2->name, c->name, (c2->Burn[0] + c2->Burn[1]), boost);
 
-         printf("\n%s: \"Let's see how much more of this you can take.\"\n", c->name);
+
+      } else if (c->skills[3].active > 0 && (c2->Burn[0] + c2->Burn[1]) < 100) {
+        int boost = c->skills[3].active * 0.5;  // 0.5% per consumed fuel
+        if (boost > 150) {
+          boost = 150;
+        }
+        chosenSkill->DamageUp[0] += boost;
+          printf("\n%s's HP or %s's HP at 75%% or less HP, and main target at 50+ (Burn Stack + Burn Count) (%d), Deal +0.5%% damage for every District 12 Fuel and Overheated Fuel this unit consumed in this Encounter (%d%% - Max 150%%)\n",
+             c2->name, c->name, (c2->Burn[0] + c2->Burn[1]), boost);
+
+    } else if (c->skills[3].active > 0 && (c2->Burn[0] + c2->Burn[1]) >= 100) {
+          int boost = c->skills[3].active * 1;  // 1% per consumed fuel
+          if (boost > 300) {
+            boost = 300;
+          }
+          chosenSkill->DamageUp[0] += boost;
+            printf("\n%s's HP or %s's HP at 75%% or less HP, and main target at 100+ (Burn Stack + Burn Count) (%d), Deal +1%% damage for every District 12 Fuel and Overheated Fuel this unit consumed in this Encounter (%d%% - Max 300%%)\n",
+               c2->name, c->name, (c2->Burn[0] + c2->Burn[1]), boost);
+
       }
 
+       printf("\n%s: \"Let's see how much more of this you can take.\"\n", c->name);
 
     sleep(1);
 
@@ -14679,12 +14747,12 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   if (isId(c->ID, "Gregor:Firefist") == 0 &&
       chosenSkill == &c->skills[2]) {
 
-    int gain = (c2->Burn[0] + c2->Burn[1]) / 10;
+    int gain = (c2->Burn[0] + c2->Burn[1]) / 5;
 
       if (gain > 0) {
-        if (gain > 5) gain = 5;
+        if (gain > 10) gain = 10;
 
-    printf("\n%s gains +1 Final Power(%d) for every 10 (Burn Stack + Count) on target(%d) (Max 5)\n", c->name,
+    printf("\n%s gains +1 Final Power (%d) for every 5 (Burn Stack + Count) on target (%d) (Max 10)\n", c->name,
            gain, c2->Burn[0] + c2->Burn[1]);
 
          chosenSkill->FinalPowerBoost[0] += gain;
@@ -15176,7 +15244,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   if (isId(c->ID, "Don Quixote:The Manager of La Manchaland") == 0 &&
       chosenSkill == &c->skills[2] && c->Passive >= 15) {
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[5];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
     printf("\n%s has 15+ Hardblood (%d), The Manager of La Manchaland Don "
            "Quixote: Empower Skill 3\n",
@@ -15192,7 +15262,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
     int Hardblood = 10;
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[3];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
     printf("\n%s has 15+ Hardblood (%d), The Priest of La Manchaland Gregor: "
            "Empower Skill 1\n",
@@ -15206,7 +15278,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
     int Hardblood = 10;
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[4];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
     printf("\n%s has 15+ Hardblood (%d), The Barber of La Manchaland Outis: "
            "Empower Skill 2\n",
@@ -15226,8 +15300,10 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
   c->Passive -= (c->Passive) / 2;
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->defenseSkill[1];
-
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
+    
   sleep(1);
 
   printf(
@@ -15313,12 +15389,13 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
 
     int shieldgain = 1 + (c->Passive/10);
     int gain = shieldgain * (c->defenseSkill[11].active/20);
+    if (gain > 50) gain = 50;
 
     if (gain > 0) {
 
     c->Shield += gain;
 
-    printf("\n%s gains (%d; 1 + (Hardblood / 10)) Shield HP (%d - Shield %.2f) for every 20 Bloodfeast Consumed (%d)\n", c->name, shieldgain, gain, c->Shield + c->TempShield, c->defenseSkill[11].active);
+    printf("\n%s gains (%d; 1 + (Hardblood / 10)) Shield HP (%d - Max 50; Shield %.2f) for every 20 Bloodfeast Consumed (%d)\n", c->name, shieldgain, gain, c->Shield + c->TempShield, c->defenseSkill[11].active);
 
     sleep(1);
     }
@@ -15329,8 +15406,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
       c->HP <= c->MAX_HP*0.5) {
 
     c->Passive += 3;
+    if (c->Passive > 30) c->Passive = 30;
 
-    printf("\n%s at 50%% or less HP, 'Responsibility' activated!, Clash Power +1, Deal +20%% damage, Take +20%% damage, and gains 3 Hardblood(%d)\n",
+    printf("\n%s at 50%% or less HP, 'Responsibility' activated!, Clash Power +1, Deal +20%% damage, Take +20%% damage, and gains 3 Hardblood (%d)\n",
            c->name, c->Passive);
 
     chosenSkill->ClashPower[0] += 1;
@@ -15698,8 +15776,7 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
         c->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
 
         c->Paralyze[0] += 1;
-        c->Paralyze[1] += 1;
-        chosenSkill->ClashPower[0] += 5;
+        c2->Paralyze[0] += 1;
 
       printf("\n%s consumes 50 Bloodfeast (%d) to inflict 1 Paralyze (Fix the Power of 1 Coins to 0 for one turn) against the target and self\n", c->name, c->defenseSkill[10].active);
 
@@ -15735,9 +15812,10 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
             0 &&
       chosenSkill == &c->skills[13]) {
 
-      if (c->defenseSkill[10].active >= 100) {
+      int consume = 45 - c->Sanity;
 
-          int consume = 45 - c->Sanity;
+      if (c->defenseSkill[10].active >= consume) {
+
            c->defenseSkill[10].active -= consume; // Bloodfeast
           c->defenseSkill[11].active += consume; // Bloodfeast consumed
           c->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
@@ -15749,11 +15827,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
         sleep(1);
         } else {
 
-        int consume = 45 - c->HP;
+        updateSanity(c, consume); 
 
-        updateSanity(c, consume);
-
-        c->HP -= consume;
+        c->HP -= (float)consume; // หัก HP ตามจำนวน Sanity ที่ฮีลไป
         if (c->HP < 1) c->HP = 1;
 
           printf("\nThere isn't enough Bloodfeast, %s consumes up to (45 - current Sanity) HP to heal up to 45 Sanity (%.2f) (this damage does not lower the unit's HP below 1)\n", c->name, c->HP);
@@ -16132,7 +16208,9 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   // Heishou Pack - You Branch Adept Heathcliff - Skill 4
   if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && c->Passive >= 20 && chosenSkill == &c->skills[2]) {
 
+    *tempOffense -= chosenSkill->Offense; *tempDefense -= chosenSkill->Defense;
     chosenSkill = &c->skills[3];
+    *tempOffense += chosenSkill->Offense; *tempDefense += chosenSkill->Defense;
 
       printf("\n%s's Battleblood Instinct at 20+ Stack, activate '%s' instead\n", c->name, c->skills[3].name);
 
@@ -16531,7 +16609,7 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
   Character *AttackUnit  = p1; 
 
    // เช็คว่าคนที่แพ้คือฝั่ง Player หรือไม่
-   int isCounterUnitPlayerSide = (counterUnit == fullPlayer); 
+   int isCounterUnitPlayerSide = (counterUnit == fullPlayer);
 
   // ------------------------- Counter -----------------------------------------
 
@@ -16549,8 +16627,12 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
     SkillStats *chosenSkill = getEffectiveSkill(
         counterUnit, AttackUnit, s1, &counterUnit->defenseSkill[0], &cOff, &cDef);
 
+    cOff += chosenSkill->Offense;
+    cDef += chosenSkill->Defense;
+
     counterUnit->Passive -= 5;
     if (counterUnit->Passive < 1) counterUnit->Passive = 1;
+    counterUnit->defenseSkill[0].active = 1;
     printf("\n%s consumes 5 Hardblood (%d left) to continue clashing with %s (Once per Turn)\n",
         counterUnit->name, counterUnit->Passive, chosenSkill->name);
 
@@ -16629,6 +16711,9 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
 
       SkillStats *chosenSkill = getEffectiveSkill(
           counterUnit, AttackUnit, s1, &counterUnit->skills[3], &cOff, &cDef);
+
+      cOff += chosenSkill->Offense;
+      cDef += chosenSkill->Defense;
 
       int savedEnemyCoins = s1->Coins;
       s1->Coins = WinnerCoin;
@@ -17235,7 +17320,7 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
     
     s2->DamageUp[0] -= 50;
 
-    p2->defenseSkill[2].active = 0; // flag to gain take damage up
+    p2->defenseSkill[2].active = 1; // flag to gain take damage up
     p2->ProtectionDown[0] += 30;
     
     printf("\n%s lost the Clash, deals -50%% damage; gains 30%% Take Damage Up as long as the Shield gained due to this Skill is active\n", p2->name);
@@ -17252,6 +17337,11 @@ void applyClashRoundResult(Character *p1, SkillStats *s1, Character *p2, SkillSt
         p2->defenseSkill[10].active -= consumed; // Bloodfeast
       p2->defenseSkill[10].active += consumed; // Bloodfeast Consumed
       p2->defenseSkill[12].active += consumed; // Bloodfeast Skill consumed
+
+    if (p2->defenseSkill[10].active < 0) p2->defenseSkill[10].active = 0;
+    if (p2->defenseSkill[11].active < 0) p2->defenseSkill[11].active = 0;
+    if (p2->defenseSkill[10].active > 999) p2->defenseSkill[10].active = 999;
+    if (p2->defenseSkill[11].active > 999) p2->defenseSkill[11].active = 999;
     
     printf("\n%s lost the Clash, consumes 100 Bloodfeast (%d)\n", p2->name, p2->defenseSkill[10].active);
 
@@ -17600,6 +17690,11 @@ if (isId(p2->ID, "King in Binds") == 0 && (s2 == &p2->skills[1] || s2 == &p2->sk
        p1->defenseSkill[10].active -= consume; // Bloodfeast
       p1->defenseSkill[11].active += consume; // Bloodfeast consumed
       p1->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
+
+      if (p1->defenseSkill[10].active < 0) p1->defenseSkill[10].active = 0;
+      if (p1->defenseSkill[11].active < 0) p1->defenseSkill[11].active = 0;
+      if (p1->defenseSkill[10].active > 999) p1->defenseSkill[10].active = 999;
+      if (p1->defenseSkill[11].active > 999) p1->defenseSkill[11].active = 999;
 
     int gain = 25*(consume/10);
     int Hardblood = consume/10;
@@ -18997,7 +19092,9 @@ void setupCharacters(Character *player, Character *enemy, int pIndex,
       player->skills[0] = (SkillStats){"'Enwrap 330 times...'", 3, 4, 2, 2, 2, 1, 0, 0, 3, 1};
       player->skills[1] = (SkillStats){"'Revel with Soundless Applause...'", 4, 4, 3, 3, 2, 1, 0, 0, 2, 1};
       player->skills[2] = (SkillStats){"'Raise and Laugh the Blade...'", 4, 3, 4, 4, 2, 1, 0, 0, 1, 1};
-      player->skills[3] = (SkillStats){"Furioso-Replica", 2, 2, 9, 5, 2, 1, 0, 9, 0, 1}; 
+      player->skills[3] = (SkillStats){"Furioso-Replica", 2, 2, 9, 5, 2, 1, 0, 9, 0, 1};
+    player->skills[4] = (SkillStats){"Furioso [Lacrimosa-Crescendo]", 3, 3, 15, 5, 2, 1, 0, 9, -1, 1}; // 0 Copies = avilable, -1 Copies = Unavilable for fun
+    // BasePower, CoinPower, Coins, Offense, Defense, DmgMutiplier, active, Unbreakable, Copies, Clashable, Skill type
 
     player->Passive = 0;          // Stage
     player->skills[0].active = 0; // Grace
@@ -19573,11 +19670,11 @@ void handleCombatStart(Character *c, Character *c2, SkillStats *chosenSkill, Ski
 
       if (c2->Bleed[1] <= 0) c2->Bleed[1] = 0;
 
-      if (c2->Bleed[1] <= 0) c2->Bleed[0] = 0;
-
       applyDamage(c, c2, damage, 0, "Bleed");
 
       printf("\nIf there are enemies against %s with Bleed, activate Bleed on enemy (%d). Enemy lose 2 Bleed Count (%d)\n", c->name, c2->Bleed[0], c2->Bleed[1]);
+
+      if (c2->Bleed[1] <= 0) c2->Bleed[0] = 0;
 
       sleep(1);
 
@@ -19601,6 +19698,11 @@ void handleCombatStart(Character *c, Character *c2, SkillStats *chosenSkill, Ski
          c->defenseSkill[10].active -= consume; // Bloodfeast
         c->defenseSkill[11].active += consume; // Bloodfeast consumed
         c->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
+
+        if (c->defenseSkill[10].active < 0) c->defenseSkill[10].active = 0;
+        if (c->defenseSkill[11].active < 0) c->defenseSkill[11].active = 0;
+        if (c->defenseSkill[10].active > 999) c->defenseSkill[10].active = 999;
+        if (c->defenseSkill[11].active > 999) c->defenseSkill[11].active = 999;
 
         c->defenseSkill[1].active = 1; // Shimmering【Bloodfiend】
 
@@ -20732,6 +20834,9 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
       if (player->skills[1].active >= 9 && *playerSkill1 != 3 && *playerSkill2 != 3) {
           *playerSkill1 = 3; // บังคับให้ช่องที่ 1 เป็น Furioso ทันที
+        if (player->skills[4].Copies == 0) {
+        *playerSkill1 = 4; // บังคับให้ช่องที่ 1 เป็น Furioso spical op ทันที
+      }
       }
   }
 
@@ -20791,8 +20896,8 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
     // (ตรรกะเดิมของคุณ) การสุ่มเลือกสกิลตาม Prescript
     if (player->Passive >= 2) { 
-      if (*playerSkill1 == 2 || *playerSkill2 == 2 || *playerSkill1 == 3 || *playerSkill2 == 3) {
-          if (*playerSkill1 == 2 || *playerSkill1 == 3) player->skills[4].active = *playerSkill1;
+      if (*playerSkill1 == 2 || *playerSkill2 == 2 || *playerSkill1 == 3 || *playerSkill2 == 3 || *playerSkill1 == 4) {
+          if (*playerSkill1 == 2 || *playerSkill1 == 3 || *playerSkill1 == 4) player->skills[4].active = *playerSkill1;
           else player->skills[4].active = *playerSkill2;
       } else {
           player->skills[4].active = (rand() % 2 == 0) ? *playerSkill1 : *playerSkill2;
@@ -20817,7 +20922,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
         // --- ส่วน Skill Conversion Logic ---
         // เช็คว่าในมือ (Dashboard) มี Furioso หรือยัง
         if (*playerSkill1 != 3 && *playerSkill2 != 3) {
-            printf("\n%s [Imitation of a Life] No Furioso on Dashboard! Converting top slot next turn\n", player->name);
+            printf("\n%s's [Imitation of a Life] No Furioso on Dashboard! Converting top slot next turn\n", player->name);
             // หมายเหตุ: การเปลี่ยนค่า playerSkill1 ตรงๆ ในนี้จะไม่มีผลต่อ main 
             // เพราะ C รับค่า playerSkill1 แบบ Value (สำเนา) ไม่ใช่ Pointer
             // วิธีแก้: คุณต้องไปเพิ่มบรรทัด conversion ใน main() ตามที่อธิบายด้านล่าง
@@ -20850,6 +20955,8 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   // Don Quixote:The Manager of La Manchaland – Bloodfeast
   if (isId(player->ID, "Don Quixote:The Manager of La Manchaland") == 0) {
 
+    if (player->defenseSkill[10].active < 0) player->defenseSkill[10].active = 0;
+    if (player->defenseSkill[11].active < 0) player->defenseSkill[11].active = 0;
     if (player->defenseSkill[10].active > 999) player->defenseSkill[10].active = 999;
     if (player->defenseSkill[11].active > 999) player->defenseSkill[11].active = 999;
     player->defenseSkill[12].active = 0; // Bloodfeast Skill consumed reset
@@ -20863,7 +20970,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   }
 
   // Sancho:The Second Kindred of Don Quixote – at clash lose gain Take Damage Up
-  if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->defenseSkill[1].active && !enemy->defenseSkill[2].active) {
+  if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->defenseSkill[1].active && enemy->defenseSkill[2].active) {
 
        enemy->ProtectionDown[0] += 30;
 
@@ -20872,6 +20979,8 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   // Sancho:The Second Kindred of Don Quixote – Bloodfeast
   if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
 
+    if (enemy->defenseSkill[10].active < 0) enemy->defenseSkill[10].active = 0;
+    if (enemy->defenseSkill[11].active < 0) enemy->defenseSkill[11].active = 0;
     if (enemy->defenseSkill[10].active > 999) enemy->defenseSkill[10].active = 999;
     if (enemy->defenseSkill[11].active > 999) enemy->defenseSkill[11].active = 999;
        enemy->defenseSkill[12].active = 0; // Bloodfeast Skill consumed reset
@@ -20889,14 +20998,14 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   // Sancho:The Second Kindred of Don Quixote – heal HP at start
   if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
 
-    int healvalue = enemy->defenseSkill[10].active/2;
+    int healvalue = enemy->defenseSkill[10].active/10;
     if (healvalue > 50) healvalue = 50;
     if (healvalue > 0) {
 
     enemy->HP += healvalue;
       if (enemy->HP > enemy->MAX_HP) enemy->HP = enemy->MAX_HP;
 
-    printf("\n%s heals %d HP (Max 50)\n",
+    printf("\n%s heals (Bloodfeast/10) HP (%d - Max 50)\n",
            enemy->name, healvalue);
 
     sleep(1);
@@ -20904,13 +21013,18 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   }
 
     // Sancho:The Second Kindred of Don Quixote – heal sanity at -15 Sanity or less
-    if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->Sanity <= -15 && (20 - enemy->defenseSkill[10].active) > 0) {
+    if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && enemy->Sanity <= -15) {
 
-      int consumed = 20 - (enemy->defenseSkill[10].active);
+      int consumed = 20 - enemy->Sanity;
 
+      if (enemy->defenseSkill[10].active >= consumed) {
         enemy->defenseSkill[10].active -= consumed; // Bloodfeast
       enemy->defenseSkill[11].active += consumed; // Bloodfeast Consumed
       enemy->defenseSkill[12].active += consumed; // Bloodfeast Skill consumed
+      if (enemy->defenseSkill[10].active < 0) enemy->defenseSkill[10].active = 0;
+      if (enemy->defenseSkill[11].active < 0) enemy->defenseSkill[11].active = 0;
+      if (enemy->defenseSkill[10].active > 999) enemy->defenseSkill[10].active = 999;
+      if (enemy->defenseSkill[11].active > 999) enemy->defenseSkill[11].active = 999;
 
       updateSanity(enemy, consumed);
       enemy->ClashPowerUp[0] += 2;
@@ -20919,6 +21033,8 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
              enemy->name, consumed, enemy->defenseSkill[10].active, consumed);
 
       sleep(1);
+
+      }
       
     }
 
@@ -21044,9 +21160,8 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
     int amount = ((int)(12 * enemy->MAX_HP)) / 847;
     if (amount < 12) amount = 12;
 
-    if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->ID, "Don Quixote") == 0) amount += 4; // pity for boss
+    if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->ID, "Don Quixote") == 0) amount += 12; // pity for boss
     if (isId(enemy->ID, "Sukuna:King of Curse") == 0) amount += 6; // pity for boss
-    if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0) amount += 10; // pity for boss
     if (isId(enemy->ID, "Lei heng") == 0) amount += 10; // pity for boss
 
     player->Passive = amount;
@@ -21607,6 +21722,32 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
       sleep(1);
 
     }
+    else   if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 &&
+        (&player->skills[playerSkill1] == &player->skills[4]) && player->skills[3].active == 2) {
+      // The House of Spiders: The Index Nursefather Yi Sang – Before fight with OPPPP Furioso-Replica with Sizzling Wound
+      player->BasePowerUp[0] += 1;
+      player->DamageUp[0] += 30;
+      player->ClashPowerUp[0] += 2;
+
+      printf("\n%s gains 'Indulgence in Prescripts'\n",
+        player->name);
+
+      sleep(1);
+
+        printf("\n%s: \"No need to wander outside. This is the hell where you should be.\"\n",
+          player->name);
+
+      sleep(1);
+
+    }
+  else if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && (&player->skills[playerSkill1] == &player->skills[4])) { // The House of Spiders: The Index Nursefather Yi Sang – Before fight with OPPPP Furioso-Replica without Sizzling Wound
+
+      printf("\n%s: \"Don't resent me so. That's that, and this is this.\"\n",
+        player->name);
+
+    sleep(1);
+
+  }
 
     // Roland - Skill 9 Unbreakable coins reset
   if (isId(player->ID, "Fixer grade 9?") == 0 && player->skills[8].Unbreakable > 0) {
@@ -21999,6 +22140,10 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
         sleep(1);
 
+          printf("\n%s: \"Like hell I'm kickin' the bucket in this fucking dump.\"\n", player->name);
+
+          sleep(1);
+
         }
 
         if (player->skills[13].active == 0) {
@@ -22009,10 +22154,6 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
           printf("\n%s gains 'Shin (心) - Disgrace' next turn\n", player->name);
 
            sleep(1);
-
-          printf("\n%s: \"Like hell I'm kickin' the bucket in this fucking dump.\"\n", player->name);
-
-          sleep(1);
            }
       }
       }
@@ -22065,10 +22206,8 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
         int amount = ((int)(8 * enemy->MAX_HP)) / 847;
         if (amount < 8) amount = 8;
 
-        if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->ID, "Don Quixote") == 0) amount += 2; // pity for boss
+        if (isId(enemy->ID, "Sancho:The Second Kindred of Don Quixote") == 0 || isId(enemy->ID, "Don Quixote") == 0) amount += 7; // pity for boss
         if (isId(enemy->ID, "Sukuna:King of Curse") == 0) amount += 3; // pity for boss
-        if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0) amount += 5; // pity for boss
-        if (isId(enemy->ID, "The Middle Nursefather - Matthias") == 0) amount += 5; // pity for boss
         if (isId(enemy->ID, "Lei heng") == 0) amount += 5; // pity for boss
 
           player->skills[3].active = 1;
@@ -22893,17 +23032,18 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
     }
 
   // Sancho:The Second Kindred of Don Quixote - Min & Max Speed +1 next turn
-   if (isId(player->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && player->defenseSkill[10].active >= 300) {
+   if (isId(player->ID, "Sancho:The Second Kindred of Don Quixote") == 0) {
 
       int Min = 1;
      int Max = 2;
 
      int gain = player->defenseSkill[10].active/300;
+     if (gain < 0) gain = 0;
 
      player->MinSpeed = Min + gain;
      player->MaxSpeed = Max + gain;
 
-     if (gain > 0) {
+     if (gain > 0 && player->defenseSkill[10].active >= 300) {
 
      printf("\n%s gains +1 Min & Max Speed next turn (%d) for every 300 Bloodfeast (%d)\n", player->name, gain, player->defenseSkill[10].active);
 
@@ -22993,8 +23133,8 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
         printf("\n%s tranforms to 'Sancho:The Second Kindred of Don Quixote'\n",
                player->name);
 
-        player->MAX_HP = 1211;
-        player->HP = 1211;
+        player->MAX_HP = 981;
+        player->HP = 981;
         player->name = "Sancho:The Second Kindred of Don Quixote";
         player->ID = "Sancho:The Second Kindred of Don Quixote";
         player->Sanity = 0;
@@ -23030,6 +23170,14 @@ else if (player->skills[5].active == 0 && player->Passive < 3) {
         } else {
           printf("\n%s: \"Let wrap it up.\"\n", player->name);
         }
+
+        sleep(1);
+
+        player->defenseSkill[10].active += 400;
+
+        printf("\n%s gains 'Yearning for Blood' and 400 Bloodfeast\n", player->name);
+
+        sleep(1);
       }
 
       // Sukuna:King of Curse cursed reverse technique
@@ -23277,14 +23425,7 @@ if (isId(player->ID, "King in Binds") == 0 && player->HP <= player->MAX_HP * 0.2
               updateSanity(player, healSanity);
               printf("\n%s heals Sanity by this unit's missing HP (%d - Max 30)\n", player->name, player->Sanity);
           }
-        else if (isId(player->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && player->Passive >= 1) {
-
-            player->Passive -= 3;
-          if (player->Passive < 1) player->Passive = 1;
-          player->FinalPowerUp[1] += 3;
-          player->DamageUp[1] += 30;
-
-              printf("\n%s consumes 3 Hardblood (%d) to gain 3 Final Power Up and +30%% damage next turn\n", player->name, player->Passive);
+        else if (isId(player->ID, "Sancho:The Second Kindred of Don Quixote") == 0 && player->Passive >= 1) {;
 
           if (player->defenseSkill[10].active >= 100) {
 
@@ -23292,6 +23433,10 @@ if (isId(player->ID, "King in Binds") == 0 && player->HP <= player->MAX_HP * 0.2
                player->defenseSkill[10].active -= consume; // Bloodfeast
               player->defenseSkill[11].active += consume; // Bloodfeast consumed
               player->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
+            if (player->defenseSkill[10].active < 0) player->defenseSkill[10].active = 0;
+            if (player->defenseSkill[11].active < 0) player->defenseSkill[11].active = 0;
+            if (player->defenseSkill[10].active > 999) player->defenseSkill[10].active = 999;
+            if (player->defenseSkill[11].active > 999) player->defenseSkill[11].active = 999;
 
             player->AttackSkillPowerUp[1] += 3;
 
@@ -23757,10 +23902,10 @@ void runKingInBindsBattle(
   SkillStats *playerSkillEffective = NULL;  
 
   /*
-  player->MAX_HP = 300;
-  player->HP = 300;
-    enemy.MAX_HP = 300;
-    enemy.HP = 300;*/
+  player->MAX_HP = 3000;
+  player->HP = 3000;
+    enemy.MAX_HP = 3000;
+    enemy.HP = 3000;*/
 
 
   while (player->HP > 0 && enemy.HP > 0) {
@@ -24213,6 +24358,14 @@ void runKingInBindsBattle(
            if (!willClash) {
 
              if (pType == 0 || eType == 0) {
+
+               // Evaded
+                if (pType == 2) {
+                  pSkillExecuted = 1;
+                }
+                if (eType == 2) {
+                   eSkillExecuted = 1;
+                 }
 
                // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
                if (pType == 1) {
@@ -24851,6 +25004,14 @@ void runKingInBindsBattle(
 
              if (pType == 0 || eType == 0) {
 
+               // Evaded
+                if (pType == 2) {
+                  pSkillExecuted = 1;
+                }
+                if (eType == 2) {
+                   eSkillExecuted = 1;
+                 }
+
                // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
                if (pType == 1) {
                  defensePhase(player, playerSkillEffective, &enemy, enemySkillEffective);
@@ -25272,8 +25433,8 @@ int main() {
           printf("Passive Skills:\n");
           printf("\n 1. Bloodfeast\n If this unit is on field, or is one of the units that can appear on this Stage, increase \x1b[38;2;139;69;19mBloodfeast\x1b[0m value by the amount of \x1b[0;31mBleed\x1b[0m damage collectively received by every unit. When this unit enters the field, the sleeping blood drenching the battlefield will flood the surface.\n"
             
-            "\nBloodfeast\n"
-            "	- Max Value: 999\n"
+            "\n Bloodfeast\n"
+           " - Max Value: 999\n"
            " - Stores all \x1b[0;31mBleed\x1b[0m damage dealt in this zone\n"
            " - Resets when moving to a different zone\n"
            " - This value is shared by all characters\n"
@@ -25288,7 +25449,7 @@ int main() {
             " - When reach 0 Count, loses all Stack too\n");
           printf("\n 3. Variant Sancho Hardblood Arts\n Turn Start: When at 15+ 'Hardblood' using Variant Sancho Hardblood Arts instead for each skills\n");
           printf("\n 4. Bearer of the Blood Kin\n When at 50%% or less HP, 'Responsibility' activate, Clash Power +1, Deal +20%% damage, Take +20%% damage and gain 3 Hardblood\n");
-          printf("\n 5. Blood... is flowing...\n If this unit lost the Clash and equipped Attack Skill that isn't 'Variant Sancho Hardblood' empowered, consumes 5 'Hardblood' to use 'Laughters Will Subside' to continue clashing (Once per Turn), if win the Clash with 'Laughters Will Subside' gain 5 'Hardblood'. At 10+ use 'Variant Sancho Hardblood Arts 15 - Buildup to Finale' instead\n");
+          printf("\n 5. Blood... is flowing...\n If this unit lost the Clash and equipped Attack Skill that isn't 'Variant Sancho Hardblood' empowered, consumes 5 'Hardblood' to use 'Laughters Will Subside' to continue clashing (Once per Turn), if win the Clash with 'Laughters Will Subside', at attack end gain 5 'Hardblood'\n");
           printf("\n 6. Armadura de Sangre\n Gain 10%% Damage Up next turn for every 15%% missing HP at Turn End (Max 30%%)\n");
           printf("\n 7. Hardblood\n Gain by Certain Skills. When hit by enemy gain 2 Hardblood (Max 30; 'Hardblood' cannot drop below 1)"
             "\n Raise Min and Max Speed value by 1 for every 10 Hardblood"
@@ -25369,12 +25530,14 @@ int main() {
                printf("Driven by an unyielding thirst for vengeance, Gregor fights under the banner of his own faction, the Firefist Office, waging a brutal war against the 'Bloodfiend' monsters who took everything from him—his friends, his co-workers, and even his beloved big sister. Armed with volatile, experimental military cybernetics, his terrifying combat prowess comes from years of brutal trench warfare combined with a hardened street-brawling instinct. Pushing his body to the absolute limit, he charges bare-handed into the fray with a mechanized thermal gauntlet, triggering devastating, explosive blasts of fire with every single punch he lands.\n\n");
 
           //Description
-          printf("A High HP and defense character with powerful skill 3 along with damage buff and burn for every skills\n\n");
+          printf("A High HP and defense character with powerful skill 3 along with damage buff and burn for every skills, focus to stack burn for maximum damage\n\n");
 
           //Passive
           printf("Passive Skills:\n");
           printf("\n 1. I'm the only survivor...\n When enemy's HP or this unit's HP at 75%% or less HP, Deal +0.2%% damage for every District 12 Fuel and Overheated Fuel this unit consumed in this Encounter (Max 40%%)\n");
                printf(" - If main target have 30+ (Burn Stack + Burn Count), deal +0.3%% damage instead (Max 60%%)\n");
+               printf(" - If main target have 50+ (Burn Stack + Burn Count), deal +0.5%% damage instead (Max 150%%)\n");
+               printf(" - If main target have 100+ (Burn Stack + Burn Count), deal +1%% damage instead (Max 300%%)\n");
           printf("\n 2. District 12 Special Workshop Fuel\n When start Encounter gain 100 'District 12 Fuel' use for certain skills, when at 50 or less become 'Overheated Fuel', Buff all skills and Burn inflicting; when 'Overheated Fuel' reach 0, or if this unit equipped Defense Skills use 'I have to keep going for big' instead of current skill\n");
                printf("\n 3. ... All burnt to ashes.\n When attack with skills, inflict 'Burn' based on skills used\n");
                printf("\n 4. Burn\n When Inflicted: At 1+ Count, or at 1+ Stack (Turn End: When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), Turn End: Take fixed damage equal to (Stack); then lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
@@ -25776,7 +25939,7 @@ int main() {
                        " - Max Count: 99\n"
                        " - Turn End: Gain +1 Stack; then take fixed Burn Damage equal to (Stack x 2) after that lose 2 Count\n"
                        " - When reach 0 Count, loses all Stack too\n"
-                       "\n\x1b[1;30m A flame that filled with powerful magic and get stronger the long it stay\x1b[0m\n");
+                       "\n\x1b[1;30m A flame that filled with powerful magic and get stronger the longer it stay\x1b[0m\n");
                printf("\n 2. Tremor\n When Inflicted by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, gain 1 Stack, if at 0 Count and 1+ Stack, gain 1 Count), When Trigger by 'Tremor Burst', Raise Stagger Threshold equal to Stack; then reduce 1 Count, if this unit's Stagger Threshold at (Target's Max HP/4) in this Encounter, if this unit not on 'Stagger' state, enter 'Stagger' state (Cannot act for one turn and take +50%% damage) and reset this progess. Turn End: Lose 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
                printf("\n 3. Poise\n When Gain by Certain Skills: At 1+ Count, or at 1+ Stack (When triggering, at 1+ Count and 0 Stack, Count as 1 Stack, if at 0 Count and 1+ Stack, Count as 1 Count), When Attack: Have a (Stack x 5)%% chance to 'Critical Hit' (Boost damage by 20%%). If this unit deals Critical Hit, reduce 1 Count. When reach 0 Count, loses all Stack too (Max 99 Stack/Count)\n");
                      printf("\n 4. Mana\n Encounter Start: Gain 1000 \x1b[0;33mMana\x1b[0m\n"
@@ -25811,7 +25974,7 @@ int main() {
                          " Turn Start: Gain 1 \x1b[0;33mTrue Power\x1b[0m\n"
                          " - If this unit has \x1b[0;33mViolet Flame Enchant\x1b[0m, Gain 1 more \x1b[0;33mTrue Power\x1b[0m\n"
                          " - At less than 50%% or less HP, or Staggered, recover from Staggered; then gain 10 \x1b[0;33mTrue Power\x1b[0m (Once per Encounter)\n"
-                         " - At 10 \x1b[0;33mTrue Power\x1b[0m Stack, if this unit has no \"I Am Atomic...\" on its Dashboard, replace a Base Skill with \"I Am Atomic...\" (prioritizes the Skill on the Slot's top row)"
+                         " - At 10 \x1b[0;33mTrue Power\x1b[0m Stack, if this unit has no \"I Am Atomic...\" on its Dashboard, replace a Base Skill with \"I Am Atomic...\" (prioritizes the Skill on the top Slot's row; Only 1 copy of this Skill can exist on the Dashboard)\n"
 
                          "\n\x1b[0;33mTrue Power\x1b[0m\n"
                          " - Max Stack: 10\n"
@@ -25826,7 +25989,7 @@ int main() {
                        " Low Morale:\n"
                        "  - Turn Start: Gain 5 \x1b[0;31mDefense Level Down\x1b[0m, gain +2 \x1b[0;33mPlus Coin Boost\x1b[0m\n"
                        " Panic:\n"
-                       " - Turn Start: Gain 10 \x1b[0;31mDefense Level Down\x1b[0m, gain +5 \x1b[0;33mFinal Power Up\x1b[0m, +5 \x1b[0;33mAttack Power Up\x1b[0m, +5 \x1b[0;33mDefense Power Up\x1b[0m\n");
+                       "  - Turn Start: Gain 10 \x1b[0;31mDefense Level Down\x1b[0m, gain +5 \x1b[0;33mFinal Power Up\x1b[0m, +5 \x1b[0;33mAttack Power Up\x1b[0m, +5 \x1b[0;33mDefense Power Up\x1b[0m\n");
                 } 
 
           printf("\nSkills (%d Attack Skills, %d Defense Skills):\n", tempPlayer.numSkills, tempPlayer.numDefenseSkills);
@@ -26127,16 +26290,16 @@ int main() {
           printf("\n 5. If we can be freed from this excruciating sickness\n In 'Sancho:The Second Kindred of Don Quixote' Phase: On Hit, if target has \x1b[0;31mBleed\x1b[0m, heal 40%% of the damage dealt.\n"
             " - This Passive heals +1%% more HP for every \x1b[0;31mBleed\x1b[0m Stack on self (Max 20%%)\n"
             " - For Unbreakable Coins: this effect does not activate on Hit After Clash Lose.\n"
-            "Every Turn Start: heal (\x1b[38;2;139;69;19mBloodfeast\x1b[0m/2) HP. (Max 30)\n"
-            "Every Turn Start: at -15 or less Sanity, consume (20 - current Sanity) \x1b[38;2;139;69;19mBloodfeast\x1b[0m to gain Sanity equal to consumed and gain 2 Clash Power Up\n"
-            "On Hit without Clash Lost, gain 3 Hardblood\n");
+            " Every Turn Start: heal (\x1b[38;2;139;69;19mBloodfeast\x1b[0m/10) HP. (Max 50)\n"
+            " Every Turn Start: at -15 or less Sanity, consume (20 - current Sanity) \x1b[38;2;139;69;19mBloodfeast\x1b[0m to gain Sanity equal to consumed and gain 2 Clash Power Up\n"
+            "Attack end without Clash Lost, gain 3 Hardblood\n");
           printf("\n 6. Can I go on an adventure, too?\n In 'Sancho:The Second Kindred of Don Quixote' Phase:\n"
             " - Turn End: Min & Max Speed +1 next turn for every 300 \x1b[38;2;139;69;19mBloodfeast\x1b[0m\n");
           printf("\n 7. The Enthralling Tales, the Beating Passion\n In 'Sancho:The Second Kindred of Don Quixote' Phase: Upon hitting 80%%, 60%%, and 40%% HP, no longer take damage and gain a new pattern\n"
             " Upon gaining a new pattern, recover from Stagger and raise Speed to 10 next turn\n");
           printf("\n 8. Bloodfeast\n If this unit is on field, or is one of the units that can appear on this Stage, increase \x1b[38;2;139;69;19mBloodfeast\x1b[0m value by the amount of \x1b[0;31mBleed\x1b[0m damage collectively received by every unit. When this unit enters the field, the sleeping blood drenching the battlefield will flood the surface.\n"
 
-            "\nBloodfeast\n"
+            "\n Bloodfeast\n"
             "	- Max Value: 999\n"
            " - Stores all \x1b[0;31mBleed\x1b[0m damage dealt in this zone\n"
            " - Resets when moving to a different zone\n"
@@ -26457,7 +26620,6 @@ int main() {
 
     enemy.MAX_HP += 1000;
     enemy.HP += 1000;
-    enemy.Sanity += 45;
     enemy.sanityLossBase = 3;
 
     for (int i = 0; i <= 9; i++) {
@@ -26465,7 +26627,7 @@ int main() {
       enemy.defenseSkill[i].BasePower += 5;
     }
 
-    printf("\n%s gains +1000 Max HP, heals +45 Sanity and all Skills gain +5 Base Power in this Encounter\n", enemy.name);
+    printf("\n%s gains +1000 Max HP and all Skills gain +5 Base Power in this Encounter\n", enemy.name);
 
     sleep(1);
 
@@ -27219,6 +27381,14 @@ int main() {
          if (!willClash) {
 
            if (pType == 0 || eType == 0) {
+
+             // Evaded
+             if (pType == 2) {
+               pSkillExecuted = 1;
+             }
+             if (eType == 2) {
+                eSkillExecuted = 1;
+              }
 
              // ถ้าเป็น Guard (Type 1) ให้ทอยโล่ทันที
              if (pType == 1) {
