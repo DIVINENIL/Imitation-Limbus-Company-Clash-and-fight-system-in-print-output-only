@@ -18,6 +18,7 @@ int isId(const char *characterID, const char *targetId) {
 int TurnCount = 1;
 
 int SpeedState = 0;
+int EffectOrderFirst = -1; // 0 = player/first pointer, 1 = boss/second pointer
 
 int ClashPity = 1;
 
@@ -657,19 +658,22 @@ void applyDamage(Character *attacker, Character *defender, int damage, int trueD
 
 
 
-void calculateSpeed(Character *c) {
+void calculateSpeed(Character *c, int display) {
     if (c->HP <= 0) {
         c->Speed = 0;
         return;
     }
+  if (!display) {
     // สุ่มค่าจาก Min ถึง Max
     int baseSpeed = (c->MinSpeed + c->MinSpeedBoost[0]) + (rand() % ((c->MaxSpeed + c->MaxSpeedBoost[0]) - (c->MinSpeed + + c->MinSpeedBoost[0]) + 1));
     // คำนวณ Speed สุทธิ (Haste เพิ่ม, Bind ลด)
     c->Speed = baseSpeed + c->Haste[0] - c->Bind[0];
     if (c->Speed < 1) c->Speed = 1; // Speed ต่ำสุดคือ 1
-
+  }
+  else {
     printf("[%s] Speed: %d %-5s(Haste +%d, Bind -%d)\n", 
             c->name, c->Speed, "", c->Haste[0], c->Bind[0]);
+  }
 }
 
 
@@ -2163,18 +2167,6 @@ void attackPhase(Character *attacker, SkillStats *atk, int atkTempOffense,
 
     // ----------------------------------------------------------------------------
 
-    // Heishou Pack - You Branch Adept Heathcliff - Battleblood Instinct buff
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->Passive > 0) {
-
-    float gain = attacker->Passive * 0.75f;
-
-      atk->DamageUp[0] += gain;
-
-      printf("\n%s deals +0.75%% damage(%.2f%%) for every Battleblood Instinct Stack (%d)\n", attacker->name, gain, attacker->Passive);
-
-    sleep(1);
-    }
-
     // The Middle Little Brother Sinclair - Passive Buff Mark
     if (isId(attacker->ID, "The Middle Little Brother Sinclair") == 0 && attacker->skills[0].active > 0) {
 
@@ -2803,6 +2795,37 @@ if (isId(attacker->ID, "Gregor:Firefist") == 0 && (atk == &attacker->skills[2]))
 
     sleep(1);
   }
+
+     // Heishou Pack - You Branch Adept Heathcliff - Battleblood Instinct buff
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->Passive > 0) {
+
+        printf("\n%s deals +0.75%% damage for every Battleblood Instinct Stack (Max 15%%)\n", attacker->name);
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff - Skill 3 deal more damage on burn
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && attacker->Burn[0] > 0) {
+
+          printf("\n%s deals +1.5%% damage for every Burn Stack on self (Max 30%%)\n", attacker->name);
+
+        sleep(1);
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on burn
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && attacker->Burn[0] > 0) {
+
+          printf("\n%s deals +3%% damage for every Burn Stack on self (Max 60%%)\n", attacker->name);
+
+        sleep(1);
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on HP
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
+
+          printf("\n%s deals +1%% damage for every 2%% (missing HP percentage on target + missing HP percentage on self) (Max 50%%)\n", attacker->name);
+
+        sleep(1);
+      }
 
     // ------------------- The House of Spiders: The Index Nursefather Yi Sang -------------------
 
@@ -5216,6 +5239,52 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
       }
 
+      // Heishou Pack - You Branch Adept Heathcliff - Battleblood Instinct buff
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->Passive > 0) {
+
+        float gain = attacker->Passive * 0.75f;
+        if (gain > 0) {
+          float scalingBonus = (gain / 5) * 5.0f;
+
+          if (scalingBonus > 15.0f) scalingBonus = 15.0f;
+
+            gain += scalingBonus;
+        }
+
+        Damage *= (1.0f + (gain / 100.0f));
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff - Skill 3 deal more damage on burn
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && attacker->Burn[0] > 0) {
+
+        float damageboost = attacker->Burn[0] * 1.5f;
+        if (damageboost > 30.0f) damageboost = 30.0f;
+        Damage *= (1.0f + (damageboost / 100.0f));
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on burn
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && attacker->Burn[0] > 0) {
+
+        int damageboost = attacker->Burn[0] * 3;
+        if (damageboost > 30) damageboost = 30;
+        Damage *= (1.0f + (damageboost / 100.0f));
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on HP
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3])) {
+
+        float missingSelf  = (float)(attacker->MAX_HP  - attacker->HP)  / attacker->MAX_HP * 100.0f;
+        float missingEnemy = (float)(defender->MAX_HP - defender->HP) / defender->MAX_HP * 100.0f;
+
+        float damageboost = (missingSelf + missingEnemy) / 2.0f;
+        if (damageboost > 50.0f) damageboost = 50.0f;
+
+        Damage *= (1.0f + (damageboost / 100.0f));
+
+      }
+
       // ----------------- The House of Spiders: The Thumb Nursefather Rodion -----------------
 
       // The House of Spiders: The Thumb Nursefather Rodion - Shin damage Buff
@@ -5665,7 +5734,7 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
       //----------------------------------------------------
 
       // Heathcliff:Wild Hunt - Wild hunt
-      if (isId(defender->ID, "Heathcliff:Wild Hunt") == 0 && defender->skills[7].active == -1 && IsStillEvaded != 2 && defender->Passive >= 2) {
+      if (isId(defender->ID, "Heathcliff:Wild Hunt") == 0 && defender->skills[7].active == -1 && IsStillEvaded != 2 && defender->Passive >= 4) {
         defender->skills[7].active = 1;
         Evaded = 1;
         IsStillEvaded = 2;
@@ -5784,8 +5853,8 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
                 }
 
                 // เอฟเฟกต์อาวุธอื่นๆ (จำกัด 2 ครั้งต่อเทิร์น)
-                if (weapon == 0 && !Evaded) { attacker->Poise[0] += 2; printf("(Gain +2 Poise Stack (%d))", attacker->Poise[0]); }
-                if (weapon == 1 && !Evaded) { defender->Sinking[0] += 2; printf("(Inflict +2 Sinking Stack (%d))", defender->Sinking[0]); }
+                if (weapon == 0 && !Evaded) { printf("(Gain +2 Poise Stack (%d))", attacker->Poise[0] + 2); }
+                if (weapon == 1 && !Evaded) { printf("(Inflict +2 Sinking Stack (%d))", defender->Sinking[0] + 2); }
                 if (weapon == 2 && attacker->skills[17].active < 2 && !Evaded) { attacker->skills[17].active++; attacker->OffenseLevelUp[1] += 1; printf("(Gain 1 Offense Level Up next turn)"); }
                 if (weapon == 3 && attacker->skills[18].active < 2 && !Evaded) { attacker->skills[18].active++; defender->DefenseLevelDown[1] += 1; printf("(Inflict 1 Defense Level Down Next Turn)"); }
                 if (weapon >= 5 && weapon <= 7 && attacker->skills[6].active < 2 && !Evaded) { attacker->skills[6].active++; defender->ProtectionDown[1] += 5; printf("(Inflict 5%% Take Damage Up Next Turn)"); }
@@ -5829,129 +5898,6 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
 
-
-    // -------------------------------- Heishou Pack - You Branch Adept Heathcliff --------------------------------
-
-    // Heishou Pack - You Branch Adept Heathcliff - Gain on attack
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && !Evaded) {
-
-      int gain = 1;
-      if (attacker->HP < attacker->MAX_HP * 0.5) gain += 1;
-
-        attacker->Passive += gain;
-      if (attacker->Passive > 20) attacker->Passive = 20;
-
-      printf("\t +%d Battleblood Instinct (%d)", gain, attacker->Passive);
-
-    }
-
-    // Heishou Pack - You Branch Adept Heathcliff - Bloodflame buff
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->skills[2].active > 0 && i < 3 && !Evaded) {
-
-      int gain = 3;
-
-      if (attacker->Sanity >= 45) {
-        gain = 1;
-        attacker->OffenseLevelUp[1]++;
-
-        printf(" \t+%d Offense next turn", gain);
-      } else {
-
-      updateSanity(attacker, gain);
-      if (attacker->Sanity > 45) attacker->Sanity = 45;
-
-      printf(" \t+%d Sanity (%d)", gain, attacker->Sanity);
-
-      }
-
-    }
-
-    // Heishou Pack - You Branch Adept Heathcliff Skill 3 coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i != remainingCoins - 1 && !Evaded) {
-
-          inflictStatus(attacker->Burn, 2, 0, 0, 99, 0, 99);
-
-      printf("\n%s applies +2 Burn Stack(%d) on self", attacker->name, attacker->Burn[0]);
-
-      sleep(1);
-    }
-
-    // Heishou Pack - You Branch Adept Heathcliff Skill 2 Last coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1 && !Evaded) {
-
-          inflictStatus(attacker->Burn, 3, 1, 0, 99, 0, 99);
-
-      printf("\n%s applies +3 Burn Stack(%d) and +1 Burn Count(%d) on self", attacker->name, attacker->Burn[0], attacker->Burn[1]);
-
-      sleep(1);
-
-      float damageboost = attacker->Burn[0] * 2.0f;
-      if (damageboost > 20) damageboost = 20;
-      int damage = finalDamage * (damageboost / 100);
-
-      applyDamage(attacker, defender, damage, 0, NULL);
-
-      totalDamage += damage;
-
-         printf("\n%s deals %d ((Burn Stack on self x 2)%% of this Coin's final damage) addition damage (%.0f%% - Max 20%%)", attacker->name, damage, damageboost);
-
-      sleep(1);
-    }
-
-    // Heishou Pack - You Branch Adept Heathcliff Skill 3 Last coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1 && !Evaded) {
-
-      float damageboost = (attacker->Burn[0] + attacker->Burn[1]) * 2.0f;
-      if (damageboost > 20) damageboost = 20;
-      int damage = finalDamage * (damageboost / 100);
-
-      applyDamage(attacker, defender, damage, 0, NULL);
-
-      totalDamage += damage;
-
-         printf("\n%s deals %d ((Burn Stack and Count on self x 2)%% of this Coin's final damage) addition damage (%.0f%% - Max 20%%)", attacker->name, damage, damageboost);
-
-      sleep(1);
-    }
-
-    // Heishou Pack - You Branch Adept Heathcliff Skill 4 Last coins
-    if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1 && !Evaded) {
-
-      float damageboost = 20.0f;
-      int damage = finalDamage * (damageboost / 100);
-
-      applyDamage(attacker, defender, damage, 0, NULL);
-
-      totalDamage += damage;
-
-         printf("\n%s deals %d (20%% of this Coin's final damage) addition damage", attacker->name, damage);
-
-      sleep(1);
-
-      float healvalue = finalDamage + damage;
-
-      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins > attacker->skills[3].Coins && (attacker->Burn[0] >= 20 || attacker->HP <= attacker->MAX_HP * 0.5)) {
-
-        attacker->HP += healvalue;
-
-        if (attacker->HP > attacker->MAX_HP) attacker->HP = attacker->MAX_HP;
-
-        printf("\n%s's final Coin, heal HP by the amount of damage the above effect dealt (%.0f)", attacker->name, healvalue);
-
-        sleep(1);
-
-      } else if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins <= attacker->skills[3].Coins && attacker->Burn[0] < 20 && attacker->HP > attacker->MAX_HP * 0.5) {
-
-        attacker->HP += healvalue;
-
-        if (attacker->HP > attacker->MAX_HP) attacker->HP = attacker->MAX_HP;
-
-
-        printf("\n%s's final Coin, heal HP by the amount of damage the above effect dealt (%0.f)", attacker->name, healvalue);
-
-         sleep(1);
-    }
-    }
 
        if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
       // Check on Hit for prescript II
@@ -6082,6 +6028,176 @@ if (modifiedPower < 0.0f) modifiedPower = 0.0f;
 
 
   // ----------------------- Inflict Status -----------------------
+
+      // -------------------------------- Heishou Pack - You Branch Adept Heathcliff --------------------------------
+
+      // Heishou Pack - You Branch Adept Heathcliff - Gain on attack
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && !Evaded) {
+
+        int gain = 1;
+        if (attacker->HP < attacker->MAX_HP * 0.5) gain += 1;
+
+          attacker->Passive += gain;
+        if (attacker->Passive > 20) attacker->Passive = 20;
+
+        printf("\t +%d Battleblood Instinct (%d)", gain, attacker->Passive);
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff - Bloodflame buff
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && attacker->skills[2].active > 0 && i < 3 && !Evaded) {
+
+        int gain = 3;
+
+        if (attacker->Sanity >= 45) {
+          gain = 1;
+          attacker->OffenseLevelUp[1]++;
+
+          printf(" \t+%d Offense next turn", gain);
+        } else {
+
+        updateSanity(attacker, gain);
+        if (attacker->Sanity > 45) attacker->Sanity = 45;
+
+        printf(" \t+%d Sanity (%d)", gain, attacker->Sanity);
+
+        }
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff Skill defense
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->defenseSkill[0]) && !Evaded) {
+
+        if (i == remainingCoins - 2) {
+          inflictStatus(attacker->Rupture, 0, 1, 0, 99, 0, 99);
+
+        printf("\t [On Hit] Rupture Count +1 on target (%d)", attacker->Rupture[1]);
+
+        }
+
+        if (i == remainingCoins - 1) {
+            inflictStatus(attacker->Burn, 1, 0, 0, 99, 0, 99);
+
+        printf("\t [On Hit] Burn Stack +1 on target (%d)", attacker->Burn[0]);
+
+        }
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff Skill 1 Inflicts
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[0]) && !Evaded) {
+
+        if (i == remainingCoins - 2) {
+          inflictStatus(attacker->Rupture, 1, 0, 0, 99, 0, 99);
+
+        printf("\t [On Hit] Rupture Stack +1 on target (%d)", attacker->Rupture[0]);
+
+        }
+
+        if (i == remainingCoins - 1) {
+            inflictStatus(attacker->Burn, 1, 0, 0, 99, 0, 99);
+
+        printf("\t [On Hit] Burn Stack +1 on target (%d)", attacker->Burn[0]);
+
+          if (IsHeadHit) {
+          inflictStatus(attacker->Rupture, 0, 1, 0, 99, 0, 99);
+
+          printf("\t [Heads Hit] Rupture Count +1 on target (%d)", attacker->Rupture[1]);
+
+          }
+
+        }
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff Skill 2 Last coins
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
+
+        if (i == remainingCoins - 3) {
+          inflictStatus(attacker->Rupture, 1, 0, 0, 99, 0, 99);
+
+        printf("\t [On Hit] Rupture Stack +1 on target (%d)", attacker->Rupture[0]);
+
+        if (IsHeadHit) {
+        inflictStatus(attacker->Burn, 0, 1, 0, 99, 0, 99);
+
+        printf("\t [Heads Hit] Burn Count +1 on target (%d)", attacker->Burn[1]);
+
+        }
+        }
+
+        if (i == remainingCoins - 2) {
+          inflictStatus(attacker->Burn, 1, 0, 0, 99, 0, 99);
+
+        printf("\t [On Hit] Burn Stack +1 on target (%d)", attacker->Burn[0]);
+
+        if (IsHeadHit) {
+        inflictStatus(attacker->Rupture, 0, 1, 0, 99, 0, 99);
+
+        printf("\t [Heads Hit] Rupture Count +1 on target (%d)", attacker->Rupture[1]);
+
+        }
+        }
+
+        if (i == remainingCoins - 1) {
+
+            inflictStatus(attacker->Burn, 3, 1, 0, 99, 0, 99);
+
+        printf("\t [On Hit] Gain +3 Burn Stack (%d) and +1 Burn Count (%d) on self", attacker->Burn[0], attacker->Burn[1]);
+        }
+        
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff Skill 3
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && !Evaded) {
+
+        if (i == remainingCoins - 1) {
+
+          inflictStatus(attacker->Rupture, 0, 3, 0, 99, 0, 99);
+
+          printf("\t [On Hit] Rupture Count +3 on target (%d)", attacker->Rupture[1]);
+        } else {
+            inflictStatus(attacker->Burn, 2, 0, 0, 99, 0, 99);
+           inflictStatus(attacker->Burn, 2, 0, 0, 99, 0, 99);
+
+          printf("\t [On Hit] Burn Stack +2 on self (%d) and target (%d)", attacker->Burn[0], defender->Burn[0]);
+        }
+
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff Skill 4
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && !Evaded) {
+
+        if (i == remainingCoins - 4) {
+          inflictStatus(attacker->Rupture, 0, 2, 0, 99, 0, 99);
+
+          printf("\t [On Hit] Rupture Count +2 on target (%d)", attacker->Rupture[1]);
+          
+        }
+
+        if (i == remainingCoins - 3) {
+          inflictStatus(attacker->Burn, 0, 2, 0, 99, 0, 99);
+
+          printf("\t [On Hit] Burn Count +2 on target (%d)", attacker->Burn[1]);
+        
+        }
+
+         if (i == remainingCoins - 2) {
+           inflictStatus(attacker->Rupture, 2, 0, 0, 99, 0, 99);
+
+           printf("\t [On Hit] Rupture Stack +2 on target (%d)", attacker->Rupture[0]);
+         }
+
+        if (i == remainingCoins - 1) {
+
+          inflictStatus(attacker->Burn, 2, 0, 0, 99, 0, 99);
+
+          printf("\t [On Hit] Burn Stack +2 on target (%d)", attacker->Burn[0]);
+        }
+
+      }
+
+      // ----------------------------------------------------------------
 
       // The Index Nursefather Yi Sang: Oracle Device [Caduceus] Weapon Name + Other Inflicting
       if (isId(attacker->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0) {
@@ -10137,6 +10253,77 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
       attacker->skills[3].Coins = 4;
     }
 
+      // Heishou Pack - You Branch Adept Heathcliff Skill 2 Last coins
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[1]) && i == remainingCoins - 1 && !Evaded) {
+
+        float damageboost = attacker->Burn[0] * 2.0f;
+        if (damageboost > 20) damageboost = 20;
+        int damage = finalDamage * (damageboost / 100);
+
+        applyDamage(attacker, defender, damage, 0, NULL);
+
+        totalDamage += damage;
+
+           printf("\n%s deals %d ((Burn Stack on self x 2)%% of this Coin's final damage) addition damage (%.0f%% - Max 20%%)", attacker->name, damage, damageboost);
+
+        sleep(1);
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff Skill 3 Last coins
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[2]) && i == remainingCoins - 1 && !Evaded) {
+
+        float damageboost = (attacker->Burn[0] + attacker->Burn[1]) * 2.0f;
+        if (damageboost > 20) damageboost = 20;
+        int damage = finalDamage * (damageboost / 100);
+
+        applyDamage(attacker, defender, damage, 0, NULL);
+
+        totalDamage += damage;
+
+           printf("\n%s deals %d ((Burn Stack and Count on self x 2)%% of this Coin's final damage) addition damage (%.0f%% - Max 20%%)", attacker->name, damage, damageboost);
+
+        sleep(1);
+      }
+
+      // Heishou Pack - You Branch Adept Heathcliff Skill 4 Last coins
+      if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (atk == &attacker->skills[3]) && i == remainingCoins - 1 && !Evaded) {
+
+        float damageboost = 20.0f;
+        int damage = finalDamage * (damageboost / 100);
+
+        applyDamage(attacker, defender, damage, 0, NULL);
+
+        totalDamage += damage;
+
+           printf("\n%s deals %d (20%% of this Coin's final damage) addition damage", attacker->name, damage);
+
+        sleep(1);
+
+        float healvalue = finalDamage + damage;
+
+        if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins > attacker->skills[3].Coins && (attacker->Burn[0] >= 20 || attacker->HP <= attacker->MAX_HP * 0.5)) {
+
+          attacker->HP += healvalue;
+
+          if (attacker->HP > attacker->MAX_HP) attacker->HP = attacker->MAX_HP;
+
+          printf("\n%s's final Coin, heal HP by the amount of damage the above effect dealt (%.0f)", attacker->name, healvalue);
+
+          sleep(1);
+
+        } else if (isId(attacker->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && remainingCoins <= attacker->skills[3].Coins && attacker->Burn[0] < 20 && attacker->HP > attacker->MAX_HP * 0.5) {
+
+          attacker->HP += healvalue;
+
+          if (attacker->HP > attacker->MAX_HP) attacker->HP = attacker->MAX_HP;
+
+
+          printf("\n%s's final Coin, heal HP by the amount of damage the above effect dealt (%0.f)", attacker->name, healvalue);
+
+           sleep(1);
+      }
+      }
+
     // -------------------------------------------------------------
 
   // The One Who Grips Faust Skill 2 after Last coins
@@ -11095,7 +11282,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
         defTempDefense -= attacker->Passive * 2;
         defTempOffense -= attacker->Passive * 2;
 
-         printf("\n%s's last coin, Inflict 2 Offense Down and 2 Defense Down for every Heishou Bolus Contamination [黑獸丸染] (%d)\n", attacker->name, attacker->Passive * 2);
+         printf("\n%s's last coin, Inflict 2 Offense Down and 2 Defense Down (%d) for every Heishou Bolus Contamination [黑獸丸染] (%d)\n", attacker->name, attacker->Passive * 2, attacker->Passive);
 
       sleep(1);
     }
@@ -11290,9 +11477,9 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
 
     sleep(1);
 
-    const char *savename = attacker->name;
+    const char *savename = defender->name;
 
-    attacker->name = "Wild Hunt";
+      defender->name = "Wild Hunt";
 
     // ดำเนินการโจมตี (เรียก attackPhase ซ้อนเข้าไป)
     // โดย Wild Hunt จะตีใส่ attacker (ตัวที่เพิ่งตีเรามา)
@@ -11300,7 +11487,7 @@ if (isId(attacker->ID, "The House of Spiders: The Ring Nursefather Hong Lu") == 
                 attacker, atk, atkTempOffense, atkTempDefense, 
                 whSkill->Coins, 0, 0);
 
-    attacker->name = savename;
+      defender->name = savename;
 
     printf("\nThe Wild Hunt died\n");
     sleep(1);
@@ -16440,21 +16627,21 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 1 and 2 coin power
-  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->Burn[0] + c->Burn[1]) >= 6 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c2->Rupture[0] + c2->Burn[0]) >= 6 && (chosenSkill == &c->skills[0] || chosenSkill == &c->skills[1])) {
 
      chosenSkill->CoinPowerBoost[0] += 1;
 
-      printf("\n%s at 6+ Burn (Stack(%d) + Count(%d)) on self, gains +1 Coin Power\n", c->name, c->Burn[0], c->Burn[1]);
+      printf("\nIf target at 6+ (Burn Stack (%d) + Rupture Stack (%d)), %s gains +1 Coin Power\n", c2->Burn[0], c2->Rupture[0], c->name);
 
     sleep(1);
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill def base power
-  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->Burn[0] + c->Burn[1]) >= 10 && (chosenSkill == &c->defenseSkill[0])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c2->Rupture[0] + c2->Burn[0]) >= 10 && (chosenSkill == &c->defenseSkill[0])) {
 
      chosenSkill->BasePowerBoost[0] += 1;
 
-      printf("\n%s at 10+ Burn (Stack(%d) + Count(%d)) on self, gains +1 Base Power\n", c->name, c->Burn[0], c->Burn[1]);
+      printf("\nIf target at 10+ (Burn Stack (%d) + Rupture Stack (%d)), %s gains +1 Base Power\n", c2->Burn[0], c2->Rupture[0], c->name);
 
     sleep(1);
   }
@@ -16483,14 +16670,14 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
   }
 
   // Heishou Pack - You Branch Adept Heathcliff - Skill 3 and 4 coin power
-  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c->Burn[0] + c->Burn[1]) >= 6 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
+  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (c2->Rupture[0] + c2->Burn[0]) >= 6 && (chosenSkill == &c->skills[2] || chosenSkill == &c->skills[3])) {
 
-    int Buff = (c->Burn[0] + c->Burn[1])/6;
+    int Buff = (c2->Rupture[0] + c2->Burn[0])/6;
      if (Buff > 2) Buff = 2;
 
      chosenSkill->CoinPowerBoost[0] += Buff;
 
-      printf("\n%s gains +1 Coin Power for every 6 Burn (Stack(%d) + Count(%d)) on self (%d - Max 2)\n", c->name, c->Burn[0], c->Burn[1], Buff);
+      printf("\n%s gains +1 Coin Power for every 6 (Burn Stack (%d) + Rupture Stack (%d)) on target (%d - Max 2)\n", c->name, c2->Rupture[0], c2->Burn[0], Buff);
 
     sleep(1);
   }
@@ -16504,46 +16691,6 @@ SkillStats *getEffectiveSkill(Character *c, Character *c2, SkillStats *targetSki
      chosenSkill->ClashPower[0] += clashpower;
 
       printf("\n%s gains +1 Clash Power for every 20%% missing HP on self (%d - Max 3)\n", c->name, clashpower);
-
-    sleep(1);
-  }
-
-  // Heishou Pack - You Branch Adept Heathcliff - Skill 3 deal more damage on burn
-  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[2]) && c->Burn[0] > 0) {
-
-    float damageboost = c->Burn[0] * 1.5f;
-    if (damageboost > 30.0f) damageboost = 30.0f;
-    chosenSkill->DamageUp[0] += damageboost;
-
-      printf("\n%s deals +1.5%% damage for every Burn Stack on self (%.1f%% - Max 30%%)\n", c->name, damageboost);
-
-    sleep(1);
-  }
-
-  // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on burn
-  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3]) && c->Burn[0] > 0) {
-
-    int damageboost = c->Burn[0] * 3;
-    if (damageboost > 30) damageboost = 30;
-    chosenSkill->DamageUp[0] += damageboost;
-
-      printf("\n%s deals +3%% damage for every Burn Stack on self (%d%% - Max 30%%)\n", c->name, damageboost);
-
-    sleep(1);
-  }
-
-  // Heishou Pack - You Branch Adept Heathcliff - Skill 4 deal more damage on HP
-  if (isId(c->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (chosenSkill == &c->skills[3])) {
-
-    float missingSelf  = (float)(c->MAX_HP  - c->HP)  / c->MAX_HP * 100.0f;
-    float missingEnemy = (float)(c2->MAX_HP - c2->HP) / c2->MAX_HP * 100.0f;
-
-    float damageboost = (missingSelf + missingEnemy) / 2.0f;
-    if (damageboost > 50.0f) damageboost = 50.0f;
-
-    chosenSkill->DamageUp[0] += damageboost;
-
-      printf("\n%s deals +1%% damage for every 2%% (missing HP percentage on target + missing HP percentage on self) (%.0f%% - Max 50%%)\n", c->name, damageboost);
 
     sleep(1);
   }
@@ -16754,17 +16901,17 @@ void applyClashStartPassives(Character *p1, SkillStats *s1, Character *p2, Skill
   // Heishou Pack - You Branch Adept Heathcliff Skill 1 and 2 gain on clash
   if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->skills[0] || s1 == &p1->skills[1])) {
 
-    p1->Burn[0]++;
-    if (p1->Burn[0] > 99) p1->Burn[0] = 99;
-    p1->Burn[1]++;
-    if (p1->Burn[1] > 99) p1->Burn[1] = 99;
+     inflictStatus(p1->Burn, 0, 1, 0, 99, 0, 99);
+     inflictStatus(p2->Burn, 0, 1, 0, 99, 0, 99);
+    inflictStatus(p1->Burn, 1, 0, 0, 99, 0, 99);
+     inflictStatus(p2->Burn, 1, 0, 0, 99, 0, 99);
 
-    printf("\n%s applies +1 Burn Stack(%d) and +1 Burn Count(%d) on self\n", p1->name, p1->Burn[0], p1->Burn[1]);
+    printf("\n%s applies +1 Burn Stack and +1 Burn Count on self (Stack %d Count %d) and target (Stack %d Count %d)\n", p1->name, p1->Burn[0], p1->Burn[1], p2->Burn[0], p2->Burn[1]);
 
     sleep(1);
   }
 
-  // Heishou Pack - You Branch Adept Heathcliff Skill 1 and 2 gain on clash
+  // Heishou Pack - You Branch Adept Heathcliff Skill Defense on clash
   if (isId(p1->ID, "Heishou Pack - You Branch Adept Heathcliff") == 0 && (s1 == &p1->defenseSkill[0])) {
 
       inflictStatus(p1->Burn, 0, 3, 0, 99, 0, 99);
@@ -16846,30 +16993,6 @@ ClashResult ClashableCounter(Character *p1, SkillStats *s1, int playerTempOffens
         counterUnit->name, counterUnit->Passive, chosenSkill->name);
 
     sleep(1);
-
-    // Don Quixote:The Manager of La Manchaland - defense consumed
-
-      if (counterUnit->defenseSkill[10].active > 0) {
-
-        int consume = (counterUnit->defenseSkill[10].active >= 50) ? 50 : counterUnit->defenseSkill[10].active;
-         counterUnit->defenseSkill[10].active -= consume; // Bloodfeast
-        counterUnit->defenseSkill[11].active += consume; // Bloodfeast consumed
-        counterUnit->defenseSkill[12].active += consume; // Bloodfeast Skill consumed
-
-      int Hardblood = 2 * consume/10;
-
-      counterUnit->Passive += Hardblood;
-      if (counterUnit->Passive > 30) counterUnit->Passive = 30;
-
-      printf("\n%s consumes up to 50 Bloodfeast (%d) and gains 2 Hardblood (%d) for every 10 Bloodfeast this unit consumed (%d)\n", counterUnit->name, counterUnit->defenseSkill[10].active, Hardblood, consume);
-
-      sleep(1);
-      } else {
-
-        inflictStatus(counterUnit->Bleed, 5, 0, 0, 99, 0, 99);
-        printf("\n%s failed to consume Bloodfeast, gains 5 Bleed Stack (%d)\n", counterUnit->name, counterUnit->Bleed[0]);
-
-    }
 
       int savedEnemyCoins = s1->Coins;
       s1->Coins = WinnerCoin;
@@ -19994,7 +20117,7 @@ void handleCombatStart(Character *c, Character *c2, SkillStats *chosenSkill, Ski
   }
 
   // Lei heng – heal Sanity Passive and Buff dmg Passive
-  if (isId(c->ID, "Lei heng") == 0 && c->Sanity > -45) {
+  if (isId(c->ID, "Lei heng") == 0 && c->Bind[0] < 3) {
 
         int randombuff = (c->Speed / 3) * 10;
     if (randombuff > 50) randombuff = 50;
@@ -20020,6 +20143,18 @@ void handleCombatStart(Character *c, Character *c2, SkillStats *chosenSkill, Ski
 
     sleep(1);
 
+  }
+  
+  if (isId(c->ID, "Lei heng") == 0 && c->Bind[0] > 0) {
+
+    int debuff = c->Bind[0];
+
+    c->DefenseLevelDown[0] += debuff;
+
+    printf("\n%s gains %d Defense Level Down\n", c->name, debuff);
+
+    sleep(1);
+    
   }
 
   // --------------- Shadow ----------------
@@ -21077,7 +21212,7 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
   // The House of Spiders: The Index Nursefather Yi Sang focred Furioso
   if (isId(player->ID, "The House of Spiders: The Index Nursefather Yi Sang") == 0 && player->skills[1].active >= 9) {
 
-    if (player->defenseSkill[5].active && (*playerSkill1 != 2 || *playerSkill2 != 2)) {
+    if (player->defenseSkill[5].active && (*playerSkill1 != 2 && *playerSkill2 != 2) && *playerSkill1 != 3 && *playerSkill2 != 3) {
 
       printf("\n%s at 9 Procuration [Hermes] and does not have a Skill 3, convert a Base Skill to Skill 3"
           "\n - Prioritizes the Skill on the Slot's top row on the Dashboard\n", player->name);
@@ -21311,7 +21446,6 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
       if (enemy->defenseSkill[10].active >= consumed) {
         enemy->defenseSkill[10].active -= consumed; // Bloodfeast
       enemy->defenseSkill[11].active += consumed; // Bloodfeast Consumed
-      enemy->defenseSkill[12].active += consumed; // Bloodfeast Skill consumed
       if (enemy->defenseSkill[10].active < 0) enemy->defenseSkill[10].active = 0;
       if (enemy->defenseSkill[11].active < 0) enemy->defenseSkill[11].active = 0;
       if (enemy->defenseSkill[10].active > 999) enemy->defenseSkill[10].active = 999;
@@ -21847,7 +21981,6 @@ void handleTurnStart(Character *player, Character *enemy, SkillStats **enemySkil
 
 
   applySanityDebuff(player);
-  applySanityDebuff(enemy);
 
 }
 
@@ -21877,10 +22010,10 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
   if (player->HP <= 0 || enemy->HP <= 0) return;
 
-  if (!SpeedState) {
-    SpeedState = 1;
-  calculateSpeed(player);
-  calculateSpeed(enemy);
+  if (SpeedState == 1) {
+    SpeedState = 2;
+  calculateSpeed(player, 1);
+  calculateSpeed(enemy, 1);
   }
 
     // ------------------ Before fight -----------------------
@@ -22132,9 +22265,9 @@ void handleBeforeFight(Character *player, Character *enemy, SkillStats **enemySk
 
 
 // ----------------------------------------------------------------
-  // handleTurnEnd — shared turn-end logic for all battle loops
-  // ----------------------------------------------------------------
-  void handleTurnEnd(Character *player, Character *enemy, SkillStats *playerSkillUsed, SkillStats *enemySkillUsed) {
+// handleTurnEnd — shared turn-end logic for all battle loops
+// ----------------------------------------------------------------
+void handleTurnEnd(Character *player, Character *enemy, SkillStats *playerSkillUsed, SkillStats *enemySkillUsed) {
 
     // ----------------------------- Turn End ------------------------------
 
@@ -24214,17 +24347,21 @@ void runKingInBindsBattle(
     int playerSkillIndex = -1;
     int enemySkillIndex = -1;
 
-      // handleTurnStart ด้วย player จริงเป็น p1, knight เป็น enemy
-    // 1. รัน Passive ของ Player (ตัวเรา)
-    // ส่งสกิลของเรา (*playerSkill1...) เข้าช่องที่ 4-5 และสกิลของร่างเงา (kSkill1...) เข้าช่องที่ 6-7
+      handleTurnStart(player, &enemy, &selectedEnemyPtr,
+        playerSkill1, playerSkill2, playerSkill3,
+        &kSkill1, &kSkill2, &kSkill3);
+      handleTurnStart(&enemy, player, &playerSkillEffective,
+        &kSkill1, &kSkill2, &kSkill3,
+        playerSkill1, playerSkill2, playerSkill3);
 
-    handleTurnStart(player, &enemy, &selectedEnemyPtr,
-      playerSkill1, playerSkill2, playerSkill3, &kSkill1, &kSkill2, &kSkill3);
-
-    // 2. รัน Passive ของ Knight (ร่างเงา)
-    // สลับตำแหน่ง: ส่งร่างเงาเข้าช่องแรก, ส่งสกิลร่างเงาเข้าช่องที่ 4-5 และสกิลของเราเข้าช่องที่ 6-7
-    handleTurnStart(&enemy, player, &playerSkillEffective,
-      &kSkill1, &kSkill2, &kSkill3, playerSkill1, playerSkill2, playerSkill3);
+    if (SpeedState == 0) {
+      SpeedState = 1;
+      calculateSpeed(player, 0);
+      calculateSpeed(&enemy, 0);
+      if (player->Speed > enemy.Speed) EffectOrderFirst = 0;
+      else if (enemy.Speed > player->Speed) EffectOrderFirst = 1;
+      else EffectOrderFirst = rand() % 2;
+    }
 
     int IsplayerUnableToAct = isPanicked(player) || isStaggered(player);
     int IsenemyUnableToAct  = isPanicked(&enemy)  || isStaggered(&enemy);
@@ -24234,6 +24371,8 @@ void runKingInBindsBattle(
           printf("\nBoth are unable to act! They recover...\n");
           if (isPanicked(player)) { player->Sanity = 0; }
       if (isPanicked(&enemy)) { enemy.Sanity = 0; }
+          SpeedState = 0;
+          EffectOrderFirst = -1;
           TurnCount++;
           continue;
       }
@@ -24292,15 +24431,17 @@ void runKingInBindsBattle(
 
     // ---------- Before Fight -----------
 
-    // 1. รัน Passive ของ Player (ตัวเรา)
-    // ส่งสกิลของเรา (*playerSkill1...) เข้าช่องที่ 4-5 และสกิลของร่างเงา (kSkill1...) เข้าช่องที่ 6-7
-    handleBeforeFight(player, &enemy, &selectedEnemyPtr,
-      *playerSkill1, *playerSkill2, kSkill1, kSkill2);
-
-    // 2. รัน Passive ของ Knight (ร่างเงา)
-    // สลับตำแหน่ง: ส่งร่างเงาเข้าช่องแรก, ส่งสกิลร่างเงาเข้าช่องที่ 4-5 และสกิลของเราเข้าช่องที่ 6-7
+    if (EffectOrderFirst == 0) {
+      handleBeforeFight(player, &enemy, &selectedEnemyPtr,
+        *playerSkill1, *playerSkill2, kSkill1, kSkill2);
       handleBeforeFight(&enemy, player, &playerSkillEffective,
-      kSkill1, kSkill2, *playerSkill1, *playerSkill2);
+        kSkill1, kSkill2, *playerSkill1, *playerSkill2);
+    } else {
+      handleBeforeFight(&enemy, player, &playerSkillEffective,
+        kSkill1, kSkill2, *playerSkill1, *playerSkill2);
+      handleBeforeFight(player, &enemy, &selectedEnemyPtr,
+        *playerSkill1, *playerSkill2, kSkill1, kSkill2);
+    }
 
     // -------------------------------------------------------
       // Knight เลือก skill — แสดง SKILL ของ TURN นี้ก่อน
@@ -24588,11 +24729,27 @@ void runKingInBindsBattle(
 
       SkillStats *enemySkillEffective = selectedEnemyPtr;
 
-    // Player
-    handleCombatStart(player, &enemy, playerSkillEffective, enemySkillEffective, playerSkill1, playerSkill2, playerSkill3, enemySkill1, enemySkill2, enemySkill3, &playerTempOffense, &playerTempDefense);
-    // Enemy
-    handleCombatStart(&enemy, player, enemySkillEffective, playerSkillEffective, enemySkill1, enemySkill2, enemySkill3, playerSkill1, playerSkill2, playerSkill3, &enemyTempOffense, &enemyTempDefense);
+    if (EffectOrderFirst == 0) {
+      handleCombatStart(player, &enemy, playerSkillEffective, enemySkillEffective,
+        playerSkill1, playerSkill2, playerSkill3,
+        enemySkill1, enemySkill2, enemySkill3,
+        &playerTempOffense, &playerTempDefense);
+      handleCombatStart(&enemy, player, enemySkillEffective, playerSkillEffective,
+        enemySkill1, enemySkill2, enemySkill3,
+        playerSkill1, playerSkill2, playerSkill3,
+        &enemyTempOffense, &enemyTempDefense);
+    } else {
+      handleCombatStart(&enemy, player, enemySkillEffective, playerSkillEffective,
+        enemySkill1, enemySkill2, enemySkill3,
+        playerSkill1, playerSkill2, playerSkill3,
+        &enemyTempOffense, &enemyTempDefense);
+      handleCombatStart(player, &enemy, playerSkillEffective, enemySkillEffective,
+        playerSkill1, playerSkill2, playerSkill3,
+        enemySkill1, enemySkill2, enemySkill3,
+        &playerTempOffense, &playerTempDefense);
+    }
 
+    if (EffectOrderFirst == 0) {
     if (IsplayerUnableToAct) {
       SkillStats dummy = player->defenseSkill[0];
       getEffectiveSkill(player, &enemy, selectedEnemyPtr, &dummy, &playerTempOffense, &playerTempDefense);
@@ -24609,6 +24766,26 @@ void runKingInBindsBattle(
     } else {
       enemySkillEffective = getEffectiveSkill(&enemy, player, playerSkillEffective, selectedEnemyPtr,
                         &enemyTempOffense, &enemyTempDefense);
+    }
+
+    } else {
+      if (IsenemyUnableToAct) {
+        SkillStats dummyK = enemy.defenseSkill[0];
+        getEffectiveSkill(&enemy, player, playerSkillEffective, &dummyK, &enemyTempOffense, &enemyTempDefense);
+        enemySkillEffective = NULL;
+      } else {
+        enemySkillEffective = getEffectiveSkill(&enemy, player, playerSkillEffective, selectedEnemyPtr,
+                          &enemyTempOffense, &enemyTempDefense);
+      }
+
+      if (IsplayerUnableToAct) {
+        SkillStats dummy = player->defenseSkill[0];
+        getEffectiveSkill(player, &enemy, selectedEnemyPtr, &dummy, &playerTempOffense, &playerTempDefense);
+        playerSkillEffective = NULL;
+      } else {
+        playerSkillEffective = getEffectiveSkill(player, &enemy, selectedEnemyPtr, playerSkillEffective,
+                          &playerTempOffense, &playerTempDefense);
+      }
     }
 
       // -------------------------------------------------------
@@ -24792,8 +24969,14 @@ void runKingInBindsBattle(
 
     printf("\n--- Turn End ---\n");
 
-    handleTurnEnd(player, &enemy, playerSkillEffective, enemySkillEffective); // รันของ Player
-    handleTurnEnd(&enemy, player, enemySkillEffective, playerSkillEffective); // รันของ Knight
+    if (EffectOrderFirst == 0) {
+      handleTurnEnd(player, &enemy, playerSkillEffective, enemySkillEffective);
+      handleTurnEnd(&enemy, player, enemySkillEffective, playerSkillEffective);
+    } else {
+      handleTurnEnd(&enemy, player, enemySkillEffective, playerSkillEffective);
+      handleTurnEnd(player, &enemy, playerSkillEffective, enemySkillEffective);
+    }
+    EffectOrderFirst = -1;
 
     // roll skill ใหม่หลังเลือกแล้ว (สำหรับ turn หน้า)
     // 1. ถ้าเราได้ใช้สกิลจริง (pSkillExecuted == 1) ให้จั่วใหม่
@@ -24890,7 +25073,22 @@ void runKingInBindsBattle(
 
       }
 
-      handleTurnStart(player, boss, &enemySkillEffective, playerSkill1, playerSkill2, playerSkill3, enemySkill1, enemySkill2, enemySkill3);
+
+        handleTurnStart(player, boss, &enemySkillEffective,
+          playerSkill1, playerSkill2, playerSkill3,
+          enemySkill1, enemySkill2, enemySkill3);
+        handleTurnStart(boss, player, &playerSkillEffective,
+          enemySkill1, enemySkill2, enemySkill3,
+          playerSkill1, playerSkill2, playerSkill3);
+
+      if (SpeedState == 0) {
+        SpeedState = 1;
+        calculateSpeed(player, 0);
+        calculateSpeed(boss, 0);
+        if (player->Speed > boss->Speed) EffectOrderFirst = 0;
+        else if (boss->Speed > player->Speed) EffectOrderFirst = 1;
+        else EffectOrderFirst = rand() % 2;
+      }
 
       int IsplayerUnableToAct = isPanicked(player) || isStaggered(player);
       int IsenemyUnableToAct  = isStaggered(boss);
@@ -24936,9 +25134,18 @@ void runKingInBindsBattle(
             printf("[Sanity] %s: %d (%s)\n",
                    player->name, player->Sanity, getSanityStatus(player));
 
-        // Apply player passives + enemy turn-start forced-skill logic
-          handleBeforeFight(player, boss, &enemySkillEffective, *playerSkill1, *playerSkill2, *enemySkill1, *enemySkill2);
-          handleBeforeFight(boss, player, &playerSkillEffective, *enemySkill1, *enemySkill2, *playerSkill1, *playerSkill2);
+          // Apply passives and forced-skill logic by Speed.
+          if (EffectOrderFirst == 0) {
+            handleBeforeFight(player, boss, &enemySkillEffective,
+              *playerSkill1, *playerSkill2, *enemySkill1, *enemySkill2);
+            handleBeforeFight(boss, player, &playerSkillEffective,
+              *enemySkill1, *enemySkill2, *playerSkill1, *playerSkill2);
+          } else {
+            handleBeforeFight(boss, player, &playerSkillEffective,
+              *enemySkill1, *enemySkill2, *playerSkill1, *playerSkill2);
+            handleBeforeFight(player, boss, &enemySkillEffective,
+              *playerSkill1, *playerSkill2, *enemySkill1, *enemySkill2);
+          }
 
       // Player picks one skill (only if can act)
       int playerSkillIndex;
@@ -25213,12 +25420,29 @@ void runKingInBindsBattle(
         }
 
 
-      // Player
-      handleCombatStart(player, boss, playerSkillEffective, enemySkillEffective, playerSkill1, playerSkill2, playerSkill3, enemySkill1, enemySkill2, enemySkill3, &playerTempOffense, &playerTempDefense);
-      // Enemy
-      handleCombatStart(boss, player, enemySkillEffective, playerSkillEffective, enemySkill1, enemySkill2, enemySkill3, playerSkill1, playerSkill2, playerSkill3, &enemyTempOffense, &enemyTempDefense);
+      // Combat Start effects by Speed.
+      if (EffectOrderFirst == 0) {
+        handleCombatStart(player, boss, playerSkillEffective, enemySkillEffective,
+          playerSkill1, playerSkill2, playerSkill3,
+          enemySkill1, enemySkill2, enemySkill3,
+          &playerTempOffense, &playerTempDefense);
+        handleCombatStart(boss, player, enemySkillEffective, playerSkillEffective,
+          enemySkill1, enemySkill2, enemySkill3,
+          playerSkill1, playerSkill2, playerSkill3,
+          &enemyTempOffense, &enemyTempDefense);
+      } else {
+        handleCombatStart(boss, player, enemySkillEffective, playerSkillEffective,
+          enemySkill1, enemySkill2, enemySkill3,
+          playerSkill1, playerSkill2, playerSkill3,
+          &enemyTempOffense, &enemyTempDefense);
+        handleCombatStart(player, boss, playerSkillEffective, enemySkillEffective,
+          playerSkill1, playerSkill2, playerSkill3,
+          enemySkill1, enemySkill2, enemySkill3,
+          &playerTempOffense, &playerTempDefense);
+      }
 
 
+      if (EffectOrderFirst == 0) {
       // --- คำนวณค่าสำหรับ Player ---
       if (IsplayerUnableToAct) {
           SkillStats dummy = player->defenseSkill[0]; // โคลนค่าจากท่าป้องกัน 0
@@ -25238,7 +25462,27 @@ void runKingInBindsBattle(
           enemySkillEffective = getEffectiveSkill(boss, player, playerSkillEffective, enemySkillEffective,
                                                   &enemyTempOffense, &enemyTempDefense);
       }
+      } else {
+        // --- คำนวณค่าสำหรับ Enemy ---
+        if (IsenemyUnableToAct) {
+            SkillStats dummyE = boss->defenseSkill[0]; // โคลนท่าป้องกันศัตรู
+            getEffectiveSkill(boss, player, playerSkillEffective, &dummyE, &enemyTempOffense, &enemyTempDefense);
+            enemySkillEffective = NULL; // บังคับเป็น NULL
+        } else {
+            enemySkillEffective = getEffectiveSkill(boss, player, playerSkillEffective, enemySkillEffective,
+                                                    &enemyTempOffense, &enemyTempDefense);
+        }
 
+        // --- คำนวณค่าสำหรับ Player ---
+        if (IsplayerUnableToAct) {
+            SkillStats dummy = player->defenseSkill[0]; // โคลนค่าจากท่าป้องกัน 0
+            getEffectiveSkill(player, boss, enemySkillEffective, &dummy, &playerTempOffense, &playerTempDefense);
+            playerSkillEffective = NULL; // บังคับเป็น NULL ตามที่ต้องการ
+        } else {
+            playerSkillEffective = getEffectiveSkill(player, boss, enemySkillEffective, playerSkillEffective,
+                                                    &playerTempOffense, &playerTempDefense);
+        }
+      }
 
       int playerGoesFirst = 0;
 
@@ -25417,8 +25661,14 @@ void runKingInBindsBattle(
 
       printf("\n--- Turn End ---\n");
 
-        handleTurnEnd(player, boss, playerSkillEffective, enemySkillEffective);
-        handleTurnEnd(boss, player, enemySkillEffective, playerSkillEffective);
+        if (EffectOrderFirst == 0) {
+          handleTurnEnd(player, boss, playerSkillEffective, enemySkillEffective);
+          handleTurnEnd(boss, player, enemySkillEffective, playerSkillEffective);
+        } else {
+          handleTurnEnd(boss, player, enemySkillEffective, playerSkillEffective);
+          handleTurnEnd(player, boss, playerSkillEffective, enemySkillEffective);
+        }
+        EffectOrderFirst = -1;
 
       // roll skill ใหม่หลังเลือกแล้ว (สำหรับ turn หน้า)
       // 1. ถ้าเราได้ใช้สกิลจริง (pSkillExecuted == 1) ให้จั่วใหม่
@@ -26555,7 +26805,7 @@ int main() {
              printf("\n 8. Chachihu [揷翅虎]\n Combat Start: based on this unit's Speed value,\n");
             printf(" - Heal Sanity equal to Speed value. At less than 0 Sanity, double the heal amount");
             printf("\n - Gains ((Speed Value / 3) x 10%%) Damage Up. (Max 50%%)\n");
-            printf(" At -45 Sanity, does not activate above effects\n");
+            printf(" Combat Start: if this unit has 3+ Bind, the above effect does not activate; gain Defense Level Down equal to Bind on self (Max 9)\n");
             printf("\n 9. Inner Strength [底力]\n When using Skills gain 'Inner Strength [底力]' which use for 'Tanglecleaver' and 'Savage Tigerslayer's Perfected Flurry of Blades [超絕猛虎殺擊亂斬]'.\n"
               " - Gain when win Clash +(Clash Count) and +(Clash Count x 2) on 'Extreme Strength [極力]'\n" 
               " - Gain when attack +(Attack Coins x 2) and +(Attack Coins x 3) on 'Extreme Strength [極力]'\n"
@@ -27334,7 +27584,22 @@ int main() {
 
       //------------------- Turn Start ----------------------------
 
-        handleTurnStart(&player, &enemy, &enemySkillEffective, &playerSkill1, &playerSkill2, &playerSkill3, &enemySkill1, &enemySkill2, &enemySkill3);
+          handleTurnStart(&player, &enemy, &enemySkillEffective,
+            &playerSkill1, &playerSkill2, &playerSkill3,
+            &enemySkill1, &enemySkill2, &enemySkill3);
+          handleTurnStart(&enemy, &player, &playerSkillEffective,
+            &enemySkill1, &enemySkill2, &enemySkill3,
+            &playerSkill1, &playerSkill2, &playerSkill3);
+
+      if (SpeedState == 0) {
+        SpeedState = 1;
+        calculateSpeed(&player, 0);
+        calculateSpeed(&enemy, 0);
+        if (player.Speed > enemy.Speed) EffectOrderFirst = 0;
+        else if (enemy.Speed > player.Speed) EffectOrderFirst = 1;
+        else EffectOrderFirst = rand() % 2;
+      }
+        
 
       // Check who can act this turn
       int IsplayerUnableToAct = isPanicked(&player) || isStaggered(&player);
@@ -27345,6 +27610,8 @@ int main() {
             printf("\nBoth are unable to act! They recover...\n");
             if (isPanicked(&player)) { player.Sanity = 0; }
         if (isPanicked(&enemy)) { enemy.Sanity = 0; }
+            SpeedState = 0;
+            EffectOrderFirst = -1;
             TurnCount++;
             continue;
         }
@@ -27403,8 +27670,17 @@ int main() {
 
         // ------------------ Before fight -----------------------
 
-      handleBeforeFight(&player, &enemy, &enemySkillEffective, playerSkill1, playerSkill2, enemySkill1, enemySkill2);
-      handleBeforeFight(&enemy, &player, &playerSkillEffective, enemySkill1, enemySkill2, playerSkill1, playerSkill2);
+      if (EffectOrderFirst == 0) {
+        handleBeforeFight(&player, &enemy, &enemySkillEffective,
+          playerSkill1, playerSkill2, enemySkill1, enemySkill2);
+        handleBeforeFight(&enemy, &player, &playerSkillEffective,
+          enemySkill1, enemySkill2, playerSkill1, playerSkill2);
+      } else {
+        handleBeforeFight(&enemy, &player, &playerSkillEffective,
+          enemySkill1, enemySkill2, playerSkill1, playerSkill2);
+        handleBeforeFight(&player, &enemy, &enemySkillEffective,
+          playerSkill1, playerSkill2, enemySkill1, enemySkill2);
+      }
 
       // Player picks one skill (only if can act)
       int playerSkillIndex;
@@ -27678,11 +27954,28 @@ int main() {
     }
   }   // closes if (!IsplayerUnableToAct)
 
-      // Player
-      handleCombatStart(&player, &enemy, playerSkillEffective, enemySkillEffective, &playerSkill1, &playerSkill2, &playerSkill3, &enemySkill1, &enemySkill2, &enemySkill3, &playerTempOffense, &playerTempDefense);
-      // Enemy
-      handleCombatStart(&enemy, &player, enemySkillEffective, playerSkillEffective, &enemySkill1, &enemySkill2, &enemySkill3, &playerSkill1, &playerSkill2, &playerSkill3, &enemyTempOffense, &enemyTempDefense);
+      // Combat Start effects by Speed.
+      if (EffectOrderFirst == 0) {
+        handleCombatStart(&player, &enemy, playerSkillEffective, enemySkillEffective,
+          &playerSkill1, &playerSkill2, &playerSkill3,
+          &enemySkill1, &enemySkill2, &enemySkill3,
+          &playerTempOffense, &playerTempDefense);
+        handleCombatStart(&enemy, &player, enemySkillEffective, playerSkillEffective,
+          &enemySkill1, &enemySkill2, &enemySkill3,
+          &playerSkill1, &playerSkill2, &playerSkill3,
+          &enemyTempOffense, &enemyTempDefense);
+      } else {
+        handleCombatStart(&enemy, &player, enemySkillEffective, playerSkillEffective,
+          &enemySkill1, &enemySkill2, &enemySkill3,
+          &playerSkill1, &playerSkill2, &playerSkill3,
+          &enemyTempOffense, &enemyTempDefense);
+        handleCombatStart(&player, &enemy, playerSkillEffective, enemySkillEffective,
+          &playerSkill1, &playerSkill2, &playerSkill3,
+          &enemySkill1, &enemySkill2, &enemySkill3,
+          &playerTempOffense, &playerTempDefense);
+      }
 
+      if (EffectOrderFirst == 0) {
       // --- คำนวณค่าสำหรับ Player ---
       if (IsplayerUnableToAct) {
           SkillStats dummy = player.defenseSkill[0]; // โคลนค่าจากท่าป้องกัน 0
@@ -27702,6 +27995,28 @@ int main() {
           enemySkillEffective = getEffectiveSkill(&enemy, &player, playerSkillEffective, enemySkillEffective,
                                                   &enemyTempOffense, &enemyTempDefense);
       }
+
+      } else {
+        // --- คำนวณค่าสำหรับ Enemy ---
+        if (IsenemyUnableToAct) {
+            SkillStats dummyE = enemy.defenseSkill[0]; // โคลนท่าป้องกันศัตรู
+            getEffectiveSkill(&enemy, &player, playerSkillEffective, &dummyE, &enemyTempOffense, &enemyTempDefense);
+            enemySkillEffective = NULL; // บังคับเป็น NULL
+        } else {
+            enemySkillEffective = getEffectiveSkill(&enemy, &player, playerSkillEffective, enemySkillEffective,
+                                                    &enemyTempOffense, &enemyTempDefense);
+        }
+
+        // --- คำนวณค่าสำหรับ Player ---
+        if (IsplayerUnableToAct) {
+            SkillStats dummy = player.defenseSkill[0]; // โคลนค่าจากท่าป้องกัน 0
+            getEffectiveSkill(&player, &enemy, enemySkillEffective, &dummy, &playerTempOffense, &playerTempDefense);
+            playerSkillEffective = NULL; // บังคับเป็น NULL ตามที่ต้องการ
+        } else {
+            playerSkillEffective = getEffectiveSkill(&player, &enemy, enemySkillEffective, playerSkillEffective,
+                                                    &playerTempOffense, &playerTempDefense);
+        }
+        }
 
       int playerGoesFirst = 0;
 
@@ -27898,11 +28213,15 @@ if (pType != 0 && eType != 0) {
 
     printf("\n--- Turn End ---\n");
 
-    // 1. จบเทิร์นของผู้เล่น (จัดการกระสุน/Sanity/ล้างบัฟผู้เล่น)
-    handleTurnEnd(&player, &enemy, playerSkillEffective, enemySkillEffective);
-
-    // 2. จบเทิร์นของบอส (จัดการความสามารถบอส/ล้างบัฟบอส)
-    handleTurnEnd(&enemy, &player, enemySkillEffective, playerSkillEffective);
+    // Turn-end effects by Speed.
+    if (EffectOrderFirst == 0) {
+      handleTurnEnd(&player, &enemy, playerSkillEffective, enemySkillEffective);
+      handleTurnEnd(&enemy, &player, enemySkillEffective, playerSkillEffective);
+    } else {
+      handleTurnEnd(&enemy, &player, enemySkillEffective, playerSkillEffective);
+      handleTurnEnd(&player, &enemy, playerSkillEffective, enemySkillEffective);
+    }
+    EffectOrderFirst = -1;
 
       // roll skill ใหม่หลังเลือกแล้ว (สำหรับ turn หน้า)   
       // 1. ถ้าเราได้ใช้สกิลจริง (pSkillExecuted == 1) ให้จั่วใหม่
